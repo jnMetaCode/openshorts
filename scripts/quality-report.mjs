@@ -16,6 +16,17 @@ await fs.mkdir(reportDir, {recursive: true});
 const {stdout} = await run('ffprobe', ['-v', 'error', '-show_streams', '-show_format', '-of', 'json', videoPath], {maxBuffer: 10 * 1024 * 1024});
 const media = mediaSummaryFromProbe(JSON.parse(stdout));
 const analysis = analyzeProject({project, media, publicDir: path.join(root, 'public')});
+let audioLoudness = null;
+if (media.audioCodec) {
+  const measured = await run('ffmpeg', ['-hide_banner', '-i', videoPath, '-filter_complex', 'ebur128=peak=true', '-f', 'null', '-']).catch((error) => ({stderr:error.stderr ?? ''}));
+  const values = [...String(measured.stderr ?? '').matchAll(/I:\s*(-?\d+(?:\.\d+)?)\s+LUFS/g)].map((match) => Number(match[1]));
+  const peaks = [...String(measured.stderr ?? '').matchAll(/Peak:\s*(-?\d+(?:\.\d+)?)\s+dBFS/g)].map((match) => Number(match[1]));
+  if (values.length) audioLoudness = {integratedLufs:values.at(-1),truePeakDbfs:peaks.at(-1) ?? null};
+  if (!audioLoudness) analysis.errors.push('音轨存在，但无法测得有效响度');
+  else if (audioLoudness.integratedLufs < -30) analysis.errors.push(`音轨过小：${audioLoudness.integratedLufs.toFixed(1)} LUFS`);
+  else analysis.passes.push(`音频响度 ${audioLoudness.integratedLufs.toFixed(1)} LUFS`);
+  analysis.status = analysis.errors.length ? 'failed' : analysis.warnings.length ? 'warning' : 'passed';
+}
 const frames = [];
 let sceneStart = 0;
 for (const [index, scene] of project.scenes.entries()) {
@@ -26,7 +37,7 @@ for (const [index, scene] of project.scenes.entries()) {
   sceneStart += scene.durationFrames / project.fps;
 }
 
-const report = {generatedAt: new Date().toISOString(), project: {id: project.id, title: project.title}, video: path.basename(videoPath), media, ...analysis, frames};
+const report = {generatedAt: new Date().toISOString(), project: {id: project.id, title: project.title}, video: path.basename(videoPath), media, audioLoudness, ...analysis, frames};
 await fs.writeFile(path.join(reportDir, 'report.json'), `${JSON.stringify(report, null, 2)}\n`);
 const bullets = (items) => items.length ? items.map((item) => `- ${item}`).join('\n') : '- 无';
 const markdown = `# ${project.title} · 自动验收报告
@@ -35,6 +46,7 @@ const markdown = `# ${project.title} · 自动验收报告
 - 视频：${path.basename(videoPath)}
 - 规格：${media.width}×${media.height} · ${media.fps} FPS · ${media.duration.toFixed(2)}s
 - 编码：${media.videoCodec ?? '无'} / ${media.audioCodec ?? '无'}
+- 音频响度：${audioLoudness ? `${audioLoudness.integratedLufs.toFixed(1)} LUFS · 峰值 ${audioLoudness.truePeakDbfs?.toFixed(1) ?? '未知'} dBFS` : '未测得'}
 - 文件大小：${(media.size / 1024 / 1024).toFixed(2)} MB
 
 ## 错误
