@@ -327,5 +327,6 @@ app.get(/.*/, (_req, res) => res.sendFile(path.join(root, 'dist', 'index.html'))
 app.use((error, _req, res, _next) => res.status(500).json({error: error instanceof Error ? error.message : '服务器错误'}));
 
 const port = Number(process.env.PORT ?? 4174); const host = process.env.HOST ?? '127.0.0.1';
-app.listen(port, host, () => console.log(`PaperCut API: http://${host}:${port}`));
+const httpServer = app.listen(port, host, () => console.log(`PaperCut API: http://${host}:${port}`));
+httpServer.on('error',(error)=>{console.error(`PaperCut 无法监听 ${host}:${port}：${error instanceof Error ? error.message : error}`);process.exitCode=1;});
 void processQueue();

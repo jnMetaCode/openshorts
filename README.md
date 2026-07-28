@@ -21,6 +21,14 @@
 
 需要 Node.js 20+、FFmpeg 和 ImageMagick。FFmpeg 用于媒体验收，ImageMagick 用于抠图、拆分和透明通道检查。
 
+macOS 可以直接双击项目根目录的 `启动本地.command`。也可以在终端运行，命令会自动启动服务并打开浏览器：
+
+```bash
+npm run open
+```
+
+窗口必须保持运行；关闭终端或按 `Ctrl+C` 会停止本地服务。若 `4174` 被占用，可执行 `PORT=4175 npm run open`。
+
 如需启用 LLM 分镜，可连接任意支持 Chat Completions JSON 输出的兼容服务：
 
 ```bash

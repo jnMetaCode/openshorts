@@ -11,6 +11,7 @@
     "dev": "concurrently -k -n api,web -c yellow,cyan \"node --watch server/index.mjs\" \"vite\"",
     "build": "tsc --noEmit && vite build",
     "start": "node server/index.mjs",
+    "open": "node scripts/open-local.mjs",
     "studio": "remotion studio src/remotion/index.ts",
     "render": "node scripts/render.mjs",
     "quality": "node scripts/quality-report.mjs",
