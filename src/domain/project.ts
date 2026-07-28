@@ -39,6 +39,12 @@ export const captionSchema = z.object({
   words: z.array(z.object({text:z.string(),fromFrame:z.number().int().nonnegative(),toFrame:z.number().int().positive()})).default([]),
 }).refine((item) => item.toFrame > item.fromFrame, '字幕结束帧必须大于开始帧');
 
+export const audioCueSchema = z.object({
+  src: z.string().min(1),
+  fromFrame: z.number().int().nonnegative().default(0),
+  volume: z.number().min(0).max(2).default(1),
+});
+
 export const sceneSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
@@ -48,6 +54,7 @@ export const sceneSchema = z.object({
   layers: z.array(layerSchema).min(1),
   captions: z.array(captionSchema).default([]),
   narrationSrc: z.string().optional(),
+  audioCues: z.array(audioCueSchema).default([]),
 });
 
 export const productionSchema = z.object({

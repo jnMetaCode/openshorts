@@ -140,6 +140,23 @@ npm run quality -- out/my-story.mp4 projects/my-story.json
 npm run studio
 ```
 
+## 完整案例：《三天荔枝道》
+
+仓库内置一个 54.5 秒、1080×1920 的六镜头故事工程：`projects/lychee-road.json`。它包含独立背景与人物图层、完整口播文案、烧录字幕、原创配乐，以及雨声、马蹄、冲击和转场音效。
+
+```bash
+# 不启动浏览器或本地端口，直接用 FFmpeg 生成带声音的预览成片
+npm run story:render:fallback
+
+# macOS 普通终端：生成有效中文旁白并按实际时长重建工程
+npm run story:audio
+
+# 使用 Remotion 正式渲染
+npm run story:render
+```
+
+`story:audio` 会先验证每一段语音的文件大小和真实时长，空音频会立即中止，不会生成“有音轨但没有人声”的假成片。默认优先使用 macOS 离线语音，失败时自动尝试已安装的 `edge-tts`。研究来源、史实边界和发布文案位于 `content/lychee-road/`。
+
 ## 素材处理 CLI
 
 网页中的素材工具也可以独立运行：

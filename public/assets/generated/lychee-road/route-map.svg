@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920">
+  <defs><filter id="rough"><feTurbulence baseFrequency=".018" numOctaves="3" seed="8" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="9"/></filter></defs>
+  <rect width="1080" height="1920" fill="#d8c49b"/>
+  <path d="M0 1460Q190 1250 370 1410T760 1360T1080 1270V1920H0Z" fill="#6f6553" opacity=".25"/>
+  <path d="M0 450Q250 220 490 430T1080 330" fill="none" stroke="#50483a" stroke-width="70" opacity=".13"/>
+  <path d="M185 1515C255 1330 176 1195 345 1060S430 755 610 660 723 390 901 275" fill="none" stroke="#8d2d25" stroke-width="17" stroke-dasharray="28 24" stroke-linecap="round" filter="url(#rough)"/>
+  <g fill="#2d2922" font-family="Songti SC,serif" font-weight="700"><text x="112" y="1632" font-size="70">涪州</text><text x="382" y="1015" font-size="58">巴山</text><text x="617" y="650" font-size="58">子午谷</text><text x="806" y="226" font-size="70">长安</text></g>
+  <g fill="#a72e23" stroke="#f3e8ce" stroke-width="11"><circle cx="185" cy="1515" r="31"/><circle cx="345" cy="1060" r="25"/><circle cx="610" cy="660" r="25"/><circle cx="901" cy="275" r="31"/></g>
+  <text x="78" y="120" fill="#7d221c" font-family="Songti SC,serif" font-size="44" font-weight="800" letter-spacing="8">荔 枝 驿 路 · 戏 剧 化 示 意</text>
+</svg>

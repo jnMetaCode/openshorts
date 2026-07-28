@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920">
+ <defs><linearGradient id="sky" x2="0" y2="1"><stop stop-color="#621b1b"/><stop offset="1" stop-color="#171519"/></linearGradient><filter id="shadow"><feDropShadow dx="0" dy="22" stdDeviation="14" flood-opacity=".5"/></filter></defs>
+ <rect width="1080" height="1920" fill="url(#sky)"/><circle cx="790" cy="320" r="140" fill="#e4b85f" opacity=".85"/>
+ <g fill="#111116" filter="url(#shadow)"><path d="M50 835L540 515 1030 835 930 900 540 720 150 900Z"/><path d="M170 915H910V1550H170Z"/><path d="M250 820H830V980H250Z"/></g>
+ <g fill="#85221e"><rect x="215" y="990" width="650" height="560"/><rect x="490" y="1020" width="100" height="530" fill="#271d20"/></g>
+ <g fill="#d0a84d"><circle cx="448" cy="1270" r="18"/><circle cx="632" cy="1270" r="18"/><path d="M125 890H955" stroke="#d0a84d" stroke-width="16"/><path d="M225 985H855" stroke="#d0a84d" stroke-width="12"/></g>
+ <path d="M0 1560H1080V1920H0Z" fill="#242125"/><path d="M0 1640L1080 1515M0 1840L1080 1715" stroke="#b38d49" stroke-opacity=".25" stroke-width="12"/>
+</svg>

@@ -48,6 +48,9 @@ const SceneView: React.FC<{scene: Scene; project: PaperProject}> = ({scene, proj
       letterSpacing: 2, boxShadow: '0 8px 30px rgba(0,0,0,.25)',
     }}>{caption.words?.length ? caption.words.map((word,index) => <span key={`${word.text}-${index}`} style={{color:frame >= word.fromFrame && frame < word.toFrame ? project.theme.accent : project.theme.paper,marginRight:2}}>{word.text}</span>) : caption.text}</div>}
     {scene.narrationSrc && <Audio src={assetUrl(scene.narrationSrc)}/>} 
+    {scene.audioCues.map((cue, index) => <Sequence key={`${cue.src}-${index}`} from={cue.fromFrame}>
+      <Audio src={assetUrl(cue.src)} volume={cue.volume}/>
+    </Sequence>)}
   </AbsoluteFill>;
 };
 
