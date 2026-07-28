@@ -151,6 +151,9 @@ npm run story:render:fallback
 # macOS 普通终端：生成有效中文旁白并按实际时长重建工程
 npm run story:audio
 
+# 已安装 Kokoro 时完全离线生成中文旁白
+npm run story:audio:local
+
 # 使用 Remotion 正式渲染
 npm run story:render
 ```

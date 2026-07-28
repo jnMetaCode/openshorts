@@ -21,6 +21,7 @@
     "review": "node scripts/review-project.mjs",
     "captions": "node scripts/apply-transcript.mjs",
     "story:audio": "node scripts/generate-macos-story-audio.mjs --story=content/lychee-road/story.json --output=public/audio/lychee-road && node scripts/build-lychee-story.mjs",
+    "story:audio:local": "node scripts/run-local-kokoro.mjs && node scripts/build-lychee-story.mjs",
     "story:soundscape": "node scripts/generate-story-soundscape.mjs",
     "story:build": "node scripts/build-lychee-story.mjs",
     "story:render": "npm run story:soundscape && npm run story:build && node scripts/render.mjs projects/lychee-road.json && node scripts/quality-report.mjs out/lychee-road.mp4 projects/lychee-road.json",

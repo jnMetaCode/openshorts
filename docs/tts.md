@@ -28,3 +28,18 @@ node scripts/generate-macos-story-audio.mjs \
 - Piper：完全本地且速度快，但新版为 GPL-3.0，中文模型和商业分发需要单独评估。
 
 本项目不会自动下载大型模型。离线引擎只需最终按镜头写出 `public/audio/<项目>/<镜头>.wav`，再生成同结构的 `timings.json`，渲染器无需修改。
+
+如果本机已经安装 `kokoro`、`misaki[zh]`、PyTorch 和 SoundFile，并缓存 Kokoro-82M 模型，可直接运行：
+
+```bash
+npm run story:audio:local
+npm run story:render:fallback
+```
+
+自动发现失败时可显式指定：
+
+```bash
+PAPERCUT_KOKORO_PYTHON=/path/to/venv/bin/python \
+PAPERCUT_KOKORO_MODEL_DIR=/path/to/Kokoro-82M \
+npm run story:audio:local
+```
