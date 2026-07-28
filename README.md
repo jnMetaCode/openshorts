@@ -155,7 +155,7 @@ npm run story:audio
 npm run story:render
 ```
 
-`story:audio` 会先验证每一段语音的文件大小和真实时长，空音频会立即中止，不会生成“有音轨但没有人声”的假成片。默认优先使用 macOS 离线语音，失败时自动尝试已安装的 `edge-tts`。研究来源、史实边界和发布文案位于 `content/lychee-road/`。
+`story:audio` 复用了 `youtube-doodle` 的逐镜 `edge-tts` 方案，默认使用 `zh-CN-YunjianNeural`、`+2%` 语速和 `-5Hz` 音高，并按“音色 + 参数 + 文案”缓存。它会验证每段语音的文件大小和真实时长，空音频立即中止，不会生成“有音轨但没有人声”的假成片。`edge-tts` 客户端虽然开源免费，但调用的是微软在线语音服务，并非离线模型；完全离线部署建议接入 Apache-2.0 的 CosyVoice 或 Kokoro。研究来源、史实边界和发布文案位于 `content/lychee-road/`。
 
 ## 素材处理 CLI
 

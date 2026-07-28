@@ -143,12 +143,7 @@
         {
           "src": "audio/lychee-road/impact.wav",
           "fromFrame": 0,
-          "volume": 0.8
-        },
-        {
-          "src": "audio/lychee-road/rain.wav",
-          "fromFrame": 0,
-          "volume": 0.28
+          "volume": 0.55
         }
       ]
     },
@@ -254,7 +249,7 @@
         {
           "src": "audio/lychee-road/whoosh.wav",
           "fromFrame": 4,
-          "volume": 0.5
+          "volume": 0.24
         }
       ]
     },
@@ -366,12 +361,7 @@
         {
           "src": "audio/lychee-road/hoofbeats.wav",
           "fromFrame": 0,
-          "volume": 0.78
-        },
-        {
-          "src": "audio/lychee-road/rain.wav",
-          "fromFrame": 0,
-          "volume": 0.18
+          "volume": 0.35
         }
       ]
     },
@@ -471,7 +461,7 @@
         {
           "src": "audio/lychee-road/impact.wav",
           "fromFrame": 8,
-          "volume": 0.65
+          "volume": 0.45
         }
       ]
     },
@@ -565,7 +555,7 @@
         {
           "src": "audio/lychee-road/impact.wav",
           "fromFrame": 2,
-          "volume": 0.5
+          "volume": 0.38
         }
       ]
     },
@@ -671,7 +661,7 @@
         {
           "src": "audio/lychee-road/whoosh.wav",
           "fromFrame": 15,
-          "volume": 0.42
+          "volume": 0.2
         }
       ]
     }

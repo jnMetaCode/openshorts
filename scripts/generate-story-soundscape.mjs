@@ -8,9 +8,21 @@ const out = path.resolve(process.argv[2] ?? 'public/audio/lychee-road');
 await fs.mkdir(out, {recursive: true});
 const ff = async (name, args) => run('ffmpeg', ['-y', '-v', 'error', ...args, path.join(out, name)]);
 
-await ff('original-underscore.wav', ['-f','lavfi','-i','aevalsrc=(0.070*sin(2*PI*196*t)+0.052*sin(2*PI*293.66*t)+0.036*sin(2*PI*392*t))*(0.72+0.28*sin(2*PI*0.12*t))+0.055*sin(2*PI*523.25*t)*sin(2*PI*1.5*t)*sin(2*PI*1.5*t)*sin(2*PI*1.5*t)*sin(2*PI*1.5*t):s=48000:d=58','-af','highpass=f=120,lowpass=f=6200,afade=t=in:st=0:d=1.2,afade=t=out:st=54:d=4,volume=1.6','-ac','2']);
-await ff('impact.wav', ['-f','lavfi','-i','aevalsrc=(0.45*sin(2*PI*(72-42*t)*t)+0.18*random(3))*exp(-6*t):s=48000:d=1.1','-af','lowpass=f=900,volume=0.85','-ac','2']);
+const writeMusic = async (file) => {
+  const sampleRate=48000,duration=58,frames=sampleRate*duration,channels=2,data=Buffer.alloc(frames*channels*2);
+  const melody=[293.66,329.63,369.99,440,493.88,440,369.99,329.63,293.66,369.99,440,493.88,587.33,493.88,440,369.99];
+  const bass=[146.83,123.47,110,123.47]; const beat=.75; let peak=0;
+  for(let i=0;i<frames;i++){
+    const t=i/sampleRate,n=Math.floor(t/beat),local=t%beat,f=melody[n%melody.length],attack=Math.min(1,local/.035),release=Math.min(1,(beat-local)/.18),env=attack*release*Math.exp(-.72*local);
+    const phrase=Math.min(1,t/1.2)*Math.min(1,(duration-t)/3.5);const pluck=.18*env*(Math.sin(2*Math.PI*f*t)+.28*Math.sin(2*Math.PI*f*2*t)+.10*Math.sin(2*Math.PI*f*3*t));
+    const bf=bass[Math.floor(t/3)%bass.length],pad=.055*(Math.sin(2*Math.PI*bf*t)+.35*Math.sin(2*Math.PI*bf*2*t));const pulse=t%1.5,kick=.045*Math.sin(2*Math.PI*(82-22*pulse)*pulse)*Math.exp(-14*pulse);
+    const left=phrase*(pad+kick+pluck*(n%2?.88:1)),right=phrase*(pad+kick+pluck*(n%2?1:.88));peak=Math.max(peak,Math.abs(left),Math.abs(right));data.writeInt16LE(Math.round(Math.max(-1,Math.min(1,left))*32767),i*4);data.writeInt16LE(Math.round(Math.max(-1,Math.min(1,right))*32767),i*4+2);
+  }
+  const header=Buffer.alloc(44);header.write('RIFF',0);header.writeUInt32LE(36+data.length,4);header.write('WAVE',8);header.write('fmt ',12);header.writeUInt32LE(16,16);header.writeUInt16LE(1,20);header.writeUInt16LE(channels,22);header.writeUInt32LE(sampleRate,24);header.writeUInt32LE(sampleRate*channels*2,28);header.writeUInt16LE(channels*2,32);header.writeUInt16LE(16,34);header.write('data',36);header.writeUInt32LE(data.length,40);await fs.writeFile(file,Buffer.concat([header,data]));return peak;
+};
+const musicPeak=await writeMusic(path.join(out,'original-underscore.wav'));
+await ff('impact.wav', ['-f','lavfi','-i','aevalsrc=0.42*sin(2*PI*(92-48*t)*t)*exp(-7*t):s=48000:d=1.1','-af','lowpass=f=700,volume=0.8','-ac','2']);
 await ff('hoofbeats.wav', ['-f','lavfi','-i','aevalsrc=0.34*sin(2*PI*82*t)*sin(2*PI*2.325*t)*sin(2*PI*2.325*t)*sin(2*PI*2.325*t)*sin(2*PI*2.325*t)*sin(2*PI*2.325*t)*sin(2*PI*2.325*t):s=48000:d=4.3','-af','lowpass=f=650,aecho=0.8:0.35:110:0.25','-ac','2']);
-await ff('whoosh.wav', ['-f','lavfi','-i','anoisesrc=color=pink:amplitude=0.32:d=1.4:s=48000','-af','highpass=f=250,lowpass=f=4800,afade=t=in:st=0:d=0.9,afade=t=out:st=0.9:d=0.5','-ac','2']);
-await ff('rain.wav', ['-f','lavfi','-i','anoisesrc=color=pink:amplitude=.12:d=14:s=48000','-af','highpass=f=900,lowpass=f=6500,afade=t=in:st=0:d=1,afade=t=out:st=12:d=2','-ac','2']);
-console.log(`✓ 原创配乐与 4 组音效已生成：${out}`);
+await ff('whoosh.wav', ['-f','lavfi','-i','aevalsrc=0.16*sin(2*PI*(210+720*t)*t)*sin(PI*t/1.4):s=48000:d=1.4','-af','highpass=f=180,lowpass=f=2600,volume=0.65','-ac','2']);
+await ff('rain.wav', ['-f','lavfi','-i','aevalsrc=0.025*sin(2*PI*1760*t)*sin(2*PI*3.1*t)*sin(2*PI*3.1*t):s=48000:d=14','-af','highpass=f=1200,lowpass=f=2600,afade=t=in:st=0:d=1,afade=t=out:st=12:d=2','-ac','2']);
+console.log(`✓ 五声音阶旋律与无随机噪声音效已生成：${out}（音乐峰值 ${musicPeak.toFixed(3)}）`);

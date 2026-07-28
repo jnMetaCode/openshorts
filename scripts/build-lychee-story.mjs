@@ -27,7 +27,7 @@ const layerSets = [
   [bg('cost','palace-gate.svg'), base('runner-cost','倒下的普通人',`${L}courier-running.png`,'primary',320,960,500,3,'fade',14,{rotation:82,opacity:.72}), base('official-cost','冷眼的命令',`${L}post-official.png`,'tertiary',690,920,360,2,'fade',30,{opacity:.52})],
   [bg('ending','route-map.svg'), base('kneel-end','无名驿卒',`${L}courier-kneeling.png`,'secondary',600,1100,430,3,'right',10,{opacity:.76}), base('basket-end','最后一颗荔枝',`${A}lychee-basket.svg`,'primary',120,710,680,4,'scale',26)],
 ];
-const cues = [[audio('impact.wav',0,.8),audio('rain.wav',0,.28)],[audio('whoosh.wav',4,.5)],[audio('hoofbeats.wav',0,.78),audio('rain.wav',0,.18)],[audio('impact.wav',8,.65)],[audio('impact.wav',2,.5)],[audio('whoosh.wav',15,.42)]];
+const cues = [[audio('impact.wav',0,.55)],[audio('whoosh.wav',4,.24)],[audio('hoofbeats.wav',0,.35)],[audio('impact.wav',8,.45)],[audio('impact.wav',2,.38)],[audio('whoosh.wav',15,.20)]];
 const scenes = story.segments.map((segment, i) => {
   const durationFrames=Math.ceil(durationFor(i)*fps); const narration=narrationFor(i);
   return {id:segment.id,name:`${i+1}. ${segment.purpose}`,durationFrames,backgroundColor:'#241b1b',cameraZoom:i===2?1.08:1.035,layers:layerSets[i],captions:splitCaptions(segment.text,durationFrames),...(narration?{narrationSrc:narration}:{}),audioCues:cues[i]};
