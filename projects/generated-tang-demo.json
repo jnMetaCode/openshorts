@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "id": "generated-tang-demo",
+  "title": "真实素材 · 盛唐来朝",
+  "width": 1920,
+  "height": 1080,
+  "fps": 30,
+  "theme": {"paper":"#f5eedc","ink":"#201712","accent":"#b32924","subtitleBackground":"rgba(31,20,15,.82)"},
+  "production": {
+    "plannerVersion": 2,
+    "planner": "rules",
+    "sourceText": "晨雾散开，长安宫门开启。使者捧礼而来，万邦来朝。",
+    "style": {"id":"tang-collage","name":"盛唐古籍纸片拼贴"},
+    "characters": [],
+    "assetPlan": [
+      {"id":"real-bg","sceneId":"scene-01","role":"background","name":"长安宫殿背景","prompt":"唐代长安宫殿晨景，无人物，古籍纸片拼贴","requirements":["无人物","16:9"],"src":"assets/generated/tang-real/background.png","status":"approved","promptVersions":[],"reviewHistory":[{"status":"approved","note":"生成素材验收通过","createdAt":"2026-07-28T00:00:00.000Z"}],"generation":{"provider":"imagegen","model":"built-in","parameters":{"useCase":"historical-scene"},"createdAt":"2026-07-28T00:00:00.000Z"}},
+      {"id":"real-emperor","sceneId":"scene-01","role":"primary","name":"唐代皇帝","prompt":"唐代皇帝坐姿，全身，纸片拼贴，绿幕","requirements":["完整人物","透明背景"],"src":"assets/generated/tang-real/layers/emperor.png","status":"approved","promptVersions":[],"reviewHistory":[{"status":"approved","note":"透明边缘正常","createdAt":"2026-07-28T00:00:00.000Z"}],"generation":{"provider":"imagegen","model":"built-in","parameters":{"sheet":"four-character"},"createdAt":"2026-07-28T00:00:00.000Z"}},
+      {"id":"real-support","sceneId":"scene-01","role":"secondary","name":"使者与宫廷人物","prompt":"唐代使者、侍女、群臣，全身素材表，纸片拼贴，绿幕","requirements":["人物不重叠","透明背景"],"src":"assets/generated/tang-real/characters-alpha.png","status":"approved","promptVersions":[],"reviewHistory":[{"status":"approved","note":"已拆成独立图层","createdAt":"2026-07-28T00:00:00.000Z"}],"generation":{"provider":"imagegen","model":"built-in","parameters":{"sheet":"four-character"},"createdAt":"2026-07-28T00:00:00.000Z"}}
+    ]
+  },
+  "scenes": [{
+    "id": "scene-01",
+    "name": "宫门开启 · 万国来朝",
+    "durationFrames": 240,
+    "backgroundColor": "#d8c09a",
+    "cameraZoom": 1.035,
+    "layers": [
+      {"id":"real-bg","name":"长安宫殿背景","src":"assets/generated/tang-real/background.png","role":"background","x":0,"y":0,"width":1920,"rotation":0,"opacity":1,"zIndex":0,"delayFrames":0,"entrance":"none","flipX":false,"paperEdge":false,"assetPlanId":"real-bg","keyframes":[]},
+      {"id":"real-attendant","name":"左侧侍女","src":"assets/generated/tang-real/layers/attendant.png","role":"secondary","x":225,"y":365,"width":340,"rotation":-1.5,"opacity":1,"zIndex":4,"delayFrames":18,"entrance":"left","flipX":false,"paperEdge":true,"assetPlanId":"real-support","keyframes":[{"frame":32,"x":225,"y":365,"width":340,"rotation":-1.5,"opacity":1,"easing":"ease-out"},{"frame":239,"x":230,"y":359,"width":344,"rotation":-0.8,"opacity":1,"easing":"ease-in-out"}]},
+      {"id":"real-emperor","name":"中央皇帝","src":"assets/generated/tang-real/layers/emperor.png","role":"primary","x":685,"y":220,"width":550,"rotation":0,"opacity":1,"zIndex":5,"delayFrames":4,"entrance":"scale","flipX":false,"paperEdge":true,"assetPlanId":"real-emperor","keyframes":[{"frame":16,"x":685,"y":220,"width":550,"rotation":0,"opacity":1,"easing":"ease-out"},{"frame":239,"x":680,"y":210,"width":562,"rotation":0,"opacity":1,"easing":"ease-in-out"}]},
+      {"id":"real-envoy","name":"右侧捧礼使者","src":"assets/generated/tang-real/layers/envoy.png","role":"secondary","x":1325,"y":325,"width":340,"rotation":1,"opacity":1,"zIndex":6,"delayFrames":30,"entrance":"right","flipX":false,"paperEdge":true,"assetPlanId":"real-support","keyframes":[{"frame":44,"x":1325,"y":325,"width":340,"rotation":1,"opacity":1,"easing":"ease-out"},{"frame":239,"x":1318,"y":319,"width":345,"rotation":0.4,"opacity":1,"easing":"ease-in-out"}]},
+      {"id":"real-official","name":"前排跪拜官员","src":"assets/generated/tang-real/layers/official.png","role":"foreground","x":1040,"y":575,"width":300,"rotation":0,"opacity":1,"zIndex":7,"delayFrames":46,"entrance":"down","flipX":false,"paperEdge":true,"assetPlanId":"real-support","keyframes":[{"frame":60,"x":1040,"y":575,"width":300,"rotation":0,"opacity":1,"easing":"ease-out"},{"frame":239,"x":1034,"y":569,"width":304,"rotation":-0.4,"opacity":1,"easing":"ease-in-out"}]},
+      {"id":"real-paper-fg","name":"撕纸前景","src":"assets/sample/foreground.svg","role":"foreground","x":0,"y":855,"width":1920,"rotation":0,"opacity":0.92,"zIndex":10,"delayFrames":55,"entrance":"down","flipX":false,"paperEdge":false,"keyframes":[]}
+    ],
+    "captions": [
+      {"text":"晨雾散开，长安宫门开启","fromFrame":12,"toFrame":108,"words":[{"text":"晨雾散开","fromFrame":12,"toFrame":48},{"text":"长安","fromFrame":48,"toFrame":75},{"text":"宫门开启","fromFrame":75,"toFrame":108}]},
+      {"text":"使者捧礼而来，万邦来朝","fromFrame":112,"toFrame":228,"words":[{"text":"使者","fromFrame":112,"toFrame":142},{"text":"捧礼而来","fromFrame":142,"toFrame":178},{"text":"万邦来朝","fromFrame":178,"toFrame":228}]}
+    ]
+  }]
+}
