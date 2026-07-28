@@ -1,0 +1,10 @@
+{
+  "apiVersion": 1,
+  "id": "comfyui",
+  "name": "ComfyUI",
+  "description": "面向本地 ComfyUI 工作流的 HTTP 适配器规范。",
+  "transport": "http",
+  "capabilities": ["background", "character-sheet", "character", "decoration"],
+  "requiresEnv": ["COMFYUI_URL"],
+  "documentation": "../README.md#comfyui"
+}

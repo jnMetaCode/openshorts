@@ -1,0 +1,36 @@
+name: 缺陷报告
+description: 报告可复现的编辑、渲染或素材处理问题
+title: "[Bug] "
+labels: [bug]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: 问题描述
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: 复现步骤
+      placeholder: "1. 打开…\n2. 点击…\n3. 出现…"
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 预期行为
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: 版本与环境
+      placeholder: "PaperCut 1.0.0 / macOS / Node 22"
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: 日志与项目片段
+      description: 请删除密钥、私有素材路径和个人信息。

@@ -1,0 +1,8 @@
+node_modules
+dist
+out
+data
+.git
+.DS_Store
+npm-debug.log*
+public/uploads

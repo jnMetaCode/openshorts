@@ -1,0 +1,49 @@
+{
+  "name": "papercut-studio",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Local-first layered paper collage video editor powered by Remotion",
+  "license": "MIT",
+  "engines": {"node": ">=20"},
+  "files": ["dist","server","shared","scripts","src","public/assets","templates","adapters","examples","docs","README.md","LICENSE","CHANGELOG.md","SECURITY.md","CONTRIBUTING.md","CODE_OF_CONDUCT.md","Dockerfile","docker-compose.yml",".env.example"],
+  "scripts": {
+    "dev": "concurrently -k -n api,web -c yellow,cyan \"node --watch server/index.mjs\" \"vite\"",
+    "build": "tsc --noEmit && vite build",
+    "start": "node server/index.mjs",
+    "studio": "remotion studio src/remotion/index.ts",
+    "render": "node scripts/render.mjs",
+    "quality": "node scripts/quality-report.mjs",
+    "assets": "node scripts/process-assets.mjs",
+    "bundle": "node scripts/package-project.mjs",
+    "draft": "node scripts/create-storyboard.mjs",
+    "review": "node scripts/review-project.mjs",
+    "captions": "node scripts/apply-transcript.mjs",
+    "release:check": "node scripts/release-check.mjs",
+    "release:bundle": "node scripts/create-release-bundle.mjs",
+    "validate": "node scripts/validate-project.mjs",
+    "test": "node --test tests/*.test.mjs"
+  },
+  "dependencies": {
+    "@remotion/bundler": "4.0.499",
+    "@remotion/cli": "4.0.499",
+    "@remotion/player": "4.0.499",
+    "@remotion/renderer": "4.0.499",
+    "cors": "2.8.5",
+    "express": "5.1.0",
+    "multer": "2.0.2",
+    "react": "19.1.1",
+    "react-dom": "19.1.1",
+    "remotion": "4.0.499",
+    "zod": "4.1.12"
+  },
+  "devDependencies": {
+    "@types/express": "5.0.3",
+    "@types/react": "19.1.16",
+    "@types/react-dom": "19.1.9",
+    "@vitejs/plugin-react": "5.0.4",
+    "concurrently": "9.2.1",
+    "typescript": "5.9.3",
+    "vite": "7.1.7"
+  }
+}

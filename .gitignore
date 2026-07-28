@@ -1,0 +1,10 @@
+node_modules/
+dist/
+data/
+out/
+public/uploads/
+.env
+.DS_Store
+*.log
+*.papercut.zip
+coverage/

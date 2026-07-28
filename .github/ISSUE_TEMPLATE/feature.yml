@@ -1,0 +1,21 @@
+name: 功能建议
+description: 提议可复用的产品或适配器能力
+title: "[Feature] "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: 要解决的问题
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 建议方案
+    validations:
+      required: true
+  - type: textarea
+    id: workflow
+    attributes:
+      label: 预期工作流与替代方案

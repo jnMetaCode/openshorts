@@ -1,0 +1,16 @@
+services:
+  papercut-studio:
+    build: .
+    ports:
+      - "4174:4174"
+    environment:
+      HOST: 0.0.0.0
+      PORT: 4174
+      CHROME_PATH: /usr/bin/chromium
+    volumes:
+      - ./projects:/app/projects
+      - ./out:/app/out
+      - ./data:/app/data
+      - ./public/uploads:/app/public/uploads
+    init: true
+    restart: unless-stopped

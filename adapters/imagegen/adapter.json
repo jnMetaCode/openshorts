@@ -1,0 +1,10 @@
+{
+  "apiVersion": 1,
+  "id": "imagegen-agent",
+  "name": "Imagegen Agent",
+  "description": "由支持图像生成工具的编码 Agent 生成素材并写入 public/uploads。",
+  "transport": "agent",
+  "capabilities": ["background", "character-sheet", "character", "decoration"],
+  "requiresEnv": [],
+  "documentation": "../README.md#imagegen-agent"
+}

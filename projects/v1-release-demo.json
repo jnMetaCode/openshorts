@@ -1,0 +1,435 @@
+{
+  "schemaVersion": 1,
+  "id": "v1-release-demo",
+  "title": "PaperCut v1 逐字字幕演示",
+  "width": 1920,
+  "height": 1080,
+  "fps": 30,
+  "theme": {
+    "paper": "#f5eedc",
+    "ink": "#201712",
+    "accent": "#a72d24",
+    "subtitleBackground": "rgba(31,20,15,.84)"
+  },
+  "production": {
+    "plannerVersion": 2,
+    "planner": "rules",
+    "sourceText": "晨雾越过长安城墙。宫门缓缓开启。使者走入大殿，群臣依次入场。",
+    "style": {
+      "id": "tang-collage",
+      "name": "唐风古籍拼贴",
+      "palette": "米白宣纸、朱砂红、鎏金、深墨",
+      "visual": "唐代服饰，古籍线描，复古纸片拼贴，白色剪纸描边，天然纸张纤维",
+      "background": "水墨山脉与唐代宫殿，撕纸边缘、印章和网点装饰"
+    },
+    "characters": [
+      {
+        "id": "character-1",
+        "name": "主角",
+        "description": "唐代青年，深青色圆领袍，黑色幞头，二十五岁"
+      }
+    ],
+    "assetPlan": [
+      {
+        "id": "scene-01-background",
+        "sceneId": "scene-01",
+        "role": "background",
+        "name": "镜头 01背景底板",
+        "prompt": "晨雾越过长安城墙。宫门缓缓开启。使者走入大殿，群臣依次入场。。水墨山脉与唐代宫殿，撕纸边缘、印章和网点装饰。只生成环境，不要主要人物。唐代服饰，古籍线描，复古纸片拼贴，白色剪纸描边，天然纸张纤维。主色：米白宣纸、朱砂红、鎏金、深墨。完整构图，无文字，无水印。",
+        "requirements": [
+          "无主要人物",
+          "覆盖完整画布",
+          "边缘可延展"
+        ],
+        "src": "assets/sample/tang-bg.svg",
+        "status": "approved",
+        "promptVersions": [
+          {
+            "id": "pv-001",
+            "prompt": "晨雾越过长安城墙。宫门缓缓开启。使者走入大殿，群臣依次入场。。水墨山脉与唐代宫殿，撕纸边缘、印章和网点装饰。只生成环境，不要主要人物。唐代服饰，古籍线描，复古纸片拼贴，白色剪纸描边，天然纸张纤维。主色：米白宣纸、朱砂红、鎏金、深墨。完整构图，无文字，无水印。",
+            "note": "初始分镜提示词",
+            "createdAt": "2026-07-28T04:58:37.891Z"
+          }
+        ],
+        "activePromptVersion": "pv-001",
+        "reviewHistory": [
+          {
+            "status": "approved",
+            "note": "CLI 批量审核",
+            "createdAt": "2026-07-28T04:58:38.125Z"
+          }
+        ],
+        "generation": {
+          "provider": "comfyui",
+          "model": "flux-dev",
+          "seed": "100",
+          "parameters": {
+            "source": "review-cli"
+          },
+          "createdAt": "2026-07-28T04:58:38.126Z"
+        }
+      },
+      {
+        "id": "scene-01-primary",
+        "sceneId": "scene-01",
+        "role": "primary",
+        "name": "镜头 01主体",
+        "prompt": "固定角色设定：主角，唐代青年，深青色圆领袍，黑色幞头，二十五岁。所有镜头保持同一人物身份、年龄、发型、服装配色和面部特征。晨雾越过长安城墙。宫门缓缓开启。使者走入大殿，群臣依次入场。。生成完整主体人物，全身不裁头、不裁手脚，正面或明确朝向，纯绿色背景。唐代服饰，古籍线描，复古纸片拼贴，白色剪纸描边，天然纸张纤维。主色：米白宣纸、朱砂红、鎏金、深墨。完整构图，无文字，无水印。",
+        "requirements": [
+          "完整全身",
+          "纯色背景",
+          "白色剪纸描边",
+          "无场景"
+        ],
+        "src": "assets/sample/emperor.svg",
+        "status": "approved",
+        "promptVersions": [
+          {
+            "id": "pv-001",
+            "prompt": "固定角色设定：主角，唐代青年，深青色圆领袍，黑色幞头，二十五岁。所有镜头保持同一人物身份、年龄、发型、服装配色和面部特征。晨雾越过长安城墙。宫门缓缓开启。使者走入大殿，群臣依次入场。。生成完整主体人物，全身不裁头、不裁手脚，正面或明确朝向，纯绿色背景。唐代服饰，古籍线描，复古纸片拼贴，白色剪纸描边，天然纸张纤维。主色：米白宣纸、朱砂红、鎏金、深墨。完整构图，无文字，无水印。",
+            "note": "初始分镜提示词",
+            "createdAt": "2026-07-28T04:58:37.891Z"
+          }
+        ],
+        "activePromptVersion": "pv-001",
+        "reviewHistory": [
+          {
+            "status": "approved",
+            "note": "CLI 批量审核",
+            "createdAt": "2026-07-28T04:58:38.125Z"
+          }
+        ],
+        "generation": {
+          "provider": "comfyui",
+          "model": "flux-dev",
+          "seed": "100",
+          "parameters": {
+            "source": "review-cli"
+          },
+          "createdAt": "2026-07-28T04:58:38.126Z"
+        }
+      },
+      {
+        "id": "scene-01-secondary",
+        "sceneId": "scene-01",
+        "role": "secondary",
+        "name": "镜头 01配角组",
+        "prompt": "固定角色设定：主角，唐代青年，深青色圆领袍，黑色幞头，二十五岁。所有镜头保持同一人物身份、年龄、发型、服装配色和面部特征。晨雾越过长安城墙。宫门缓缓开启。使者走入大殿，群臣依次入场。。生成两名叙事配角素材表，人物彼此不重叠，完整全身，纯绿色背景。唐代服饰，古籍线描，复古纸片拼贴，白色剪纸描边，天然纸张纤维。主色：米白宣纸、朱砂红、鎏金、深墨。完整构图，无文字，无水印。",
+        "requirements": [
+          "规则素材表",
+          "人物不重叠",
+          "明确朝向"
+        ],
+        "src": "assets/sample/ministers.svg",
+        "status": "approved",
+        "promptVersions": [
+          {
+            "id": "pv-001",
+            "prompt": "固定角色设定：主角，唐代青年，深青色圆领袍，黑色幞头，二十五岁。所有镜头保持同一人物身份、年龄、发型、服装配色和面部特征。晨雾越过长安城墙。宫门缓缓开启。使者走入大殿，群臣依次入场。。生成两名叙事配角素材表，人物彼此不重叠，完整全身，纯绿色背景。唐代服饰，古籍线描，复古纸片拼贴，白色剪纸描边，天然纸张纤维。主色：米白宣纸、朱砂红、鎏金、深墨。完整构图，无文字，无水印。",
+            "note": "初始分镜提示词",
+            "createdAt": "2026-07-28T04:58:37.891Z"
+          }
+        ],
+        "activePromptVersion": "pv-001",
+        "reviewHistory": [
+          {
+            "status": "approved",
+            "note": "CLI 批量审核",
+            "createdAt": "2026-07-28T04:58:38.125Z"
+          }
+        ],
+        "generation": {
+          "provider": "comfyui",
+          "model": "flux-dev",
+          "seed": "100",
+          "parameters": {
+            "source": "review-cli"
+          },
+          "createdAt": "2026-07-28T04:58:38.126Z"
+        }
+      },
+      {
+        "id": "scene-01-foreground",
+        "sceneId": "scene-01",
+        "role": "foreground",
+        "name": "镜头 01前景装饰",
+        "prompt": "晨雾越过长安城墙。宫门缓缓开启。使者走入大殿，群臣依次入场。。生成撕纸、纸花、胶带或印章组成的横向前景装饰，透明或纯绿色背景。唐代服饰，古籍线描，复古纸片拼贴，白色剪纸描边，天然纸张纤维。主色：米白宣纸、朱砂红、鎏金、深墨。完整构图，无文字，无水印。",
+        "requirements": [
+          "横向构图",
+          "适合遮挡画面底部",
+          "无文字"
+        ],
+        "src": "assets/sample/foreground.svg",
+        "status": "approved",
+        "promptVersions": [
+          {
+            "id": "pv-001",
+            "prompt": "晨雾越过长安城墙。宫门缓缓开启。使者走入大殿，群臣依次入场。。生成撕纸、纸花、胶带或印章组成的横向前景装饰，透明或纯绿色背景。唐代服饰，古籍线描，复古纸片拼贴，白色剪纸描边，天然纸张纤维。主色：米白宣纸、朱砂红、鎏金、深墨。完整构图，无文字，无水印。",
+            "note": "初始分镜提示词",
+            "createdAt": "2026-07-28T04:58:37.891Z"
+          }
+        ],
+        "activePromptVersion": "pv-001",
+        "reviewHistory": [
+          {
+            "status": "approved",
+            "note": "CLI 批量审核",
+            "createdAt": "2026-07-28T04:58:38.125Z"
+          }
+        ],
+        "generation": {
+          "provider": "comfyui",
+          "model": "flux-dev",
+          "seed": "100",
+          "parameters": {
+            "source": "review-cli"
+          },
+          "createdAt": "2026-07-28T04:58:38.126Z"
+        }
+      }
+    ]
+  },
+  "scenes": [
+    {
+      "id": "scene-01",
+      "name": "镜头 01 · 交代环境与规模",
+      "durationFrames": 150,
+      "backgroundColor": "#d9c6a3",
+      "cameraZoom": 1.025,
+      "layers": [
+        {
+          "id": "scene-01-bg",
+          "name": "背景底板",
+          "src": "assets/sample/tang-bg.svg",
+          "role": "background",
+          "x": 0,
+          "y": 0,
+          "width": 1920,
+          "rotation": 0,
+          "opacity": 1,
+          "zIndex": 0,
+          "delayFrames": 0,
+          "entrance": "none",
+          "flipX": false,
+          "paperEdge": false,
+          "assetPlanId": "scene-01-background",
+          "keyframes": []
+        },
+        {
+          "id": "scene-01-rear",
+          "name": "后排人物",
+          "src": "assets/sample/ministers.svg",
+          "role": "tertiary",
+          "x": 1320,
+          "y": 525,
+          "width": 450,
+          "rotation": 1,
+          "opacity": 0.82,
+          "zIndex": 2,
+          "delayFrames": 21,
+          "entrance": "right",
+          "flipX": false,
+          "paperEdge": true,
+          "assetPlanId": "scene-01-secondary",
+          "keyframes": [
+            {
+              "frame": 30,
+              "x": 1320,
+              "y": 525,
+              "width": 450,
+              "rotation": 1,
+              "opacity": 0.82,
+              "easing": "ease-out"
+            },
+            {
+              "frame": 149,
+              "x": 1320,
+              "y": 521,
+              "width": 450,
+              "rotation": 1,
+              "opacity": 0.82,
+              "easing": "ease-in-out"
+            }
+          ]
+        },
+        {
+          "id": "scene-01-primary",
+          "name": "主体人物",
+          "src": "assets/sample/emperor.svg",
+          "role": "primary",
+          "x": 650,
+          "y": 235,
+          "width": 650,
+          "rotation": 0,
+          "opacity": 1,
+          "zIndex": 5,
+          "delayFrames": 3,
+          "entrance": "scale",
+          "flipX": false,
+          "paperEdge": true,
+          "assetPlanId": "scene-01-primary",
+          "keyframes": [
+            {
+              "frame": 11,
+              "x": 650,
+              "y": 235,
+              "width": 650,
+              "rotation": 0,
+              "opacity": 1,
+              "easing": "ease-out"
+            },
+            {
+              "frame": 149,
+              "x": 650,
+              "y": 227,
+              "width": 659.7499999999999,
+              "rotation": 0,
+              "opacity": 1,
+              "easing": "ease-in-out"
+            }
+          ]
+        },
+        {
+          "id": "scene-01-secondary",
+          "name": "前排配角",
+          "src": "assets/sample/attendant.svg",
+          "role": "secondary",
+          "x": 310,
+          "y": 535,
+          "width": 300,
+          "rotation": -2,
+          "opacity": 1,
+          "zIndex": 6,
+          "delayFrames": 13,
+          "entrance": "left",
+          "flipX": false,
+          "paperEdge": true,
+          "assetPlanId": "scene-01-secondary",
+          "keyframes": [
+            {
+              "frame": 21,
+              "x": 310,
+              "y": 535,
+              "width": 300,
+              "rotation": -2,
+              "opacity": 1,
+              "easing": "ease-out"
+            },
+            {
+              "frame": 149,
+              "x": 310,
+              "y": 531,
+              "width": 300,
+              "rotation": -2,
+              "opacity": 1,
+              "easing": "ease-in-out"
+            }
+          ]
+        },
+        {
+          "id": "scene-01-fg",
+          "name": "前景装饰",
+          "src": "assets/sample/foreground.svg",
+          "role": "foreground",
+          "x": 0,
+          "y": 795,
+          "width": 1920,
+          "rotation": 0,
+          "opacity": 1,
+          "zIndex": 10,
+          "delayFrames": 30,
+          "entrance": "down",
+          "flipX": false,
+          "paperEdge": false,
+          "assetPlanId": "scene-01-foreground",
+          "keyframes": [
+            {
+              "frame": 39,
+              "x": 0,
+              "y": 795,
+              "width": 1920,
+              "rotation": 0,
+              "opacity": 1,
+              "easing": "ease-out"
+            },
+            {
+              "frame": 149,
+              "x": 0,
+              "y": 791,
+              "width": 1920,
+              "rotation": 0.4,
+              "opacity": 1,
+              "easing": "ease-in-out"
+            }
+          ]
+        }
+      ],
+      "captions": [
+        {
+          "text": "晨雾越过长安城墙",
+          "fromFrame": 6,
+          "toFrame": 84,
+          "words": [
+            {
+              "text": "晨雾",
+              "fromFrame": 6,
+              "toFrame": 24
+            },
+            {
+              "text": "越过",
+              "fromFrame": 24,
+              "toFrame": 42
+            },
+            {
+              "text": "长安",
+              "fromFrame": 42,
+              "toFrame": 63
+            },
+            {
+              "text": "城墙",
+              "fromFrame": 63,
+              "toFrame": 84
+            }
+          ]
+        },
+        {
+          "text": "宫门缓缓开启",
+          "fromFrame": 90,
+          "toFrame": 144,
+          "words": [
+            {
+              "text": "宫",
+              "fromFrame": 90,
+              "toFrame": 99
+            },
+            {
+              "text": "门",
+              "fromFrame": 99,
+              "toFrame": 108
+            },
+            {
+              "text": "缓",
+              "fromFrame": 107,
+              "toFrame": 117
+            },
+            {
+              "text": "缓",
+              "fromFrame": 116,
+              "toFrame": 126
+            },
+            {
+              "text": "开",
+              "fromFrame": 125,
+              "toFrame": 135
+            },
+            {
+              "text": "启",
+              "fromFrame": 134,
+              "toFrame": 144
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

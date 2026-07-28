@@ -1,0 +1,10 @@
+{
+  "apiVersion": 1,
+  "id": "manual-upload",
+  "name": "手动上传",
+  "description": "使用任意绘图模型生成素材，再上传到本地工作台。",
+  "transport": "manual",
+  "capabilities": ["background", "character-sheet", "character", "decoration"],
+  "requiresEnv": [],
+  "documentation": "../README.md#手动上传"
+}

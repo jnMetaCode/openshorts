@@ -1,0 +1,323 @@
+{
+  "schemaVersion": 1,
+  "id": "storyboard-demo",
+  "title": "长安的一天",
+  "width": 1920,
+  "height": 1080,
+  "fps": 30,
+  "theme": {
+    "paper": "#f5eedc",
+    "ink": "#201712",
+    "accent": "#a72d24",
+    "subtitleBackground": "rgba(31,20,15,.84)"
+  },
+  "production": {
+    "plannerVersion": 1,
+    "sourceText": "长安城从晨雾中醒来。来自远方的使者穿过朱雀大街。宫门缓缓开启，盛唐的故事由此展开。",
+    "style": {
+      "id": "tang-collage",
+      "name": "唐风古籍拼贴",
+      "palette": "米白宣纸、朱砂红、鎏金、深墨",
+      "visual": "唐代服饰，古籍线描，复古纸片拼贴，白色剪纸描边，天然纸张纤维",
+      "background": "水墨山脉与唐代宫殿，撕纸边缘、印章和网点装饰"
+    },
+    "characters": [
+      {
+        "id": "character-1",
+        "name": "主角",
+        "description": "唐代青年，深青色圆领袍，黑色幞头，二十五岁"
+      }
+    ],
+    "assetPlan": [
+      {
+        "id": "scene-01-background",
+        "role": "background",
+        "name": "镜头 01背景底板",
+        "prompt": "长安城从晨雾中醒来。来自远方的使者穿过朱雀大街。。水墨山脉与唐代宫殿，撕纸边缘、印章和网点装饰。只生成环境，不要主要人物。唐代服饰，古籍线描，复古纸片拼贴，白色剪纸描边，天然纸张纤维。主色：米白宣纸、朱砂红、鎏金、深墨。完整构图，无文字，无水印。",
+        "requirements": [
+          "无主要人物",
+          "覆盖完整画布",
+          "边缘可延展"
+        ]
+      },
+      {
+        "id": "scene-01-primary",
+        "role": "primary",
+        "name": "镜头 01主体",
+        "prompt": "固定角色设定：主角，唐代青年，深青色圆领袍，黑色幞头，二十五岁。所有镜头保持同一人物身份、年龄、发型、服装配色和面部特征。长安城从晨雾中醒来。来自远方的使者穿过朱雀大街。。生成完整主体人物，全身不裁头、不裁手脚，正面或明确朝向，纯绿色背景。唐代服饰，古籍线描，复古纸片拼贴，白色剪纸描边，天然纸张纤维。主色：米白宣纸、朱砂红、鎏金、深墨。完整构图，无文字，无水印。",
+        "requirements": [
+          "完整全身",
+          "纯色背景",
+          "白色剪纸描边",
+          "无场景"
+        ]
+      },
+      {
+        "id": "scene-01-secondary",
+        "role": "secondary",
+        "name": "镜头 01配角组",
+        "prompt": "固定角色设定：主角，唐代青年，深青色圆领袍，黑色幞头，二十五岁。所有镜头保持同一人物身份、年龄、发型、服装配色和面部特征。长安城从晨雾中醒来。来自远方的使者穿过朱雀大街。。生成两名叙事配角素材表，人物彼此不重叠，完整全身，纯绿色背景。唐代服饰，古籍线描，复古纸片拼贴，白色剪纸描边，天然纸张纤维。主色：米白宣纸、朱砂红、鎏金、深墨。完整构图，无文字，无水印。",
+        "requirements": [
+          "规则素材表",
+          "人物不重叠",
+          "明确朝向"
+        ]
+      },
+      {
+        "id": "scene-01-foreground",
+        "role": "foreground",
+        "name": "镜头 01前景装饰",
+        "prompt": "长安城从晨雾中醒来。来自远方的使者穿过朱雀大街。。生成撕纸、纸花、胶带或印章组成的横向前景装饰，透明或纯绿色背景。唐代服饰，古籍线描，复古纸片拼贴，白色剪纸描边，天然纸张纤维。主色：米白宣纸、朱砂红、鎏金、深墨。完整构图，无文字，无水印。",
+        "requirements": [
+          "横向构图",
+          "适合遮挡画面底部",
+          "无文字"
+        ]
+      },
+      {
+        "id": "scene-02-background",
+        "role": "background",
+        "name": "镜头 02背景底板",
+        "prompt": "宫门缓缓开启，盛唐的故事由此展开。。水墨山脉与唐代宫殿，撕纸边缘、印章和网点装饰。只生成环境，不要主要人物。唐代服饰，古籍线描，复古纸片拼贴，白色剪纸描边，天然纸张纤维。主色：米白宣纸、朱砂红、鎏金、深墨。完整构图，无文字，无水印。",
+        "requirements": [
+          "无主要人物",
+          "覆盖完整画布",
+          "边缘可延展"
+        ]
+      },
+      {
+        "id": "scene-02-primary",
+        "role": "primary",
+        "name": "镜头 02主体",
+        "prompt": "固定角色设定：主角，唐代青年，深青色圆领袍，黑色幞头，二十五岁。所有镜头保持同一人物身份、年龄、发型、服装配色和面部特征。宫门缓缓开启，盛唐的故事由此展开。。生成完整主体人物，全身不裁头、不裁手脚，正面或明确朝向，纯绿色背景。唐代服饰，古籍线描，复古纸片拼贴，白色剪纸描边，天然纸张纤维。主色：米白宣纸、朱砂红、鎏金、深墨。完整构图，无文字，无水印。",
+        "requirements": [
+          "完整全身",
+          "纯色背景",
+          "白色剪纸描边",
+          "无场景"
+        ]
+      },
+      {
+        "id": "scene-02-secondary",
+        "role": "secondary",
+        "name": "镜头 02配角组",
+        "prompt": "固定角色设定：主角，唐代青年，深青色圆领袍，黑色幞头，二十五岁。所有镜头保持同一人物身份、年龄、发型、服装配色和面部特征。宫门缓缓开启，盛唐的故事由此展开。。生成两名叙事配角素材表，人物彼此不重叠，完整全身，纯绿色背景。唐代服饰，古籍线描，复古纸片拼贴，白色剪纸描边，天然纸张纤维。主色：米白宣纸、朱砂红、鎏金、深墨。完整构图，无文字，无水印。",
+        "requirements": [
+          "规则素材表",
+          "人物不重叠",
+          "明确朝向"
+        ]
+      },
+      {
+        "id": "scene-02-foreground",
+        "role": "foreground",
+        "name": "镜头 02前景装饰",
+        "prompt": "宫门缓缓开启，盛唐的故事由此展开。。生成撕纸、纸花、胶带或印章组成的横向前景装饰，透明或纯绿色背景。唐代服饰，古籍线描，复古纸片拼贴，白色剪纸描边，天然纸张纤维。主色：米白宣纸、朱砂红、鎏金、深墨。完整构图，无文字，无水印。",
+        "requirements": [
+          "横向构图",
+          "适合遮挡画面底部",
+          "无文字"
+        ]
+      }
+    ]
+  },
+  "scenes": [
+    {
+      "id": "scene-01",
+      "name": "镜头 01 · 交代环境与规模",
+      "durationFrames": 182,
+      "backgroundColor": "#d9c6a3",
+      "cameraZoom": 1.025,
+      "layers": [
+        {
+          "id": "scene-01-bg",
+          "name": "背景底板",
+          "src": "assets/sample/tang-bg.svg",
+          "role": "background",
+          "x": 0,
+          "y": 0,
+          "width": 1920,
+          "rotation": 0,
+          "opacity": 1,
+          "zIndex": 0,
+          "delayFrames": 0,
+          "entrance": "none",
+          "flipX": false,
+          "paperEdge": false
+        },
+        {
+          "id": "scene-01-rear",
+          "name": "后排人物",
+          "src": "assets/sample/ministers.svg",
+          "role": "tertiary",
+          "x": 1320,
+          "y": 525,
+          "width": 450,
+          "rotation": 1,
+          "opacity": 0.82,
+          "zIndex": 2,
+          "delayFrames": 30,
+          "entrance": "right",
+          "flipX": false,
+          "paperEdge": true
+        },
+        {
+          "id": "scene-01-primary",
+          "name": "主体人物",
+          "src": "assets/sample/emperor.svg",
+          "role": "primary",
+          "x": 650,
+          "y": 235,
+          "width": 650,
+          "rotation": 0,
+          "opacity": 1,
+          "zIndex": 5,
+          "delayFrames": 4,
+          "entrance": "scale",
+          "flipX": false,
+          "paperEdge": true
+        },
+        {
+          "id": "scene-01-secondary",
+          "name": "前排配角",
+          "src": "assets/sample/attendant.svg",
+          "role": "secondary",
+          "x": 310,
+          "y": 535,
+          "width": 300,
+          "rotation": -2,
+          "opacity": 1,
+          "zIndex": 6,
+          "delayFrames": 18,
+          "entrance": "left",
+          "flipX": false,
+          "paperEdge": true
+        },
+        {
+          "id": "scene-01-fg",
+          "name": "前景装饰",
+          "src": "assets/sample/foreground.svg",
+          "role": "foreground",
+          "x": 0,
+          "y": 795,
+          "width": 1920,
+          "rotation": 0,
+          "opacity": 1,
+          "zIndex": 10,
+          "delayFrames": 42,
+          "entrance": "down",
+          "flipX": false,
+          "paperEdge": false
+        }
+      ],
+      "captions": [
+        {
+          "text": "长安城从晨雾中醒来。",
+          "fromFrame": 0,
+          "toFrame": 76
+        },
+        {
+          "text": "来自远方的使者穿过朱雀大街。",
+          "fromFrame": 76,
+          "toFrame": 182
+        }
+      ]
+    },
+    {
+      "id": "scene-02",
+      "name": "镜头 02 · 推进人物关系与事件",
+      "durationFrames": 132,
+      "backgroundColor": "#9d3029",
+      "cameraZoom": 1.025,
+      "layers": [
+        {
+          "id": "scene-02-bg",
+          "name": "背景底板",
+          "src": "assets/sample/red-bg.svg",
+          "role": "background",
+          "x": 0,
+          "y": 0,
+          "width": 1920,
+          "rotation": 0,
+          "opacity": 1,
+          "zIndex": 0,
+          "delayFrames": 0,
+          "entrance": "none",
+          "flipX": false,
+          "paperEdge": false
+        },
+        {
+          "id": "scene-02-rear",
+          "name": "后排人物",
+          "src": "assets/sample/ministers.svg",
+          "role": "tertiary",
+          "x": 1320,
+          "y": 525,
+          "width": 450,
+          "rotation": 1,
+          "opacity": 0.82,
+          "zIndex": 2,
+          "delayFrames": 30,
+          "entrance": "right",
+          "flipX": false,
+          "paperEdge": true
+        },
+        {
+          "id": "scene-02-primary",
+          "name": "主体人物",
+          "src": "assets/sample/emperor.svg",
+          "role": "primary",
+          "x": 650,
+          "y": 235,
+          "width": 650,
+          "rotation": 0,
+          "opacity": 1,
+          "zIndex": 5,
+          "delayFrames": 4,
+          "entrance": "scale",
+          "flipX": false,
+          "paperEdge": true
+        },
+        {
+          "id": "scene-02-secondary",
+          "name": "前排配角",
+          "src": "assets/sample/attendant.svg",
+          "role": "secondary",
+          "x": 310,
+          "y": 535,
+          "width": 300,
+          "rotation": -2,
+          "opacity": 1,
+          "zIndex": 6,
+          "delayFrames": 18,
+          "entrance": "left",
+          "flipX": false,
+          "paperEdge": true
+        },
+        {
+          "id": "scene-02-fg",
+          "name": "前景装饰",
+          "src": "assets/sample/foreground.svg",
+          "role": "foreground",
+          "x": 0,
+          "y": 795,
+          "width": 1920,
+          "rotation": 0,
+          "opacity": 1,
+          "zIndex": 10,
+          "delayFrames": 42,
+          "entrance": "down",
+          "flipX": false,
+          "paperEdge": false
+        }
+      ],
+      "captions": [
+        {
+          "text": "宫门缓缓开启，盛唐的故事由此展开。",
+          "fromFrame": 0,
+          "toFrame": 132
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "id": "blank-landscape",
+  "name": "空白横屏纸片",
+  "description": "1920×1080 单镜头起点，适合从背景和主体开始搭建。",
+  "category": "基础",
+  "project": {
+    "schemaVersion": 1,
+    "id": "blank",
+    "title": "空白纸片项目",
+    "width": 1920,
+    "height": 1080,
+    "fps": 30,
+    "theme": {"paper":"#f5eedc","ink":"#201712","accent":"#a72d24","subtitleBackground":"rgba(31,20,15,.84)"},
+    "scenes": [{
+      "id":"scene-1","name":"镜头一","durationFrames":150,"backgroundColor":"#d9c6a3","cameraZoom":1.02,
+      "layers":[{"id":"background-1","name":"背景底板","src":"assets/sample/tang-bg.svg","role":"background","x":0,"y":0,"width":1920,"rotation":0,"opacity":1,"zIndex":0,"delayFrames":0,"entrance":"none","flipX":false,"paperEdge":false}],
+      "captions":[]
+    }]
+  }
+}
