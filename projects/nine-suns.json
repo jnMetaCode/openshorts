@@ -1,0 +1,748 @@
+{
+  "schemaVersion": 1,
+  "id": "nine-suns",
+  "title": "后羿射日",
+  "width": 1080,
+  "height": 1920,
+  "fps": 30,
+  "theme": {
+    "paper": "#f6eedb",
+    "ink": "#2e1512",
+    "accent": "#e59a2c",
+    "subtitleBackground": "rgba(43,16,10,.87)"
+  },
+  "soundtrackSrc": "audio/nine-suns/original-underscore.wav",
+  "soundtrackVolume": 0.42,
+  "production": {
+    "plannerVersion": 1,
+    "sourceText": "如果天上同时挂着十个太阳，河干了，地裂了，庄稼一晒就冒烟。你会怎么办？上古的答案只有三个字：射下来。\n传说里，十只金乌本该轮流值班，一天只出一个。可它们偏要一起上天。草木枯焦，江河见底，老百姓连一片躲太阳的影子都找不到。\n这时候站出来一个人，后羿。他背着一张红色的大弓，一步一步登上最高的山。风把他的衣角吹得像一面旗。\n一箭，一只金乌坠落。再一箭，又一只。九支箭，九个太阳，一个接一个从天上熄灭。\n只剩最后一个的时候，他却收了弓。有人问为什么。他说，万物生长，总得留一个太阳。\n后来人们记住了那九箭，也记住了那支没有射出去的箭。英雄的分寸，比英雄的力气更难得。",
+    "style": {
+      "format": "9:16",
+      "look": "上古神话金乌纸艺拼贴，火红大地与金色太阳",
+      "disclaimer": "取材《淮南子》等后羿射日神话，为传说的戏剧化表达"
+    },
+    "characters": [
+      {
+        "id": "houyi",
+        "name": "后羿",
+        "description": "射日的神箭手，懂得收弓的英雄"
+      },
+      {
+        "id": "suncrow",
+        "name": "金乌",
+        "description": "化作太阳的三足神鸟"
+      }
+    ],
+    "assetPlan": []
+  },
+  "scenes": [
+    {
+      "id": "hook",
+      "name": "1. 问题钩子与十日危机",
+      "durationFrames": 352,
+      "backgroundColor": "#2b1410",
+      "cameraZoom": 1.05,
+      "layers": [
+        {
+          "entrance": "none",
+          "delayFrames": 0,
+          "rotation": 0,
+          "opacity": 1,
+          "flipX": false,
+          "paperEdge": false,
+          "keyframes": [],
+          "id": "bg-hook",
+          "name": "焦土",
+          "src": "assets/generated/nine-suns/scorched-earth.svg",
+          "role": "background",
+          "x": -140,
+          "y": -50,
+          "width": 1360,
+          "zIndex": 0
+        },
+        {
+          "entrance": "scale",
+          "delayFrames": 4,
+          "rotation": 0,
+          "opacity": 1,
+          "flipX": false,
+          "paperEdge": true,
+          "keyframes": [],
+          "id": "sun-1",
+          "name": "金乌一",
+          "src": "assets/generated/nine-suns/layers/sun-crow.svg",
+          "role": "secondary",
+          "x": 40,
+          "y": 110,
+          "width": 300,
+          "zIndex": 2
+        },
+        {
+          "entrance": "scale",
+          "delayFrames": 10,
+          "rotation": 0,
+          "opacity": 1,
+          "flipX": false,
+          "paperEdge": true,
+          "keyframes": [],
+          "id": "sun-2",
+          "name": "金乌二",
+          "src": "assets/generated/nine-suns/layers/sun-crow.svg",
+          "role": "secondary",
+          "x": 400,
+          "y": 40,
+          "width": 240,
+          "zIndex": 2
+        },
+        {
+          "entrance": "scale",
+          "delayFrames": 16,
+          "rotation": 0,
+          "opacity": 1,
+          "flipX": false,
+          "paperEdge": true,
+          "keyframes": [],
+          "id": "sun-3",
+          "name": "金乌三",
+          "src": "assets/generated/nine-suns/layers/sun-crow.svg",
+          "role": "secondary",
+          "x": 700,
+          "y": 130,
+          "width": 300,
+          "zIndex": 2
+        },
+        {
+          "entrance": "scale",
+          "delayFrames": 22,
+          "rotation": 0,
+          "opacity": 1,
+          "flipX": false,
+          "paperEdge": true,
+          "keyframes": [],
+          "id": "sun-4",
+          "name": "金乌四",
+          "src": "assets/generated/nine-suns/layers/sun-crow.svg",
+          "role": "tertiary",
+          "x": 210,
+          "y": 350,
+          "width": 190,
+          "zIndex": 1
+        },
+        {
+          "entrance": "scale",
+          "delayFrames": 28,
+          "rotation": 0,
+          "opacity": 1,
+          "flipX": false,
+          "paperEdge": true,
+          "keyframes": [],
+          "id": "sun-5",
+          "name": "金乌五",
+          "src": "assets/generated/nine-suns/layers/sun-crow.svg",
+          "role": "tertiary",
+          "x": 640,
+          "y": 420,
+          "width": 160,
+          "zIndex": 1
+        },
+        {
+          "entrance": "fade",
+          "delayFrames": 12,
+          "rotation": 0,
+          "opacity": 1,
+          "flipX": false,
+          "paperEdge": true,
+          "keyframes": [],
+          "id": "villagers-hook",
+          "name": "避日的人们",
+          "src": "assets/generated/nine-suns/layers/villagers.svg",
+          "role": "primary",
+          "x": 220,
+          "y": 1150,
+          "width": 640,
+          "zIndex": 3
+        }
+      ],
+      "captions": [
+        {
+          "text": "如果天上同时挂着十个太阳，河干",
+          "fromFrame": 4,
+          "toFrame": 107,
+          "words": []
+        },
+        {
+          "text": "了，地裂了，庄稼一晒就冒烟。",
+          "fromFrame": 107,
+          "toFrame": 203,
+          "words": []
+        },
+        {
+          "text": "你会怎么办？",
+          "fromFrame": 203,
+          "toFrame": 244,
+          "words": []
+        },
+        {
+          "text": "上古的答案只有三个字：射下来。",
+          "fromFrame": 244,
+          "toFrame": 348,
+          "words": []
+        }
+      ],
+      "narrationSrc": "audio/nine-suns/01-hook.wav",
+      "audioCues": [
+        {
+          "src": "audio/nine-suns/impact.wav",
+          "fromFrame": 0,
+          "volume": 0.5
+        }
+      ]
+    },
+    {
+      "id": "crisis",
+      "name": "2. 建立灾难与失序",
+      "durationFrames": 399,
+      "backgroundColor": "#2b1410",
+      "cameraZoom": 1.035,
+      "layers": [
+        {
+          "entrance": "none",
+          "delayFrames": 0,
+          "rotation": 0,
+          "opacity": 1,
+          "flipX": false,
+          "paperEdge": false,
+          "keyframes": [],
+          "id": "bg-crisis",
+          "name": "焦土",
+          "src": "assets/generated/nine-suns/scorched-earth.svg",
+          "role": "background",
+          "x": -140,
+          "y": -50,
+          "width": 1360,
+          "zIndex": 0
+        },
+        {
+          "entrance": "scale",
+          "delayFrames": 6,
+          "rotation": 0,
+          "opacity": 1,
+          "flipX": false,
+          "paperEdge": true,
+          "keyframes": [],
+          "id": "sun-close-1",
+          "name": "逼近的金乌",
+          "src": "assets/generated/nine-suns/layers/sun-crow.svg",
+          "role": "primary",
+          "x": 30,
+          "y": 90,
+          "width": 380,
+          "zIndex": 2
+        },
+        {
+          "entrance": "scale",
+          "delayFrames": 14,
+          "rotation": 0,
+          "opacity": 1,
+          "flipX": false,
+          "paperEdge": true,
+          "keyframes": [],
+          "id": "sun-close-2",
+          "name": "金乌",
+          "src": "assets/generated/nine-suns/layers/sun-crow.svg",
+          "role": "secondary",
+          "x": 620,
+          "y": 70,
+          "width": 310,
+          "zIndex": 2
+        },
+        {
+          "entrance": "scale",
+          "delayFrames": 22,
+          "rotation": 0,
+          "opacity": 1,
+          "flipX": false,
+          "paperEdge": true,
+          "keyframes": [],
+          "id": "sun-close-3",
+          "name": "金乌",
+          "src": "assets/generated/nine-suns/layers/sun-crow.svg",
+          "role": "secondary",
+          "x": 380,
+          "y": 360,
+          "width": 250,
+          "zIndex": 1
+        },
+        {
+          "entrance": "left",
+          "delayFrames": 10,
+          "rotation": 0,
+          "opacity": 1,
+          "flipX": true,
+          "paperEdge": true,
+          "keyframes": [],
+          "id": "villagers-crisis",
+          "name": "无处躲藏",
+          "src": "assets/generated/nine-suns/layers/villagers.svg",
+          "role": "primary",
+          "x": 160,
+          "y": 1090,
+          "width": 760,
+          "zIndex": 3
+        }
+      ],
+      "captions": [
+        {
+          "text": "传说里，十只金乌本该轮流值班，一天只出一个。",
+          "fromFrame": 4,
+          "toFrame": 150,
+          "words": []
+        },
+        {
+          "text": "可它们偏要一起上天。",
+          "fromFrame": 150,
+          "toFrame": 216,
+          "words": []
+        },
+        {
+          "text": "草木枯焦，江河见底，老百姓连",
+          "fromFrame": 216,
+          "toFrame": 309,
+          "words": []
+        },
+        {
+          "text": "一片躲太阳的影子都找不到。",
+          "fromFrame": 309,
+          "toFrame": 395,
+          "words": []
+        }
+      ],
+      "narrationSrc": "audio/nine-suns/02-crisis.wav",
+      "audioCues": [
+        {
+          "src": "audio/nine-suns/whoosh.wav",
+          "fromFrame": 6,
+          "volume": 0.25
+        }
+      ]
+    },
+    {
+      "id": "archer",
+      "name": "3. 英雄登场",
+      "durationFrames": 324,
+      "backgroundColor": "#2b1410",
+      "cameraZoom": 1.035,
+      "layers": [
+        {
+          "entrance": "none",
+          "delayFrames": 0,
+          "rotation": 0,
+          "opacity": 1,
+          "flipX": false,
+          "paperEdge": false,
+          "keyframes": [],
+          "id": "bg-archer",
+          "name": "高山",
+          "src": "assets/generated/nine-suns/mountain-peak.svg",
+          "role": "background",
+          "x": -140,
+          "y": -50,
+          "width": 1360,
+          "zIndex": 0
+        },
+        {
+          "entrance": "scale",
+          "delayFrames": 8,
+          "rotation": 0,
+          "opacity": 1,
+          "flipX": false,
+          "paperEdge": true,
+          "keyframes": [],
+          "id": "sun-watch-1",
+          "name": "金乌",
+          "src": "assets/generated/nine-suns/layers/sun-crow.svg",
+          "role": "tertiary",
+          "x": 60,
+          "y": 110,
+          "width": 260,
+          "zIndex": 1
+        },
+        {
+          "entrance": "scale",
+          "delayFrames": 16,
+          "rotation": 0,
+          "opacity": 1,
+          "flipX": false,
+          "paperEdge": true,
+          "keyframes": [],
+          "id": "sun-watch-2",
+          "name": "金乌",
+          "src": "assets/generated/nine-suns/layers/sun-crow.svg",
+          "role": "tertiary",
+          "x": 760,
+          "y": 90,
+          "width": 220,
+          "zIndex": 1
+        },
+        {
+          "entrance": "right",
+          "delayFrames": 6,
+          "rotation": 0,
+          "opacity": 1,
+          "flipX": false,
+          "paperEdge": true,
+          "keyframes": [],
+          "id": "houyi-standing",
+          "name": "后羿登山",
+          "src": "assets/generated/nine-suns/layers/archer-standing.svg",
+          "role": "primary",
+          "x": 270,
+          "y": 750,
+          "width": 560,
+          "zIndex": 3
+        }
+      ],
+      "captions": [
+        {
+          "text": "这时候站出来一个人，后羿。",
+          "fromFrame": 4,
+          "toFrame": 90,
+          "words": []
+        },
+        {
+          "text": "他背着一张红色的大弓，一步一步登上最高的山。",
+          "fromFrame": 90,
+          "toFrame": 235,
+          "words": []
+        },
+        {
+          "text": "风把他的衣角吹得像一面旗。",
+          "fromFrame": 235,
+          "toFrame": 320,
+          "words": []
+        }
+      ],
+      "narrationSrc": "audio/nine-suns/03-archer.wav",
+      "audioCues": [
+        {
+          "src": "audio/nine-suns/whoosh.wav",
+          "fromFrame": 10,
+          "volume": 0.3
+        }
+      ]
+    },
+    {
+      "id": "shooting",
+      "name": "4. 高潮动作",
+      "durationFrames": 304,
+      "backgroundColor": "#2b1410",
+      "cameraZoom": 1.07,
+      "layers": [
+        {
+          "entrance": "none",
+          "delayFrames": 0,
+          "rotation": 0,
+          "opacity": 1,
+          "flipX": false,
+          "paperEdge": false,
+          "keyframes": [],
+          "id": "bg-shooting",
+          "name": "高山",
+          "src": "assets/generated/nine-suns/mountain-peak.svg",
+          "role": "background",
+          "x": -140,
+          "y": -50,
+          "width": 1360,
+          "zIndex": 0
+        },
+        {
+          "entrance": "none",
+          "delayFrames": 0,
+          "rotation": 0,
+          "opacity": 1,
+          "flipX": false,
+          "paperEdge": true,
+          "keyframes": [],
+          "id": "sun-last",
+          "name": "残余的金乌",
+          "src": "assets/generated/nine-suns/layers/sun-crow.svg",
+          "role": "tertiary",
+          "x": 90,
+          "y": 80,
+          "width": 240,
+          "zIndex": 1
+        },
+        {
+          "entrance": "fade",
+          "delayFrames": 14,
+          "rotation": 14,
+          "opacity": 1,
+          "flipX": false,
+          "paperEdge": true,
+          "keyframes": [],
+          "id": "crow-falling",
+          "name": "坠落的金乌",
+          "src": "assets/generated/nine-suns/layers/falling-crow.svg",
+          "role": "secondary",
+          "x": 590,
+          "y": 170,
+          "width": 400,
+          "zIndex": 2
+        },
+        {
+          "entrance": "scale",
+          "delayFrames": 4,
+          "rotation": 0,
+          "opacity": 1,
+          "flipX": false,
+          "paperEdge": true,
+          "keyframes": [],
+          "id": "houyi-drawing",
+          "name": "后羿开弓",
+          "src": "assets/generated/nine-suns/layers/archer-drawing.svg",
+          "role": "primary",
+          "x": 50,
+          "y": 950,
+          "width": 700,
+          "zIndex": 3
+        }
+      ],
+      "captions": [
+        {
+          "text": "一箭，一只金乌坠落。",
+          "fromFrame": 4,
+          "toFrame": 82,
+          "words": []
+        },
+        {
+          "text": "再一箭，又一只。",
+          "fromFrame": 82,
+          "toFrame": 144,
+          "words": []
+        },
+        {
+          "text": "九支箭，九个太阳，一个接一个从天上熄灭。",
+          "fromFrame": 144,
+          "toFrame": 300,
+          "words": []
+        }
+      ],
+      "narrationSrc": "audio/nine-suns/04-shooting.wav",
+      "audioCues": [
+        {
+          "src": "audio/nine-suns/whoosh.wav",
+          "fromFrame": 0,
+          "volume": 0.45
+        },
+        {
+          "src": "audio/nine-suns/impact.wav",
+          "fromFrame": 16,
+          "volume": 0.5
+        },
+        {
+          "src": "audio/nine-suns/whoosh.wav",
+          "fromFrame": 34,
+          "volume": 0.4
+        },
+        {
+          "src": "audio/nine-suns/impact.wav",
+          "fromFrame": 50,
+          "volume": 0.45
+        }
+      ]
+    },
+    {
+      "id": "mercy",
+      "name": "5. 转折与克制",
+      "durationFrames": 275,
+      "backgroundColor": "#2b1410",
+      "cameraZoom": 1.03,
+      "layers": [
+        {
+          "entrance": "none",
+          "delayFrames": 0,
+          "rotation": 0,
+          "opacity": 1,
+          "flipX": false,
+          "paperEdge": false,
+          "keyframes": [],
+          "id": "bg-mercy",
+          "name": "高山",
+          "src": "assets/generated/nine-suns/mountain-peak.svg",
+          "role": "background",
+          "x": -140,
+          "y": -50,
+          "width": 1360,
+          "zIndex": 0
+        },
+        {
+          "entrance": "scale",
+          "delayFrames": 10,
+          "rotation": 0,
+          "opacity": 1,
+          "flipX": false,
+          "paperEdge": true,
+          "keyframes": [],
+          "id": "sun-spared",
+          "name": "留下的太阳",
+          "src": "assets/generated/nine-suns/layers/sun-crow.svg",
+          "role": "secondary",
+          "x": 350,
+          "y": 130,
+          "width": 360,
+          "zIndex": 1
+        },
+        {
+          "entrance": "fade",
+          "delayFrames": 8,
+          "rotation": 0,
+          "opacity": 1,
+          "flipX": true,
+          "paperEdge": true,
+          "keyframes": [],
+          "id": "houyi-mercy",
+          "name": "收弓的后羿",
+          "src": "assets/generated/nine-suns/layers/archer-standing.svg",
+          "role": "primary",
+          "x": 300,
+          "y": 820,
+          "width": 520,
+          "zIndex": 3
+        }
+      ],
+      "captions": [
+        {
+          "text": "只剩最后一个的时候，他却收了弓。",
+          "fromFrame": 4,
+          "toFrame": 114,
+          "words": []
+        },
+        {
+          "text": "有人问为什么。",
+          "fromFrame": 114,
+          "toFrame": 162,
+          "words": []
+        },
+        {
+          "text": "他说，万物生长，总得留一个太阳。",
+          "fromFrame": 162,
+          "toFrame": 271,
+          "words": []
+        }
+      ],
+      "narrationSrc": "audio/nine-suns/05-mercy.wav",
+      "audioCues": [
+        {
+          "src": "audio/nine-suns/whoosh.wav",
+          "fromFrame": 8,
+          "volume": 0.15
+        }
+      ]
+    },
+    {
+      "id": "ending",
+      "name": "6. 余味与主题",
+      "durationFrames": 275,
+      "backgroundColor": "#2b1410",
+      "cameraZoom": 1.035,
+      "layers": [
+        {
+          "entrance": "none",
+          "delayFrames": 0,
+          "rotation": 0,
+          "opacity": 1,
+          "flipX": false,
+          "paperEdge": false,
+          "keyframes": [],
+          "id": "bg-ending",
+          "name": "复苏的田野",
+          "src": "assets/generated/nine-suns/dawn-fields.svg",
+          "role": "background",
+          "x": -140,
+          "y": -50,
+          "width": 1360,
+          "zIndex": 0
+        },
+        {
+          "entrance": "scale",
+          "delayFrames": 6,
+          "rotation": 0,
+          "opacity": 1,
+          "flipX": false,
+          "paperEdge": true,
+          "keyframes": [],
+          "id": "sun-ending",
+          "name": "唯一的太阳",
+          "src": "assets/generated/nine-suns/layers/sun-crow.svg",
+          "role": "secondary",
+          "x": 390,
+          "y": 100,
+          "width": 300,
+          "zIndex": 1
+        },
+        {
+          "entrance": "fade",
+          "delayFrames": 14,
+          "rotation": 0,
+          "opacity": 1,
+          "flipX": false,
+          "paperEdge": true,
+          "keyframes": [],
+          "id": "villagers-ending",
+          "name": "重新抬头的人们",
+          "src": "assets/generated/nine-suns/layers/villagers.svg",
+          "role": "primary",
+          "x": 240,
+          "y": 1170,
+          "width": 600,
+          "zIndex": 3
+        },
+        {
+          "entrance": "fade",
+          "delayFrames": 24,
+          "rotation": 0,
+          "opacity": 0.8,
+          "flipX": false,
+          "paperEdge": true,
+          "keyframes": [],
+          "id": "houyi-away",
+          "name": "远去的后羿",
+          "src": "assets/generated/nine-suns/layers/archer-standing.svg",
+          "role": "tertiary",
+          "x": 740,
+          "y": 900,
+          "width": 280,
+          "zIndex": 2
+        }
+      ],
+      "captions": [
+        {
+          "text": "后来人们记住了那九箭，也记",
+          "fromFrame": 4,
+          "toFrame": 89,
+          "words": []
+        },
+        {
+          "text": "住了那支没有射出去的箭。",
+          "fromFrame": 89,
+          "toFrame": 167,
+          "words": []
+        },
+        {
+          "text": "英雄的分寸，比英雄的力气更难得。",
+          "fromFrame": 167,
+          "toFrame": 271,
+          "words": []
+        }
+      ],
+      "narrationSrc": "audio/nine-suns/06-ending.wav",
+      "audioCues": [
+        {
+          "src": "audio/nine-suns/whoosh.wav",
+          "fromFrame": 4,
+          "volume": 0.18
+        }
+      ]
+    }
+  ]
+}

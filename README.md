@@ -142,7 +142,9 @@ npm run studio
 
 ## 完整案例：《三天荔枝道》
 
-仓库内置一个 54.5 秒、1080×1920 的六镜头故事工程：`projects/lychee-road.json`。它包含独立背景与人物图层、完整口播文案、烧录字幕、原创配乐，以及雨声、马蹄、冲击和转场音效。
+![三天荔枝道 六镜头](docs/media/lychee-road-scenes.jpg)
+
+仓库内置一个 55 秒、1080×1920 的六镜头故事工程：`projects/lychee-road.json`。它包含独立背景与人物图层、完整口播文案、烧录字幕、原创配乐，以及雨声、马蹄、冲击和转场音效。
 
 ```bash
 # 不启动浏览器或本地端口，直接用 FFmpeg 生成带声音的预览成片
@@ -158,7 +160,30 @@ npm run story:audio:local
 npm run story:render
 ```
 
-`story:audio` 复用了 `youtube-doodle` 的逐镜 `edge-tts` 方案，默认使用 `zh-CN-YunjianNeural`、`+2%` 语速和 `-5Hz` 音高，并按“音色 + 参数 + 文案”缓存。它会验证每段语音的文件大小和真实时长，空音频立即中止，不会生成“有音轨但没有人声”的假成片。`edge-tts` 客户端虽然开源免费，但调用的是微软在线语音服务，并非离线模型；完全离线部署建议接入 Apache-2.0 的 CosyVoice 或 Kokoro。研究来源、史实边界和发布文案位于 `content/lychee-road/`。
+`story:audio` 复用了 `youtube-doodle` 的逐镜 `edge-tts` 方案，默认使用 `zh-CN-YunjianNeural`、`+6%` 语速、不改音高（对齐该项目实测最耐听的配方），并按“音色 + 参数 + 文案”缓存。它会验证每段语音的文件大小和真实时长，空音频立即中止，不会生成“有音轨但没有人声”的假成片。`edge-tts` 客户端虽然开源免费，但调用的是微软在线语音服务，并非离线模型；完全离线部署可直接使用已接入的中文专用 Kokoro-82M-v1.1-zh（Apache-2.0，见 `docs/tts.md`）。研究来源、史实边界和发布文案位于 `content/lychee-road/`。
+
+## 第二个案例：《后羿射日》——用数据做一条新视频
+
+![后羿射日 六镜头](docs/media/nine-suns-scenes.jpg)
+
+`lychee-road` 的分镜编排写在专用脚本里；第二个故事《后羿射日》改用**纯数据驱动**，验证了做一条新视频只需要三样东西，不用改一行渲染代码：
+
+- `content/nine-suns/story.json` —— 六段口播文案；
+- `content/nine-suns/storyboard.json` —— 分镜编排（每镜的图层、位置、入场、音效点位、镜头推进）；
+- `public/assets/generated/nine-suns/` —— 手绘纸艺风格 SVG 素材（三张背景 + 三足金乌、后羿、灾民等图层件）。
+
+```bash
+# 生成旁白并构建工程
+npm run nine-suns:audio
+
+# 渲染 + 媒体验收
+npm run nine-suns:render
+
+# 一键发布：渲染、验收、原子更新成片、Whisper 反识别、SHA-256 清单
+npm run nine-suns:release:local
+```
+
+通用构建器 `scripts/build-story.mjs` 接受任意故事目录：`node scripts/build-story.mjs content/<你的故事>`，配套校验（旁白时序、媒体规格、字幕切分）与 `lychee-road` 完全一致。
 
 ## 素材处理 CLI
 
