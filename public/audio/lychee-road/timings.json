@@ -1,9 +1,9 @@
 {
   "storyId": "lychee-road",
-  "voice": "zf_xiaoxiao",
-  "provider": "kokoro-local",
-  "speed": 1.08,
-  "totalDuration": 55.480000000000004,
+  "voice": "zh-CN-YunjianNeural",
+  "rate": "+6%",
+  "pitch": "+0Hz",
+  "totalDuration": 54.96,
   "segments": [
     {
       "id": "hook",
@@ -11,10 +11,10 @@
       "purpose": "问题钩子与生死期限",
       "index": 0,
       "file": "public/audio/lychee-road/01-hook.wav",
-      "provider": "kokoro-local",
-      "start": 0.0,
-      "end": 10.76,
-      "duration": 10.76
+      "provider": "edge",
+      "start": 0,
+      "end": 10.104,
+      "duration": 10.104
     },
     {
       "id": "deadline",
@@ -22,10 +22,10 @@
       "purpose": "建立小人物与倒计时",
       "index": 1,
       "file": "public/audio/lychee-road/02-deadline.wav",
-      "provider": "kokoro-local",
-      "start": 10.76,
-      "end": 21.77,
-      "duration": 11.01
+      "provider": "edge",
+      "start": 10.104,
+      "end": 20.759999999999998,
+      "duration": 10.656
     },
     {
       "id": "journey",
@@ -33,10 +33,10 @@
       "purpose": "升级行动与代价",
       "index": 2,
       "file": "public/audio/lychee-road/03-journey.wav",
-      "provider": "kokoro-local",
-      "start": 21.77,
-      "end": 34.355000000000004,
-      "duration": 12.585
+      "provider": "edge",
+      "start": 20.759999999999998,
+      "end": 34.152,
+      "duration": 13.392
     },
     {
       "id": "arrival",
@@ -44,10 +44,10 @@
       "purpose": "短暂胜利",
       "index": 3,
       "file": "public/audio/lychee-road/04-arrival.wav",
-      "provider": "kokoro-local",
-      "start": 34.355000000000004,
-      "end": 41.220000000000006,
-      "duration": 6.865
+      "provider": "edge",
+      "start": 34.152,
+      "end": 40.896,
+      "duration": 6.744
     },
     {
       "id": "cost",
@@ -55,10 +55,10 @@
       "purpose": "史实反转",
       "index": 4,
       "file": "public/audio/lychee-road/05-cost.wav",
-      "provider": "kokoro-local",
-      "start": 41.220000000000006,
-      "end": 46.14000000000001,
-      "duration": 4.92
+      "provider": "edge",
+      "start": 40.896,
+      "end": 45.792,
+      "duration": 4.896
     },
     {
       "id": "ending",
@@ -66,10 +66,10 @@
       "purpose": "情绪落点与评论问题",
       "index": 5,
       "file": "public/audio/lychee-road/06-ending.wav",
-      "provider": "kokoro-local",
-      "start": 46.14000000000001,
-      "end": 55.480000000000004,
-      "duration": 9.34
+      "provider": "edge",
+      "start": 45.792,
+      "end": 54.96,
+      "duration": 9.168
     }
   ]
 }

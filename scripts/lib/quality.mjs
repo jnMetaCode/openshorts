@@ -11,6 +11,11 @@ export const mediaSummaryFromProbe = (probe) => {
     duration: Number(probe.format?.duration ?? 0), size: Number(probe.format?.size ?? 0),
     width: Number(video?.width ?? 0), height: Number(video?.height ?? 0), fps: Number(rateA) / Number(rateB || 1),
     videoCodec: video?.codec_name ?? null, audioCodec: audio?.codec_name ?? null,
+    audioProfile: audio?.profile ?? null,
+    audioSampleRate: audio?.sample_rate ? Number(audio.sample_rate) : null,
+    audioChannels: audio?.channels ? Number(audio.channels) : null,
+    audioChannelLayout: audio?.channel_layout ?? null,
+    audioDuration: audio?.duration ? Number(audio.duration) : null,
   };
 };
 
@@ -27,7 +32,20 @@ export const analyzeProject = ({project, media, publicDir}) => {
   if (Math.abs(media.duration - expectedDuration) > 0.15) warnings.push(`成片 ${media.duration.toFixed(2)}s 与项目 ${expectedDuration.toFixed(2)}s 相差超过 0.15s`);
   else passes.push(`时长 ${media.duration.toFixed(2)}s`);
   if (!media.videoCodec) errors.push('没有检测到视频轨'); else passes.push(`视频编码 ${media.videoCodec}`);
-  if (!media.audioCodec) warnings.push('没有检测到音轨'); else passes.push(`音频编码 ${media.audioCodec}`);
+  if (!media.audioCodec) warnings.push('没有检测到音轨');
+  else {
+    passes.push(`音频编码 ${media.audioCodec}${media.audioProfile ? ` ${media.audioProfile}` : ''}`);
+    if (media.audioCodec === 'aac' && media.audioProfile && media.audioProfile !== 'LC') warnings.push(`AAC profile 为 ${media.audioProfile}，期望 LC`);
+    if (media.audioSampleRate && media.audioSampleRate !== 48000) warnings.push(`音频采样率为 ${media.audioSampleRate} Hz，期望 48000 Hz`);
+    else if (media.audioSampleRate) passes.push(`音频采样率 ${media.audioSampleRate} Hz`);
+    if (media.audioChannels && media.audioChannels !== 2) warnings.push(`音轨为 ${media.audioChannels} 声道，期望双声道`);
+    else if (media.audioChannels) passes.push(`音轨 ${media.audioChannelLayout ?? '双声道'}`);
+    if (media.audioDuration && Math.abs(media.audioDuration - expectedDuration) > 0.15) warnings.push(`音轨 ${media.audioDuration.toFixed(2)}s 与项目 ${expectedDuration.toFixed(2)}s 尾长相差超过 0.15s`);
+    else if (media.audioDuration) passes.push(`音轨尾长 ${media.audioDuration.toFixed(2)}s`);
+  }
+
+  const audioSources = [project.soundtrackSrc, ...project.scenes.flatMap((scene) => [scene.narrationSrc, ...(scene.audioCues ?? []).map((cue) => cue.src)])].filter(Boolean);
+  for (const src of new Set(audioSources)) if (!isRemote(src) && !fs.existsSync(path.join(publicDir, src.replace(/^\//, '')))) errors.push(`音频素材不存在：${src}`);
 
   for (const scene of project.scenes) {
     const roles = new Set(scene.layers.map((layer) => layer.role));

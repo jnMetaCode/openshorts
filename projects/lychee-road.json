@@ -12,6 +12,7 @@
     "subtitleBackground": "rgba(53,14,16,.86)"
   },
   "soundtrackSrc": "audio/lychee-road/original-underscore.wav",
+  "soundtrackVolume": 0.42,
   "production": {
     "plannerVersion": 1,
     "sourceText": "如果上司让你三天之内，把一筐会腐烂的荔枝，送到两千里外的长安。失败，掉脑袋。你接不接？\n天宝年间，答案由不得一个驿卒。荔枝一日色变，二日香变，三日味变。他手里的不是水果，是一道死期。\n涪州到长安，越巴山，穿子午谷。每到一站，人可以不歇，马必须换。驿券一落，百姓的马、粮，甚至屋门，都要为这趟差事让路。\n第三天，宫门真的开了。史书写下六个字：味未变，已至京师。\n可另一份记载说，人马死于路者甚众，百姓苦之。\n后来的人只记得妃子一笑，却忘了盛世最快的快递，跑的是普通人的命。你觉得，这颗荔枝甜吗？",
@@ -38,7 +39,7 @@
     {
       "id": "hook",
       "name": "1. 问题钩子与生死期限",
-      "durationFrames": 340,
+      "durationFrames": 320,
       "backgroundColor": "#241b1b",
       "cameraZoom": 1.035,
       "layers": [
@@ -117,25 +118,25 @@
         {
           "text": "如果上司让你三天之内，把一筐会腐",
           "fromFrame": 4,
-          "toFrame": 128,
+          "toFrame": 120,
           "words": []
         },
         {
           "text": "烂的荔枝，送到两千里外的长安。",
-          "fromFrame": 128,
-          "toFrame": 244,
+          "fromFrame": 120,
+          "toFrame": 229,
           "words": []
         },
         {
           "text": "失败，掉脑袋。",
-          "fromFrame": 244,
-          "toFrame": 298,
+          "fromFrame": 229,
+          "toFrame": 280,
           "words": []
         },
         {
           "text": "你接不接？",
-          "fromFrame": 298,
-          "toFrame": 336,
+          "fromFrame": 280,
+          "toFrame": 316,
           "words": []
         }
       ],
@@ -151,7 +152,7 @@
     {
       "id": "deadline",
       "name": "2. 建立小人物与倒计时",
-      "durationFrames": 347,
+      "durationFrames": 337,
       "backgroundColor": "#241b1b",
       "cameraZoom": 1.035,
       "layers": [
@@ -230,19 +231,19 @@
         {
           "text": "天宝年间，答案由不得一个驿卒。",
           "fromFrame": 4,
-          "toFrame": 112,
+          "toFrame": 109,
           "words": []
         },
         {
           "text": "荔枝一日色变，二日香变，三日味变。",
-          "fromFrame": 112,
-          "toFrame": 235,
+          "fromFrame": 109,
+          "toFrame": 228,
           "words": []
         },
         {
           "text": "他手里的不是水果，是一道死期。",
-          "fromFrame": 235,
-          "toFrame": 343,
+          "fromFrame": 228,
+          "toFrame": 333,
           "words": []
         }
       ],
@@ -258,7 +259,7 @@
     {
       "id": "journey",
       "name": "3. 升级行动与代价",
-      "durationFrames": 395,
+      "durationFrames": 419,
       "backgroundColor": "#241b1b",
       "cameraZoom": 1.08,
       "layers": [
@@ -337,25 +338,25 @@
         {
           "text": "涪州到长安，越巴山，穿子午谷。",
           "fromFrame": 4,
-          "toFrame": 104,
+          "toFrame": 110,
           "words": []
         },
         {
           "text": "每到一站，人可以不歇，马必须换。",
-          "fromFrame": 104,
-          "toFrame": 211,
+          "fromFrame": 110,
+          "toFrame": 223,
           "words": []
         },
         {
           "text": "驿券一落，百姓的马、粮，甚至",
-          "fromFrame": 211,
-          "toFrame": 304,
+          "fromFrame": 223,
+          "toFrame": 322,
           "words": []
         },
         {
           "text": "屋门，都要为这趟差事让路。",
-          "fromFrame": 304,
-          "toFrame": 391,
+          "fromFrame": 322,
+          "toFrame": 415,
           "words": []
         }
       ],
@@ -371,7 +372,7 @@
     {
       "id": "arrival",
       "name": "4. 短暂胜利",
-      "durationFrames": 223,
+      "durationFrames": 219,
       "backgroundColor": "#241b1b",
       "cameraZoom": 1.035,
       "layers": [
@@ -450,13 +451,13 @@
         {
           "text": "第三天，宫门真的开了。",
           "fromFrame": 4,
-          "toFrame": 88,
+          "toFrame": 87,
           "words": []
         },
         {
           "text": "史书写下六个字：味未变，已至京师。",
-          "fromFrame": 88,
-          "toFrame": 219,
+          "fromFrame": 87,
+          "toFrame": 215,
           "words": []
         }
       ],
@@ -472,7 +473,7 @@
     {
       "id": "cost",
       "name": "5. 史实反转",
-      "durationFrames": 165,
+      "durationFrames": 164,
       "backgroundColor": "#241b1b",
       "cameraZoom": 1.035,
       "layers": [
@@ -551,7 +552,7 @@
         {
           "text": "可另一份记载说，人马死于路者甚众，百姓苦之。",
           "fromFrame": 4,
-          "toFrame": 161,
+          "toFrame": 160,
           "words": []
         }
       ],
@@ -567,7 +568,7 @@
     {
       "id": "ending",
       "name": "6. 情绪落点与评论问题",
-      "durationFrames": 297,
+      "durationFrames": 292,
       "backgroundColor": "#241b1b",
       "cameraZoom": 1.035,
       "layers": [
@@ -646,19 +647,19 @@
         {
           "text": "后来的人只记得妃子一笑，却忘了盛",
           "fromFrame": 4,
-          "toFrame": 112,
+          "toFrame": 110,
           "words": []
         },
         {
           "text": "世最快的快递，跑的是普通人的命。",
-          "fromFrame": 112,
-          "toFrame": 220,
+          "fromFrame": 110,
+          "toFrame": 216,
           "words": []
         },
         {
           "text": "你觉得，这颗荔枝甜吗？",
-          "fromFrame": 220,
-          "toFrame": 293,
+          "fromFrame": 216,
+          "toFrame": 288,
           "words": []
         }
       ],

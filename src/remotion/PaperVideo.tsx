@@ -55,7 +55,7 @@ const SceneView: React.FC<{scene: Scene; project: PaperProject}> = ({scene, proj
 };
 
 export const PaperVideo: React.FC<{project: PaperProject}> = ({project}) => <AbsoluteFill>
-  {project.soundtrackSrc && <Audio src={assetUrl(project.soundtrackSrc)} volume={0.18} loop/>}
+  {project.soundtrackSrc && <Audio src={assetUrl(project.soundtrackSrc)} volume={project.soundtrackVolume ?? 0.18} loop/>}
   {project.scenes.map((scene, index) => {
     const from = project.scenes.slice(0, index).reduce((sum, item) => sum + item.durationFrames, 0);
     return <Sequence key={scene.id} from={from} durationInFrames={scene.durationFrames} premountFor={project.fps}>

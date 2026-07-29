@@ -86,6 +86,7 @@ export const projectSchema = z.object({
     subtitleBackground: z.string(),
   }),
   soundtrackSrc: z.string().optional(),
+  soundtrackVolume: z.number().min(0).max(2).default(0.18),
   production: productionSchema.optional(),
   scenes: z.array(sceneSchema).min(1),
 });

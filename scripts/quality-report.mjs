@@ -45,7 +45,8 @@ const markdown = `# ${project.title} · 自动验收报告
 - 结论：**${analysis.status.toUpperCase()}**
 - 视频：${path.basename(videoPath)}
 - 规格：${media.width}×${media.height} · ${media.fps} FPS · ${media.duration.toFixed(2)}s
-- 编码：${media.videoCodec ?? '无'} / ${media.audioCodec ?? '无'}
+- 编码：${media.videoCodec ?? '无'} / ${media.audioCodec ?? '无'}${media.audioProfile ? ` ${media.audioProfile}` : ''}
+- 音轨：${media.audioSampleRate ? `${media.audioSampleRate / 1000} kHz · ${media.audioChannelLayout ?? `${media.audioChannels} 声道`} · ${media.audioDuration?.toFixed(2) ?? '未知'}s` : '未检测'}
 - 音频响度：${audioLoudness ? `${audioLoudness.integratedLufs.toFixed(1)} LUFS · 峰值 ${audioLoudness.truePeakDbfs?.toFixed(1) ?? '未知'} dBFS` : '未测得'}
 - 文件大小：${(media.size / 1024 / 1024).toFixed(2)} MB
 

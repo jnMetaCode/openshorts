@@ -1,11 +1,33 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import {execFile} from 'node:child_process';
+import {promisify} from 'node:util';
+import {validateStoryTimings} from './lib/story-timings.mjs';
+import {audioSummaryFromProbe, validateNarrationMedia} from './lib/audio-probe.mjs';
 
 const fps = 30;
 const root = process.cwd();
+const run = promisify(execFile);
 const story = JSON.parse(await fs.readFile(path.join(root, 'content/lychee-road/story.json'), 'utf8'));
 const timingPath = path.join(root, 'public/audio/lychee-road/timings.json');
-const timings = await fs.readFile(timingPath, 'utf8').then(JSON.parse).catch(() => null);
+let timings = null;
+try {
+  timings = JSON.parse(await fs.readFile(timingPath, 'utf8'));
+} catch (error) {
+  if (error.code !== 'ENOENT') throw new Error(`无法读取 ${timingPath}：${error.message}`);
+}
+if (timings) {
+  const timingErrors = validateStoryTimings({story, timings});
+  if (timingErrors.length) throw new Error(`旁白时序与故事不一致：\n- ${timingErrors.join('\n- ')}`);
+  for (const segment of timings.segments) {
+    const audioPath = path.resolve(root, segment.file);
+    if (!audioPath.startsWith(`${path.join(root, 'public')}${path.sep}`)) throw new Error(`旁白路径必须位于 public/ 内：${segment.file}`);
+    await fs.access(audioPath).catch(() => { throw new Error(`旁白文件不存在：${segment.file}`); });
+    const {stdout} = await run('ffprobe', ['-v', 'error', '-show_streams', '-show_format', '-of', 'json', audioPath]);
+    const mediaErrors = validateNarrationMedia({label: segment.file, timing: segment, media: audioSummaryFromProbe(JSON.parse(stdout))});
+    if (mediaErrors.length) throw new Error(`旁白文件与时序不一致：\n- ${mediaErrors.join('\n- ')}`);
+  }
+}
 const fallback = [9, 10, 13, 6.5, 5.5, 10.5];
 const A = 'assets/generated/lychee-road/';
 const L = `${A}layers/`;
@@ -32,7 +54,7 @@ const scenes = story.segments.map((segment, i) => {
   const durationFrames=Math.ceil(durationFor(i)*fps); const narration=narrationFor(i);
   return {id:segment.id,name:`${i+1}. ${segment.purpose}`,durationFrames,backgroundColor:'#241b1b',cameraZoom:i===2?1.08:1.035,layers:layerSets[i],captions:splitCaptions(segment.text,durationFrames),...(narration?{narrationSrc:narration}:{}),audioCues:cues[i]};
 });
-const project={schemaVersion:1,id:'lychee-road',title:'三天荔枝道',width:1080,height:1920,fps,theme:{paper:'#f6eedb',ink:'#271c19',accent:'#efb84f',subtitleBackground:'rgba(53,14,16,.86)'},soundtrackSrc:'audio/lychee-road/original-underscore.wav',production:{plannerVersion:1,sourceText:story.segments.map(x=>x.text).join('\n'),style:{format:'9:16',look:'唐代古籍线描与复古纸片拼贴',disclaimer:'路线与时限存在史料争议，本片为史料启发的戏剧化表达'},characters:[{id:'courier',name:'无名驿卒',description:'承担不可能任务的普通人'},{id:'official',name:'驿站官员',description:'制度命令的具象化'}],assetPlan:[]},scenes};
+const project={schemaVersion:1,id:'lychee-road',title:'三天荔枝道',width:1080,height:1920,fps,theme:{paper:'#f6eedb',ink:'#271c19',accent:'#efb84f',subtitleBackground:'rgba(53,14,16,.86)'},soundtrackSrc:'audio/lychee-road/original-underscore.wav',soundtrackVolume:.42,production:{plannerVersion:1,sourceText:story.segments.map(x=>x.text).join('\n'),style:{format:'9:16',look:'唐代古籍线描与复古纸片拼贴',disclaimer:'路线与时限存在史料争议，本片为史料启发的戏剧化表达'},characters:[{id:'courier',name:'无名驿卒',description:'承担不可能任务的普通人'},{id:'official',name:'驿站官员',description:'制度命令的具象化'}],assetPlan:[]},scenes};
 await fs.mkdir(path.join(root,'projects'),{recursive:true});
 await fs.writeFile(path.join(root,'projects/lychee-road.json'),`${JSON.stringify(project,null,2)}\n`);
 console.log(`✓ 已构建《三天荔枝道》：${(scenes.reduce((n,s)=>n+s.durationFrames,0)/fps).toFixed(1)} 秒${timings?'，已挂载分段旁白':'，当前为配乐音效预览版'}`);

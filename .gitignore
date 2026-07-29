@@ -8,3 +8,5 @@ public/uploads/
 *.log
 *.papercut.zip
 coverage/
+models/
+__pycache__/
