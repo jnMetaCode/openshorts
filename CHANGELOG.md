@@ -35,6 +35,7 @@
 - 素材溯源改存 `content/<故事>/assets.json`；原来写在 `projects/*.json` 会被每次构建覆盖，这是两个故事 assetPlan 一直为空的原因
 - 新增 `npm run asset` 记录素材来源；验收会报告来源未知的素材，`QUALITY_REQUIRE_PROVENANCE=1` 可升级为错误
 - 补齐 `sample.json` 与两个故事的素材溯源；《三天荔枝道》的 5 张 PNG 如实标注为来源未知
+- 新增 `npm run comfy`：ComfyUI 生成素材后自动解析 model/seed/提示词并写入溯源，生成与记录合为一步
 
 ## 1.0.0 - 2026-07-28
 

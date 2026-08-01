@@ -10,16 +10,24 @@ npm run story -- lychee-road audio
 npm run story -- lychee-road render --fallback
 ```
 
-默认音色为 `zh-CN-YunjianNeural`，语速 `+6%`、不改音高——与 youtube-doodle 实测最耐听的配方一致。可直接调整：
+音色写在 `content/<故事名>/storyboard.json` 的 `voice` 块，两条内置故事当前使用 `zh-CN-YunyangNeural`、`+0%` 语速：
 
-```bash
-node scripts/generate-macos-story-audio.mjs \
-  --story=content/lychee-road/story.json \
-  --output=public/audio/lychee-road \
-  --provider=edge --voice=zh-CN-YunxiNeural --rate=+6%
+```json
+"voice": {"name": "zh-CN-YunyangNeural", "rate": "+0%", "pitch": "+0Hz"}
 ```
 
-youtube-doodle 的试听结论可直接复用：`YunjianNeural` 激情叙事、`YunxiNeural` 年轻耐听、`YunyangNeural` 沉稳专业、`XiaoxiaoNeural` 温暖女声。正式成片当前使用 Edge TTS；读音词典仅约束 Kokoro 链路，Edge 由微软引擎原生断词。
+试听候选或临时覆盖：
+
+```bash
+npm run voices                                              # 同一句话，多个音色各念一遍
+npm run story -- lychee-road audio --voice=zh-CN-YunxiNeural --rate=-5%
+```
+
+语速为负时必须写成 `--rate=-5%`，否则负号会被当成命令行标志。
+
+各音色的微软官方定位：`YunyangNeural` 新闻播报（专业可靠）、`YunxiNeural` 小说朗读（年轻明快）、`YunjianNeural` 体育解说（激情）、`XiaoxiaoNeural` 女声（温暖）。讲解类内容选错定位是「听着不对味」最常见的原因——早先默认的 `YunjianNeural` 就属于体育解说定位。
+
+读音词典仅约束 Kokoro 链路，Edge 由微软引擎原生断词。
 
 `edge-tts` 的客户端开源且不要求 API Key，但语音生成依赖微软在线服务。离线或受限网络环境无法使用。
 

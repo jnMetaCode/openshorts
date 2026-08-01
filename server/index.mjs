@@ -11,6 +11,7 @@ import {ProjectStore, applyVariables, safeId} from './lib/project-store.mjs';
 import {PersistentJobQueue} from './lib/job-queue.mjs';
 import {exportProjectBundle, importProjectBundle} from '../scripts/lib/project-package.mjs';
 import {runComfyWorkflow} from './lib/comfyui.mjs';
+import {extractComfyTrace, isReproducible} from '../shared/comfy-trace.mjs';
 import {createDraftProject, listStylePresets, storyboardMarkdown} from '../shared/storyboard.mjs';
 import {activatePromptVersion, addPromptVersion, applyAssetMatches} from '../shared/production.mjs';
 import {listPlanners, planStoryboard} from './lib/planner.mjs';
@@ -260,14 +261,16 @@ const runComfyJob = async (job) => {
     await jobQueue.update(job.id, {status: 'running', progress: 0.05, attempts: job.attempts + 1});
     const controller = new AbortController(); activeCancels.set(job.id, () => controller.abort());
     const result = await runComfyWorkflow({endpoint: process.env.COMFYUI_URL, workflow: job.payload.workflow, signal: controller.signal, onPoll: ({polls}) => {job.progress = Math.min(0.9, 0.1 + polls * 0.04);}});
+    // 溯源从工作流里解析出来跟着结果走，网页端放素材时就不用再手抄 model/seed。
+    const trace = {...extractComfyTrace(job.payload.workflow), workflowId: result.promptId};
     const batch = `comfyui-${Date.now()}`; const assets = [];
     for (const [index, image] of result.images.entries()) {
       const safe = path.basename(image.filename).replace(/[^a-zA-Z0-9._-]/g, '-') || `image-${index + 1}.png`;
       const relative = `uploads/${batch}/${String(index + 1).padStart(2, '0')}-${safe}`; const target = path.join(publicDir, relative);
       await fs.mkdir(path.dirname(target), {recursive: true}); await fs.writeFile(target, image.data);
-      assets.push({path: relative, inspection: await inspectImage(target)});
+      assets.push({path: relative, inspection: await inspectImage(target), trace});
     }
-    await jobQueue.update(job.id, {status: 'done', progress: 1, assets, providerJobId: result.promptId, error: null});
+    await jobQueue.update(job.id, {status: 'done', progress: 1, assets, trace, reproducible: isReproducible(trace), providerJobId: result.promptId, error: null});
   } catch (error) {
     const cancelled = job.status === 'cancel_requested' || String(error).toLowerCase().includes('取消') || String(error).toLowerCase().includes('abort');
     await jobQueue.update(job.id, cancelled ? {status: 'cancelled', error: null} : {status: 'failed', error: error instanceof Error ? error.message : String(error)});

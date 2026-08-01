@@ -176,7 +176,7 @@ npm run story -- lychee-road audio:local
 
 音轨由 `npm run master -- <成片> <工程>` 独立完成，两条路径渲完都走这一步。
 
-`story ... audio` 复用了 `youtube-doodle` 的逐镜 `edge-tts` 方案，默认使用 `zh-CN-YunjianNeural`、`+6%` 语速、不改音高（对齐该项目实测最耐听的配方），并按“音色 + 参数 + 文案”缓存。它会验证每段语音的文件大小和真实时长，空音频立即中止，不会生成“有音轨但没有人声”的假成片。`edge-tts` 客户端虽然开源免费，但调用的是微软在线语音服务，并非离线模型；完全离线部署可直接使用已接入的中文专用 Kokoro-82M-v1.1-zh（Apache-2.0，见 `docs/tts.md`）。研究来源、史实边界和发布文案位于 `content/lychee-road/`。
+`story ... audio` 用逐镜 `edge-tts` 生成旁白，音色见下方「旁白音色」一节，并按“音色 + 参数 + 文案”缓存。它会验证每段语音的文件大小和真实时长，空音频立即中止，不会生成“有音轨但没有人声”的假成片。`edge-tts` 客户端虽然开源免费，但调用的是微软在线语音服务，并非离线模型；完全离线部署可直接使用已接入的中文专用 Kokoro-82M-v1.1-zh（Apache-2.0，见 `docs/tts.md`）。研究来源、史实边界和发布文案位于 `content/lychee-road/`。
 
 ## 第二个案例：《后羿射日》——用数据做一条新视频
 
@@ -253,7 +253,24 @@ node scripts/import-music.mjs nine-suns ~/Downloads/track.mp3 \
 
 所以溯源存在源头 `content/<故事名>/assets.json`，构建时才写进工程。**不要直接改 `projects/*.json` 里的 `assetPlan`——那是生成物，下次构建就没了。**
 
-生成完一张素材立刻记录：
+### ComfyUI：生成即记录
+
+接了 ComfyUI 的话，生成和记录是同一条命令，不用手抄 model/seed：
+
+```bash
+COMFYUI_URL=http://127.0.0.1:8188 npm run comfy -- nine-suns \
+  --workflow=wf.json --name=hou-yi --layer --license=CC0
+```
+
+它会提交工作流、下载图片、放进 `public/assets/generated/<故事名>/`、检查透明通道和贴边，
+并把 model、seed、正负提示词、采样参数、尺寸和 prompt_id 自动写进 `assets.json`。
+
+工作流必须是 ComfyUI 的 **Save (API Format)** 导出——界面 workflow 的结构不同，解析不出参数。
+解析不到模型或种子时会警告，因为那样的图无法复现。
+
+### 手工记录
+
+其他来源（手写 SVG、图库、自行拍摄、别的生成工具）生成完立刻记录：
 
 ```bash
 npm run asset -- nine-suns assets/generated/nine-suns/layers/hou-yi.png \
