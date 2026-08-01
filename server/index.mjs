@@ -16,6 +16,7 @@ import {activatePromptVersion, addPromptVersion, applyAssetMatches} from '../sha
 import {listPlanners, planStoryboard} from './lib/planner.mjs';
 import {attachGenerationTrace, retimeProjectFromNarration, retimeScene, reviewAssets} from '../shared/review.mjs';
 import {runAsr, transcriptToCaptions} from './lib/asr.mjs';
+import {corsOptions, createOriginGuard, resolveAllowedOrigins} from './lib/origin-guard.mjs';
 import {renderWaveform} from '../scripts/lib/audio.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -52,7 +53,9 @@ const imageUpload = multer({storage, limits: {fileSize: 20 * 1024 * 1024}, fileF
 const audioUpload = multer({storage, limits: {fileSize: 200 * 1024 * 1024}, fileFilter: (_req, file, callback) => callback(null, ['audio/wav', 'audio/x-wav', 'audio/mpeg', 'audio/mp4', 'audio/aac', 'audio/flac', 'audio/ogg'].includes(file.mimetype))});
 const bundleUpload = multer({dest: path.join(dataDir, 'imports'), limits: {fileSize: 500 * 1024 * 1024}, fileFilter: (_req, file, callback) => callback(null, file.originalname.endsWith('.zip') || file.mimetype.includes('zip'))});
 
-app.use(cors());
+const allowedOrigins = resolveAllowedOrigins({port: Number(process.env.PORT ?? 4174), configured: process.env.PAPERCUT_ALLOWED_ORIGINS});
+app.use(cors(corsOptions(allowedOrigins)));
+app.use(createOriginGuard(allowedOrigins));
 app.use(express.json({limit: '5mb'}));
 app.use('/out', express.static(outDir));
 app.use('/uploads', express.static(uploadsDir));
@@ -63,9 +66,7 @@ app.get('/api/project', async (_req, res, next) => {
 });
 app.put('/api/project', async (req, res, next) => {
   try {
-    const project = req.body;
-    if (project?.schemaVersion !== 1 || !Array.isArray(project?.scenes) || project.scenes.length === 0) return res.status(400).json({error: '无效的 PaperCut v1 项目文件'});
-    const saved = await projectStore.save(project); activeProjectId = saved.id;
+    const saved = await projectStore.save(req.body); activeProjectId = saved.id;
     res.json({ok: true, project: saved});
   } catch (error) { next(error); }
 });
@@ -324,7 +325,10 @@ app.post('/api/quality', async (req, res, next) => {
 app.use(express.static(path.join(root, 'dist')));
 app.get(/.*/, (_req, res) => res.sendFile(path.join(root, 'dist', 'index.html')));
 
-app.use((error, _req, res, _next) => res.status(500).json({error: error instanceof Error ? error.message : '服务器错误'}));
+app.use((error, _req, res, _next) => res.status(error?.status ?? 500).json({
+  error: error instanceof Error ? error.message : '服务器错误',
+  ...(error?.errors ? {issues: error.errors} : {}),
+}));
 
 const port = Number(process.env.PORT ?? 4174); const host = process.env.HOST ?? '127.0.0.1';
 const httpServer = app.listen(port, host, () => console.log(`PaperCut API: http://${host}:${port}`));
