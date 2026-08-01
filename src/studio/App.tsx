@@ -1,6 +1,7 @@
 import React, {useEffect, useMemo, useRef, useState} from 'react';
 import {Player} from '@remotion/player';
 import {PaperVideo} from '../remotion/PaperVideo';
+import {subtitleBottomRatio} from '../../shared/captions.mjs';
 import {getProjectDuration, projectSchema, type Layer, type PaperProject, type PlannedAsset, type Scene} from '../domain/project';
 import './v08.css';
 import './v09.css';
@@ -38,7 +39,8 @@ const LayoutCanvas = ({project, scene, selectedId, onSelect, onMoveStart, onMove
     onPointerDown={(event) => onMoveStart(event, item)} onPointerMove={onMove} onPointerUp={onMoveEnd} onPointerCancel={onMoveEnd}
     style={{left: `${item.x / project.width * 100}%`, top: `${item.y / project.height * 100}%`, width: `${item.width / project.width * 100}%`, zIndex: item.zIndex, opacity: item.opacity, transform: `rotate(${item.rotation}deg) scaleX(${item.flipX ? -1 : 1})`}}
   />)}
-  <span className="safe-area">字幕安全区</span>
+  <span className="safe-area" style={{bottom: `${subtitleBottomRatio(project.width, project.height) * 100}%`}}>字幕安全区</span>
+  {project.height > project.width && <span className="platform-unsafe">平台 UI 遮挡区</span>}
 </div>;
 
 export const App: React.FC = () => {

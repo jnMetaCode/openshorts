@@ -1,5 +1,6 @@
 import React from 'react';
 import {AbsoluteFill, Audio, Img, Sequence, interpolate, spring, staticFile, useCurrentFrame, useVideoConfig} from 'remotion';
+import {subtitleBottomRatio, subtitleFontSize} from '../../shared/captions.mjs';
 import type {Layer, PaperProject, Scene} from '../domain/project';
 import {entranceVector, roleMotion} from '../motion/animation';
 import {resolveLayerPose} from '../motion/keyframes';
@@ -41,10 +42,10 @@ const SceneView: React.FC<{scene: Scene; project: PaperProject}> = ({scene, proj
       {[...scene.layers].sort((a, b) => a.zIndex - b.zIndex).map((layer) => <PaperLayer key={layer.id} layer={layer}/>) }
     </AbsoluteFill>
     {caption && <div style={{
-      position: 'absolute', left: '12%', right: '12%', bottom: '5%', zIndex: 1000,
-      padding: '15px 28px', borderRadius: 8, textAlign: 'center',
+      position: 'absolute', left: '7%', right: '7%', bottom: `${subtitleBottomRatio(project.width, project.height) * 100}%`, zIndex: 1000,
+      padding: '14px 20px', borderRadius: 8, textAlign: 'center',
       background: project.theme.subtitleBackground, color: project.theme.paper,
-      fontFamily: 'system-ui, sans-serif', fontSize: Math.round(project.height * 0.04), fontWeight: 700,
+      fontFamily: 'system-ui, sans-serif', fontSize: subtitleFontSize(project.width, project.height), fontWeight: 700,
       letterSpacing: 2, boxShadow: '0 8px 30px rgba(0,0,0,.25)',
     }}>{caption.words?.length ? caption.words.map((word,index) => <span key={`${word.text}-${index}`} style={{color:frame >= word.fromFrame && frame < word.toFrame ? project.theme.accent : project.theme.paper,marginRight:2}}>{word.text}</span>) : caption.text}</div>}
     {scene.narrationSrc && <Audio src={assetUrl(scene.narrationSrc)}/>} 
