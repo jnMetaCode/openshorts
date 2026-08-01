@@ -2,6 +2,8 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
+import {buildAssetPlan} from './lib/asset-provenance.mjs';
+import {splitCaptions} from '../shared/captions.mjs';
 import {validateStoryTimings} from './lib/story-timings.mjs';
 import {audioSummaryFromProbe, validateNarrationMedia} from './lib/audio-probe.mjs';
 
@@ -11,6 +13,10 @@ const run = promisify(execFile);
 const storyDir = path.resolve(process.argv[2] ?? 'content/nine-suns');
 const story = JSON.parse(await fs.readFile(path.join(storyDir, 'story.json'), 'utf8'));
 const board = JSON.parse(await fs.readFile(path.join(storyDir, 'storyboard.json'), 'utf8'));
+const provenance = await fs.readFile(path.join(storyDir, 'assets.json'), 'utf8').then(JSON.parse).catch((error) => {
+  if (error.code !== 'ENOENT') throw new Error(`无法读取 ${storyDir}/assets.json：${error.message}`);
+  return {};
+});
 if (board.scenes.length !== story.segments.length) throw new Error(`storyboard 有 ${board.scenes.length} 镜，story 有 ${story.segments.length} 段`);
 
 const timingPath = path.join(root, 'public/audio', story.id, 'timings.json');
@@ -33,21 +39,12 @@ if (timings) {
   }
 }
 
-const splitCaptions = (text, frames) => {
-  const bits = text.split(/(?<=[。？！；])/).filter(Boolean).flatMap((part) => part.length > 24 ? [part.slice(0, Math.ceil(part.length / 2)), part.slice(Math.ceil(part.length / 2))] : [part]);
-  let cursor = 4;
-  return bits.map((part, index) => {
-    const available = frames - 8;
-    const share = index === bits.length - 1 ? frames - 4 - cursor : Math.max(24, Math.round(available * part.length / text.length));
-    const item = {text: part, fromFrame: cursor, toFrame: Math.min(frames - 2, cursor + share), words: []};
-    cursor = item.toFrame;
-    return item;
-  });
-};
-
-const layerDefaults = (layer) => ({
+// 关键帧的 frame 可以写 'end'，表示本镜最后一帧——旁白时长一变，运动终点自动跟上。
+const resolveFrame = (frame, durationFrames) => frame === 'end' ? durationFrames - 1 : frame;
+const layerDefaults = (layer, durationFrames) => ({
   entrance: 'none', delayFrames: 0, rotation: 0, opacity: 1, flipX: false,
   paperEdge: layer.role !== 'background', keyframes: [], ...layer,
+  ...(layer.keyframes?.length ? {keyframes: layer.keyframes.map((item) => ({...item, frame: resolveFrame(item.frame, durationFrames)}))} : {}),
 });
 const durationFor = (i) => timings?.segments?.[i]?.duration ? timings.segments[i].duration + 0.55 : board.fallbackDurations[i];
 const narrationFor = (i) => timings?.segments?.[i]?.file?.replace(/^public\//, '');
@@ -62,7 +59,7 @@ const scenes = story.segments.map((segment, i) => {
     durationFrames,
     backgroundColor: scene.backgroundColor ?? board.backgroundColor,
     cameraZoom: scene.cameraZoom ?? board.cameraZoom ?? 1.035,
-    layers: scene.layers.map(layerDefaults),
+    layers: scene.layers.map((layer) => layerDefaults(layer, durationFrames)),
     captions: splitCaptions(segment.text, durationFrames),
     ...(narration ? {narrationSrc: narration} : {}),
     audioCues: scene.audioCues ?? [],
@@ -73,14 +70,19 @@ const project = {
   schemaVersion: 1, id: story.id, title: story.title,
   width: 1080, height: 1920, fps,
   theme: board.theme,
-  soundtrackSrc: `audio/${story.id}/original-underscore.wav`,
-  soundtrackVolume: board.soundtrackVolume ?? 0.42,
+  // 自带配乐优先，否则用按故事情绪合成的那首
+  soundtrackSrc: board.music?.file ?? `audio/${story.id}/underscore.wav`,
+  soundtrackVolume: board.music?.volume ?? board.soundtrackVolume ?? 0.42,
   production: {
     plannerVersion: 1,
     sourceText: story.segments.map((x) => x.text).join('\n'),
     style: board.production?.style ?? {},
     characters: board.production?.characters ?? [],
-    assetPlan: [],
+    // 溯源存在 content/<故事>/assets.json，构建时才 materialize 进工程——
+    // 工程是生成物，直接往里写会被下次构建覆盖（以前 assetPlan 一直是空的就是这个原因）。
+    assetPlan: buildAssetPlan({board, provenance}),
+    // 署名随工程走，验收和发布清单才能查到；第三方音乐大多要求标注
+    music: board.music ?? {mood: 'epic'},
   },
   scenes,
 };

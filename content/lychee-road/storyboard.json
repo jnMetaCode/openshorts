@@ -1,0 +1,444 @@
+{
+  "backgroundColor": "#241b1b",
+  "cameraZoom": 1.035,
+  "soundtrackVolume": 0.42,
+  "fallbackDurations": [
+    9,
+    10,
+    13,
+    6.5,
+    5.5,
+    10.5
+  ],
+  "theme": {
+    "paper": "#f6eedb",
+    "ink": "#271c19",
+    "accent": "#efb84f",
+    "subtitleBackground": "rgba(53,14,16,.86)"
+  },
+  "production": {
+    "style": {
+      "format": "9:16",
+      "look": "唐代古籍线描与复古纸片拼贴",
+      "disclaimer": "路线与时限存在史料争议，本片为史料启发的戏剧化表达"
+    },
+    "characters": [
+      {
+        "id": "courier",
+        "name": "无名驿卒",
+        "description": "承担不可能任务的普通人"
+      },
+      {
+        "id": "official",
+        "name": "驿站官员",
+        "description": "制度命令的具象化"
+      }
+    ]
+  },
+  "scenes": [
+    {
+      "layers": [
+        {
+          "id": "bg-hook",
+          "name": "背景",
+          "src": "assets/generated/lychee-road/storm-road.png",
+          "role": "background",
+          "x": -140,
+          "y": -50,
+          "width": 1360,
+          "zIndex": 0,
+          "keyframes": [
+            {
+              "frame": 0,
+              "x": -140,
+              "y": -50,
+              "width": 1360,
+              "rotation": 0,
+              "opacity": 1,
+              "easing": "ease-in-out"
+            },
+            {
+              "frame": "end",
+              "x": -185,
+              "y": -90,
+              "width": 1460,
+              "rotation": 0,
+              "opacity": 1,
+              "easing": "ease-in-out"
+            }
+          ]
+        },
+        {
+          "id": "basket-hook",
+          "name": "一筐荔枝",
+          "src": "assets/generated/lychee-road/lychee-basket.svg",
+          "role": "primary",
+          "x": 220,
+          "y": 720,
+          "width": 650,
+          "zIndex": 3,
+          "entrance": "scale",
+          "delayFrames": 5
+        },
+        {
+          "id": "runner-hook",
+          "name": "驿卒",
+          "src": "assets/generated/lychee-road/layers/courier-running.png",
+          "role": "foreground",
+          "x": 520,
+          "y": 870,
+          "width": 500,
+          "zIndex": 4,
+          "entrance": "right",
+          "delayFrames": 18
+        }
+      ],
+      "audioCues": [
+        {
+          "src": "audio/common/impact.wav",
+          "fromFrame": 0,
+          "volume": 0.55
+        }
+      ]
+    },
+    {
+      "layers": [
+        {
+          "id": "bg-deadline",
+          "name": "背景",
+          "src": "assets/generated/lychee-road/route-map.svg",
+          "role": "background",
+          "x": -140,
+          "y": -50,
+          "width": 1360,
+          "zIndex": 0,
+          "keyframes": [
+            {
+              "frame": 0,
+              "x": -140,
+              "y": -50,
+              "width": 1360,
+              "rotation": 0,
+              "opacity": 1,
+              "easing": "ease-in-out"
+            },
+            {
+              "frame": "end",
+              "x": -185,
+              "y": -90,
+              "width": 1460,
+              "rotation": 0,
+              "opacity": 1,
+              "easing": "ease-in-out"
+            }
+          ]
+        },
+        {
+          "id": "official",
+          "name": "驿站官员",
+          "src": "assets/generated/lychee-road/layers/post-official.png",
+          "role": "primary",
+          "x": 615,
+          "y": 890,
+          "width": 430,
+          "zIndex": 3,
+          "entrance": "right",
+          "delayFrames": 22
+        },
+        {
+          "id": "basket-deadline",
+          "name": "荔枝",
+          "src": "assets/generated/lychee-road/lychee-basket.svg",
+          "role": "secondary",
+          "x": -30,
+          "y": 1080,
+          "width": 520,
+          "zIndex": 2,
+          "entrance": "left",
+          "delayFrames": 8
+        }
+      ],
+      "audioCues": [
+        {
+          "src": "audio/common/whoosh.wav",
+          "fromFrame": 4,
+          "volume": 0.24
+        }
+      ]
+    },
+    {
+      "cameraZoom": 1.08,
+      "layers": [
+        {
+          "id": "bg-journey",
+          "name": "背景",
+          "src": "assets/generated/lychee-road/storm-road.png",
+          "role": "background",
+          "x": -140,
+          "y": -50,
+          "width": 1360,
+          "zIndex": 0,
+          "keyframes": [
+            {
+              "frame": 0,
+              "x": -140,
+              "y": -50,
+              "width": 1360,
+              "rotation": 0,
+              "opacity": 1,
+              "easing": "ease-in-out"
+            },
+            {
+              "frame": "end",
+              "x": -185,
+              "y": -90,
+              "width": 1460,
+              "rotation": 0,
+              "opacity": 1,
+              "easing": "ease-in-out"
+            }
+          ]
+        },
+        {
+          "id": "horse",
+          "name": "换马疾驰",
+          "src": "assets/generated/lychee-road/layers/relay-horse.png",
+          "role": "primary",
+          "x": 330,
+          "y": 880,
+          "width": 800,
+          "zIndex": 4,
+          "entrance": "right",
+          "delayFrames": 5,
+          "flipX": true
+        },
+        {
+          "id": "runner-road",
+          "name": "不歇的驿卒",
+          "src": "assets/generated/lychee-road/layers/courier-running.png",
+          "role": "secondary",
+          "x": -60,
+          "y": 980,
+          "width": 470,
+          "zIndex": 3,
+          "entrance": "left",
+          "delayFrames": 28
+        }
+      ],
+      "audioCues": [
+        {
+          "src": "audio/common/hoofbeats.wav",
+          "fromFrame": 0,
+          "volume": 0.35
+        }
+      ]
+    },
+    {
+      "layers": [
+        {
+          "id": "bg-arrival",
+          "name": "背景",
+          "src": "assets/generated/lychee-road/palace-gate.svg",
+          "role": "background",
+          "x": -140,
+          "y": -50,
+          "width": 1360,
+          "zIndex": 0,
+          "keyframes": [
+            {
+              "frame": 0,
+              "x": -140,
+              "y": -50,
+              "width": 1360,
+              "rotation": 0,
+              "opacity": 1,
+              "easing": "ease-in-out"
+            },
+            {
+              "frame": "end",
+              "x": -185,
+              "y": -90,
+              "width": 1460,
+              "rotation": 0,
+              "opacity": 1,
+              "easing": "ease-in-out"
+            }
+          ]
+        },
+        {
+          "id": "kneel-arrive",
+          "name": "跪献荔枝",
+          "src": "assets/generated/lychee-road/layers/courier-kneeling.png",
+          "role": "primary",
+          "x": 420,
+          "y": 1020,
+          "width": 480,
+          "zIndex": 4,
+          "entrance": "scale",
+          "delayFrames": 12
+        },
+        {
+          "id": "basket-arrive",
+          "name": "荔枝抵京",
+          "src": "assets/generated/lychee-road/lychee-basket.svg",
+          "role": "secondary",
+          "x": 30,
+          "y": 1110,
+          "width": 520,
+          "zIndex": 3,
+          "entrance": "left",
+          "delayFrames": 24
+        }
+      ],
+      "audioCues": [
+        {
+          "src": "audio/common/impact.wav",
+          "fromFrame": 8,
+          "volume": 0.45
+        }
+      ]
+    },
+    {
+      "layers": [
+        {
+          "id": "bg-cost",
+          "name": "背景",
+          "src": "assets/generated/lychee-road/palace-gate.svg",
+          "role": "background",
+          "x": -140,
+          "y": -50,
+          "width": 1360,
+          "zIndex": 0,
+          "keyframes": [
+            {
+              "frame": 0,
+              "x": -140,
+              "y": -50,
+              "width": 1360,
+              "rotation": 0,
+              "opacity": 1,
+              "easing": "ease-in-out"
+            },
+            {
+              "frame": "end",
+              "x": -185,
+              "y": -90,
+              "width": 1460,
+              "rotation": 0,
+              "opacity": 1,
+              "easing": "ease-in-out"
+            }
+          ]
+        },
+        {
+          "id": "runner-cost",
+          "name": "倒下的普通人",
+          "src": "assets/generated/lychee-road/layers/courier-running.png",
+          "role": "primary",
+          "x": -114,
+          "y": 492,
+          "width": 500,
+          "zIndex": 3,
+          "entrance": "fade",
+          "delayFrames": 14,
+          "rotation": 82,
+          "opacity": 0.72
+        },
+        {
+          "id": "official-cost",
+          "name": "冷眼的命令",
+          "src": "assets/generated/lychee-road/layers/post-official.png",
+          "role": "tertiary",
+          "x": 690,
+          "y": 920,
+          "width": 360,
+          "zIndex": 2,
+          "entrance": "fade",
+          "delayFrames": 30,
+          "opacity": 0.52
+        }
+      ],
+      "audioCues": [
+        {
+          "src": "audio/common/impact.wav",
+          "fromFrame": 2,
+          "volume": 0.38
+        }
+      ]
+    },
+    {
+      "layers": [
+        {
+          "id": "bg-ending",
+          "name": "背景",
+          "src": "assets/generated/lychee-road/route-map.svg",
+          "role": "background",
+          "x": -140,
+          "y": -50,
+          "width": 1360,
+          "zIndex": 0,
+          "keyframes": [
+            {
+              "frame": 0,
+              "x": -140,
+              "y": -50,
+              "width": 1360,
+              "rotation": 0,
+              "opacity": 1,
+              "easing": "ease-in-out"
+            },
+            {
+              "frame": "end",
+              "x": -185,
+              "y": -90,
+              "width": 1460,
+              "rotation": 0,
+              "opacity": 1,
+              "easing": "ease-in-out"
+            }
+          ]
+        },
+        {
+          "id": "kneel-end",
+          "name": "无名驿卒",
+          "src": "assets/generated/lychee-road/layers/courier-kneeling.png",
+          "role": "secondary",
+          "x": 600,
+          "y": 1100,
+          "width": 430,
+          "zIndex": 3,
+          "entrance": "right",
+          "delayFrames": 10,
+          "opacity": 0.76
+        },
+        {
+          "id": "basket-end",
+          "name": "最后一颗荔枝",
+          "src": "assets/generated/lychee-road/lychee-basket.svg",
+          "role": "primary",
+          "x": 120,
+          "y": 710,
+          "width": 680,
+          "zIndex": 4,
+          "entrance": "scale",
+          "delayFrames": 26
+        }
+      ],
+      "audioCues": [
+        {
+          "src": "audio/common/whoosh.wav",
+          "fromFrame": 15,
+          "volume": 0.2
+        }
+      ]
+    }
+  ],
+  "music": {
+    "mood": "urgent"
+  },
+  "voice": {
+    "name": "zh-CN-YunyangNeural",
+    "rate": "+0%",
+    "pitch": "+0Hz"
+  }
+}

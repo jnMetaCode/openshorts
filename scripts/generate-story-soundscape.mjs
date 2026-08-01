@@ -4,8 +4,19 @@ import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
 
 const run = promisify(execFile);
-const out = path.resolve(process.argv[2] ?? 'public/audio/lychee-road');
+// 生成结果与故事无关（纯合成、无随机），所以放在共享目录，各故事只保留自己的旁白。
+// 以前每个故事目录都复制一份，两条故事就白占约 28MB，而且全都进了 git。
+const out = path.resolve(process.argv[2] ?? 'public/audio/common');
+const force = process.argv.includes('--force');
 await fs.mkdir(out, {recursive: true});
+
+const EXPECTED = ['original-underscore.wav', 'impact.wav', 'hoofbeats.wav', 'whoosh.wav', 'rain.wav'];
+const present = await Promise.all(EXPECTED.map((name) => fs.access(path.join(out, name)).then(() => true).catch(() => false)));
+if (!force && present.every(Boolean)) {
+  console.log(`✓ 共享音效已存在，跳过生成：${out}（需要重建请加 --force）`);
+  process.exit(0);
+}
+
 const ff = async (name, args) => run('ffmpeg', ['-y', '-v', 'error', ...args, path.join(out, name)]);
 
 const writeMusic = async (file) => {

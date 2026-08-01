@@ -10,10 +10,11 @@ console.log(`✓ Kokoro Python：${discovered.python}`);
 console.log(`✓ Kokoro 模型：${discovered.modelDir}`);
 if (process.argv.includes('--check')) process.exit(0);
 
+const story = process.argv.slice(2).find((arg) => !arg.startsWith('--')) ?? 'lychee-road';
 const child = execFile(discovered.python, [
   'scripts/generate-kokoro-story.py',
-  '--story', 'content/lychee-road/story.json',
-  '--output', 'public/audio/lychee-road',
+  '--story', `content/${story}/story.json`,
+  '--output', `public/audio/${story}`,
   '--model-dir', discovered.modelDir,
 ], {cwd: process.cwd()});
 child.stdout.pipe(process.stdout);
