@@ -35,3 +35,30 @@ test('质检能发现字幕越界和缺失素材', () => {
   assert.ok(result.errors.some((item) => item.includes('超出镜头范围')));
   assert.ok(result.errors.some((item) => item.includes('素材不存在')));
 });
+
+const okMedia = {duration: 11.05, size: 1000, width: 1920, height: 1080, fps: 30, videoCodec: 'h264', audioCodec: 'aac'};
+
+test('质检能发现词中断行的字幕', () => {
+  const broken = structuredClone(project);
+  broken.scenes[0].captions = [
+    {text: '如果天上同时挂着十个太阳，河干', fromFrame: 0, toFrame: 60, words: []},
+    {text: '了，地裂了。', fromFrame: 60, toFrame: 120, words: []},
+  ];
+  const result = analyzeProject({project: broken, publicDir: path.join(root, 'public'), media: okMedia});
+  assert.ok(result.warnings.some((item) => item.includes('没有停在标点上')));
+});
+
+test('质检能发现读不完和过长的字幕', () => {
+  const broken = structuredClone(project);
+  broken.scenes[0].captions = [{text: '这一条字幕特别长长到在竖屏上一定会折行并且完全没有时间读完它真的很长', fromFrame: 0, toFrame: 30, words: []}];
+  const result = analyzeProject({project: broken, publicDir: path.join(root, 'public'), media: okMedia});
+  assert.ok(result.warnings.some((item) => item.includes('字/秒')));
+  assert.ok(result.warnings.some((item) => item.includes('折行')));
+});
+
+test('竖屏项目的字幕安全区被记为通过项', () => {
+  const portrait = structuredClone(project);
+  portrait.width = 1080; portrait.height = 1920;
+  const result = analyzeProject({project: portrait, publicDir: path.join(root, 'public'), media: {...okMedia, width: 1080, height: 1920}});
+  assert.ok(result.passes.some((item) => item.includes('安全区')));
+});

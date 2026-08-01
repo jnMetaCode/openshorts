@@ -5,6 +5,8 @@ import {promisify} from 'node:util';
 import {fileURLToPath} from 'node:url';
 import {analyzeProject, mediaSummaryFromProbe} from './lib/quality.mjs';
 
+const PLATFORM_TARGET_LUFS = -14;
+
 const run = promisify(execFile);
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const projectPath = path.resolve(process.argv[3] ?? path.join(root, 'projects', 'sample.json'));
@@ -24,7 +26,10 @@ if (media.audioCodec) {
   if (values.length) audioLoudness = {integratedLufs:values.at(-1),truePeakDbfs:peaks.at(-1) ?? null};
   if (!audioLoudness) analysis.errors.push('音轨存在，但无法测得有效响度');
   else if (audioLoudness.integratedLufs < -30) analysis.errors.push(`音轨过小：${audioLoudness.integratedLufs.toFixed(1)} LUFS`);
-  else analysis.passes.push(`音频响度 ${audioLoudness.integratedLufs.toFixed(1)} LUFS`);
+  // 抖音/B站/YouTube 的播放归一化目标是 -14 LUFS，偏离 2 LU 以上在信息流里就能听出音量差。
+  else if (Math.abs(audioLoudness.integratedLufs - PLATFORM_TARGET_LUFS) > 2) analysis.warnings.push(`音频响度 ${audioLoudness.integratedLufs.toFixed(1)} LUFS，偏离短视频平台 ${PLATFORM_TARGET_LUFS} LUFS 目标超过 2 LU`);
+  else analysis.passes.push(`音频响度 ${audioLoudness.integratedLufs.toFixed(1)} LUFS（平台目标 ${PLATFORM_TARGET_LUFS}）`);
+  if (audioLoudness && audioLoudness.truePeakDbfs != null && audioLoudness.truePeakDbfs > -1) analysis.warnings.push(`真峰值 ${audioLoudness.truePeakDbfs.toFixed(1)} dBFS 高于 -1 dBFS，转码后可能削波`);
   analysis.status = analysis.errors.length ? 'failed' : analysis.warnings.length ? 'warning' : 'passed';
 }
 const frames = [];
