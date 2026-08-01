@@ -3,6 +3,9 @@ import path from 'node:path';
 import os from 'node:os';
 import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
+import {subtitleBottomRatio, subtitleFontSize} from '../shared/captions.mjs';
+import {AAC_ARGS, buildAudioGraph} from './lib/audio-master.mjs';
+import {rotatedTopLeft} from './lib/layout.mjs';
 
 const run=promisify(execFile);const root=process.cwd();
 const projectPath=path.resolve(process.argv[2]??'projects/lychee-road.json');
@@ -10,20 +13,40 @@ const project=JSON.parse(await fs.readFile(projectPath,'utf8'));const temp=await
 const publicFile=(src)=>path.join(root,'public',src.replace(/^\//,''));
 const stamp=(frame)=>{const sec=frame/project.fps;const h=Math.floor(sec/3600),m=Math.floor(sec%3600/60),s=Math.floor(sec%60),ms=Math.round((sec-Math.floor(sec))*1000);return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')},${String(ms).padStart(3,'0')}`;};
 
+// 字幕字体按平台探测：macOS 用 PingFang，Docker/Linux 用 fonts-noto-cjk，其余可用环境变量覆盖。
+const FONT_CANDIDATES=[process.env.PAPERCUT_SUBTITLE_FONT,'/System/Library/Fonts/PingFang.ttc','/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc','/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc','/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc','/usr/share/fonts/opentype/noto/NotoSerifCJK-Regular.ttc','C:/Windows/Fonts/msyh.ttc'].filter(Boolean);
+const font=await (async()=>{for(const file of FONT_CANDIDATES){if(await fs.access(file).then(()=>true).catch(()=>false))return file;}throw new Error(`找不到中文字体，请用 PAPERCUT_SUBTITLE_FONT 指向一个 CJK 字体文件。已尝试：${FONT_CANDIDATES.join('、')}`);})();
+// 字幕排版与 Remotion 渲染器共用同一套尺寸与安全区规则，避免两条渲染路径不一致。
+const fontSize=subtitleFontSize(project.width,project.height);
+const captionWidth=Math.round(project.width*.86);
+const captionHeight=Math.round(fontSize*2.9);
+const captionMargin=Math.round(project.height*subtitleBottomRatio(project.width,project.height));
+
+const identify=async(file)=>{const {stdout}=await run('magick',['identify','-format','%w %h',file]);const [w,h]=stdout.trim().split(' ').map(Number);return {width:w,height:h};};
+
 for(const [sceneIndex,scene] of project.scenes.entries()){
   const canvas=path.join(temp,`scene-${sceneIndex}.png`);const ordered=[...scene.layers].sort((a,b)=>a.zIndex-b.zIndex);const background=ordered.find(x=>x.role==='background')??ordered[0];
   await run('magick',[publicFile(background.src),'-resize',`${project.width}x${project.height}^`,'-gravity','center','-extent',`${project.width}x${project.height}`,canvas]);
   for(const [layerIndex,layer] of ordered.filter(x=>x!==background).entries()){
-    const sprite=path.join(temp,`sprite-${sceneIndex}-${layerIndex}.png`);const args=['-background','none',publicFile(layer.src),'-resize',`${Math.round(layer.width)}x`];if(layer.flipX)args.push('-flop');if(layer.rotation)args.push('-background','none','-rotate',String(layer.rotation));if(layer.opacity!=null&&layer.opacity<1)args.push('-channel','A','-evaluate','multiply',String(layer.opacity),'+channel');args.push(sprite);await run('magick',args);
-    const composed=path.join(temp,`composed-${sceneIndex}-${layerIndex}.png`);await run('magick',[canvas,sprite,'-geometry',`+${Math.round(layer.x)}+${Math.round(layer.y)}`,'-compose','over','-composite',composed]);await fs.copyFile(composed,canvas);
+    const sprite=path.join(temp,`sprite-${sceneIndex}-${layerIndex}.png`);const args=['-background','none',publicFile(layer.src),'-resize',`${Math.round(layer.width)}x`];if(layer.flipX)args.push('-flop');if(layer.opacity!=null&&layer.opacity<1)args.push('-channel','A','-evaluate','multiply',String(layer.opacity),'+channel');args.push(sprite);await run('magick',args);
+    const flat=await identify(sprite);
+    if(layer.rotation)await run('magick',[sprite,'-background','none','-rotate',String(layer.rotation),sprite]);
+    // ImageMagick 绕素材中心旋转并撑大画布，Remotion 绕底边中点旋转；换算贴图偏移让两者落点一致。
+    const {x,y}=rotatedTopLeft({layer,flat,rotated:layer.rotation?await identify(sprite):flat});
+    const composed=path.join(temp,`composed-${sceneIndex}-${layerIndex}.png`);await run('magick',[canvas,sprite,'-geometry',`+${x}+${y}`,'-compose','over','-composite',composed]);await fs.copyFile(composed,canvas);
   }
-  const captionCards=[];for(const [captionIndex,caption] of scene.captions.entries()){const card=path.join(temp,`caption-${sceneIndex}-${captionIndex}.png`);await run('magick',['-background',project.theme?.subtitleBackground??'rgba(53,14,16,0.88)','-fill','#f7f0df','-font','/System/Library/Fonts/PingFang.ttc','-pointsize','48','-gravity','center','-size','920x180',`caption:${caption.text}`,card]);captionCards.push({card,caption});}
-  const clip=path.join(temp,`clip-${sceneIndex}.mp4`);const zoomEnd=scene.cameraZoom??1.035;const clipArgs=['-y','-v','error','-loop','1','-i',canvas];for(const {card} of captionCards)clipArgs.push('-loop','1','-i',card);const filters=[`[0:v]zoompan=z='min(zoom+${((zoomEnd-1)/scene.durationFrames).toFixed(7)},${zoomEnd})':x='iw/2-iw/zoom/2':y='ih/2-ih/zoom/2':d=${scene.durationFrames}:s=${project.width}x${project.height}:fps=${project.fps}[zoomed]`];let previous='zoomed';for(const [captionIndex,{caption}] of captionCards.entries()){const next=`captioned${captionIndex}`;filters.push(`[${previous}][${captionIndex+1}:v]overlay=(W-w)/2:H-h-95:enable='between(n,${caption.fromFrame},${caption.toFrame-1})'[${next}]`);previous=next;}filters.push(`[${previous}]format=yuv420p[video]`);clipArgs.push('-filter_complex',filters.join(';'),'-map','[video]','-frames:v',String(scene.durationFrames),'-c:v','libx264','-preset','veryfast','-crf','18',clip);await run('ffmpeg',clipArgs);clips.push(clip);
+  const captionCards=[];for(const [captionIndex,caption] of scene.captions.entries()){const card=path.join(temp,`caption-${sceneIndex}-${captionIndex}.png`);await run('magick',['-background',project.theme?.subtitleBackground??'rgba(53,14,16,0.88)','-fill','#f7f0df','-font',font,'-pointsize',String(fontSize),'-gravity','center','-size',`${captionWidth}x${captionHeight}`,`caption:${caption.text}`,card]);captionCards.push({card,caption});}
+  const clip=path.join(temp,`clip-${sceneIndex}.mp4`);const zoomEnd=scene.cameraZoom??1.035;const clipArgs=['-y','-v','error','-loop','1','-i',canvas];for(const {card} of captionCards)clipArgs.push('-loop','1','-i',card);const filters=[`[0:v]zoompan=z='min(zoom+${((zoomEnd-1)/scene.durationFrames).toFixed(7)},${zoomEnd})':x='iw/2-iw/zoom/2':y='ih/2-ih/zoom/2':d=${scene.durationFrames}:s=${project.width}x${project.height}:fps=${project.fps}[zoomed]`];let previous='zoomed';for(const [captionIndex,{caption}] of captionCards.entries()){const next=`captioned${captionIndex}`;filters.push(`[${previous}][${captionIndex+1}:v]overlay=(W-w)/2:H-h-${captionMargin}:enable='between(n,${caption.fromFrame},${caption.toFrame-1})'[${next}]`);previous=next;}filters.push(`[${previous}]format=yuv420p[video]`);clipArgs.push('-filter_complex',filters.join(';'),'-map','[video]','-frames:v',String(scene.durationFrames),'-c:v','libx264','-preset','veryfast','-crf','18',clip);await run('ffmpeg',clipArgs);clips.push(clip);
   for(const caption of scene.captions){subtitles.push(`${subIndex++}\n${stamp(absoluteFrame+caption.fromFrame)} --> ${stamp(absoluteFrame+caption.toFrame)}\n${caption.text}\n`);}absoluteFrame+=scene.durationFrames;
 }
 const concat=path.join(temp,'clips.txt');await fs.writeFile(concat,clips.map(x=>`file '${x.replaceAll("'","'\\''")}'`).join('\n'));const silent=path.join(temp,'silent.mp4');await run('ffmpeg',['-y','-v','error','-f','concat','-safe','0','-i',concat,'-c','copy',silent]);
 const subtitled=silent;
-const audioInputs=[project.soundtrackSrc,...project.scenes.flatMap(scene=>[scene.narrationSrc,...(scene.audioCues??[]).map(c=>c.src)])];const unique=[...new Set(audioInputs.filter(Boolean))];const ffargs=['-y','-v','error','-i',subtitled];for(const src of unique)ffargs.push('-i',publicFile(src));const filters=[];const mix=[];const musicIndex=unique.indexOf(project.soundtrackSrc)+1;if(musicIndex>0){filters.push(`[${musicIndex}:a]volume=${project.soundtrackVolume??.18}[music]`);mix.push('[music]');}
-let sceneStart=0,cueNo=0;for(const scene of project.scenes){if(scene.narrationSrc){const input=unique.indexOf(scene.narrationSrc)+1;const delay=Math.round(sceneStart/project.fps*1000);const label=`voice${cueNo++}`;filters.push(`[${input}:a]adelay=${delay}|${delay},volume=1.0[${label}]`);mix.push(`[${label}]`);}for(const cue of scene.audioCues??[]){const input=unique.indexOf(cue.src)+1;const delay=Math.round((sceneStart+cue.fromFrame)/project.fps*1000);const label=`cue${cueNo++}`;filters.push(`[${input}:a]adelay=${delay}|${delay},volume=${cue.volume}[${label}]`);mix.push(`[${label}]`);}sceneStart+=scene.durationFrames;}
-const total=absoluteFrame/project.fps;filters.push(`${mix.join('')}amix=inputs=${mix.length}:duration=longest:normalize=0,apad=whole_dur=${total.toFixed(3)},atrim=0:${total.toFixed(3)},loudnorm=I=-18:LRA=9:TP=-1.5[a]`);const output=path.join(root,'out',`${project.id}.mp4`);await fs.mkdir(path.dirname(output),{recursive:true});ffargs.push('-filter_complex',filters.join(';'),'-map','0:v','-map','[a]','-c:v','copy','-c:a','aac','-profile:a','aac_low','-b:a','192k','-ar','48000','-ac','2','-t',total.toFixed(3),'-movflags','+faststart',output);await run('ffmpeg',ffargs,{maxBuffer:20*1024*1024});
+const total=absoluteFrame/project.fps;
+// 音轨与 Remotion 路径共用 buildAudioGraph，两个渲染器的声音完全一致。
+const {sources,filters,outLabel}=buildAudioGraph({project,totalSeconds:total});
+const ffargs=['-y','-v','error','-i',subtitled];for(const src of sources)ffargs.push('-i',publicFile(src));
+const output=path.join(root,'out',`${project.id}.mp4`);await fs.mkdir(path.dirname(output),{recursive:true});
+if(outLabel)ffargs.push('-filter_complex',filters.join(';'),'-map','0:v','-map',outLabel,'-c:v','copy',...AAC_ARGS,'-t',total.toFixed(3),'-movflags','+faststart',output);
+else ffargs.push('-map','0:v','-c:v','copy','-t',total.toFixed(3),'-movflags','+faststart',output);
+await run('ffmpeg',ffargs,{maxBuffer:20*1024*1024});
 console.log(`✓ FFmpeg 无服务器渲染完成：${output}`);console.log(`  ${project.width}×${project.height} · ${project.fps} FPS · ${total.toFixed(1)} 秒 · 配乐/音效/烧录字幕`);
