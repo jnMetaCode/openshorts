@@ -17,14 +17,52 @@ test('模板变量可递归应用到字幕和标题', () => {
   assert.equal(result.scenes[0].captions[0].text, '欢迎来到 长安');
 });
 
-test('项目存储可从模板创建独立工程', async () => {
-  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'papercut-store-'));
+const minimalProject = () => ({
+  schemaVersion: 1, id: 'x', title: 'x', width: 1080, height: 1920, fps: 30,
+  theme: {paper: '#f5eedc', ink: '#201712', accent: '#a72d24', subtitleBackground: 'rgba(31,20,15,.84)'},
+  scenes: [{
+    id: 'scene-01', name: '镜头 01', durationFrames: 60,
+    layers: [{id: 'bg', name: '背景', src: 'assets/sample/tang-bg.svg', role: 'background', x: 0, y: 0, width: 1080, zIndex: 0}],
+  }],
+});
+
+const newStore = async (label) => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), `papercut-${label}-`));
   const projectsDir = path.join(root, 'projects'); const templatesDir = path.join(root, 'templates');
   await fs.mkdir(templatesDir, {recursive: true});
-  await fs.writeFile(path.join(templatesDir, 'blank.json'), JSON.stringify({id: 'blank', name: '空白', project: {schemaVersion: 1, id: 'x', title: 'x', scenes: []}}));
+  return {projectsDir, templatesDir};
+};
+
+test('项目存储可从模板创建独立工程', async () => {
+  const {projectsDir, templatesDir} = await newStore('store');
+  await fs.writeFile(path.join(templatesDir, 'blank.json'), JSON.stringify({id: 'blank', name: '空白', project: minimalProject()}));
   const store = new ProjectStore({projectsDir, templatesDir}); await store.init();
   const created = await store.createFromTemplate({templateId: 'blank', id: 'demo', title: '测试'});
   assert.equal(created.id, 'demo'); assert.equal((await store.list()).length, 1);
+});
+
+test('写入时按协议校验，不合法的工程存不进磁盘', async () => {
+  const {projectsDir, templatesDir} = await newStore('store-invalid');
+  const store = new ProjectStore({projectsDir, templatesDir}); await store.init();
+  const broken = minimalProject();
+  broken.scenes[0].durationFrames = 0;
+  await assert.rejects(() => store.save(broken), (error) => {
+    assert.equal(error.name, 'ProjectValidationError');
+    assert.equal(error.status, 400, '应映射为 400 而不是 500');
+    assert.ok(error.errors.some((item) => item.includes('durationFrames')), error.errors.join('; '));
+    return true;
+  });
+  assert.equal((await store.list()).length, 0, '失败的写入不应留下文件');
+});
+
+test('写入时补齐默认值，存下去的一定是渲染器能读的', async () => {
+  const {projectsDir, templatesDir} = await newStore('store-defaults');
+  const store = new ProjectStore({projectsDir, templatesDir}); await store.init();
+  const bare = minimalProject();
+  const saved = await store.save(bare);
+  assert.equal(saved.soundtrackVolume, 0.18);
+  assert.equal(saved.scenes[0].layers[0].entrance, 'left');
+  assert.deepEqual(saved.scenes[0].captions, []);
 });
 
 test('任务队列持久化并恢复中断任务', async () => {

@@ -1,5 +1,15 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import {parseProject} from '../../shared/project-schema.mjs';
+
+export class ProjectValidationError extends Error {
+  constructor(errors) {
+    super(`项目不符合 PaperCut v1 协议：\n- ${errors.join('\n- ')}`);
+    this.name = 'ProjectValidationError';
+    this.errors = errors;
+    this.status = 400;
+  }
+}
 
 export const safeId = (value, fallback = 'project') => {
   const id = String(value ?? '').normalize('NFKD').toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 64);
@@ -43,10 +53,12 @@ export class ProjectStore {
 
   async get(id) { return readJson(await this.fileForId(id)); }
 
+  // 所有写入路径都过同一份 Zod schema：存进磁盘的工程一定是渲染器能读的。
   async save(project) {
-    const id = safeId(project.id);
-    const normalized = {...project, id};
-    const file = await this.fileForId(id).catch(() => path.join(this.projectsDir, `${id}.json`));
+    const result = parseProject({...project, id: safeId(project?.id)});
+    if (!result.ok) throw new ProjectValidationError(result.errors);
+    const normalized = result.project;
+    const file = await this.fileForId(normalized.id).catch(() => path.join(this.projectsDir, `${normalized.id}.json`));
     await atomicJson(file, normalized);
     return normalized;
   }
