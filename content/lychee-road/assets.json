@@ -1,0 +1,45 @@
+{
+  "assets/generated/lychee-road/storm-road.png": {
+    "provider": "unknown",
+    "createdAt": "2026-07-28",
+    "note": "来源未记录。PNG 元数据在抠图环节被 ImageMagick 清除，git 提交与文档均无记载。公开发布前需重新生成并补齐溯源。"
+  },
+  "assets/generated/lychee-road/lychee-basket.svg": {
+    "provider": "handwritten-svg",
+    "createdAt": "2026-07-28",
+    "license": "本仓库原创（MIT）",
+    "note": "手写 SVG 路径数据，可查阅源码核对"
+  },
+  "assets/generated/lychee-road/layers/courier-running.png": {
+    "provider": "unknown",
+    "createdAt": "2026-07-28",
+    "note": "来源未记录。PNG 元数据在抠图环节被 ImageMagick 清除，git 提交与文档均无记载。公开发布前需重新生成并补齐溯源。"
+  },
+  "assets/generated/lychee-road/route-map.svg": {
+    "provider": "handwritten-svg",
+    "createdAt": "2026-07-28",
+    "license": "本仓库原创（MIT）",
+    "note": "手写 SVG 路径数据，可查阅源码核对"
+  },
+  "assets/generated/lychee-road/layers/post-official.png": {
+    "provider": "unknown",
+    "createdAt": "2026-07-28",
+    "note": "来源未记录。PNG 元数据在抠图环节被 ImageMagick 清除，git 提交与文档均无记载。公开发布前需重新生成并补齐溯源。"
+  },
+  "assets/generated/lychee-road/layers/relay-horse.png": {
+    "provider": "unknown",
+    "createdAt": "2026-07-28",
+    "note": "来源未记录。PNG 元数据在抠图环节被 ImageMagick 清除，git 提交与文档均无记载。公开发布前需重新生成并补齐溯源。"
+  },
+  "assets/generated/lychee-road/palace-gate.svg": {
+    "provider": "handwritten-svg",
+    "createdAt": "2026-07-28",
+    "license": "本仓库原创（MIT）",
+    "note": "手写 SVG 路径数据，可查阅源码核对"
+  },
+  "assets/generated/lychee-road/layers/courier-kneeling.png": {
+    "provider": "unknown",
+    "createdAt": "2026-07-28",
+    "note": "来源未记录。PNG 元数据在抠图环节被 ImageMagick 清除，git 提交与文档均无记载。公开发布前需重新生成并补齐溯源。"
+  }
+}

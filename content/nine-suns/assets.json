@@ -1,0 +1,50 @@
+{
+  "assets/generated/nine-suns/scorched-earth.svg": {
+    "provider": "handwritten-svg",
+    "createdAt": "2026-07-30",
+    "license": "本仓库原创（MIT）",
+    "note": "手写 SVG 路径数据，可查阅源码核对"
+  },
+  "assets/generated/nine-suns/layers/sun-crow.svg": {
+    "provider": "handwritten-svg",
+    "createdAt": "2026-07-30",
+    "license": "本仓库原创（MIT）",
+    "note": "手写 SVG 路径数据，可查阅源码核对"
+  },
+  "assets/generated/nine-suns/layers/villagers.svg": {
+    "provider": "handwritten-svg",
+    "createdAt": "2026-07-30",
+    "license": "本仓库原创（MIT）",
+    "note": "手写 SVG 路径数据，可查阅源码核对"
+  },
+  "assets/generated/nine-suns/mountain-peak.svg": {
+    "provider": "handwritten-svg",
+    "createdAt": "2026-07-30",
+    "license": "本仓库原创（MIT）",
+    "note": "手写 SVG 路径数据，可查阅源码核对"
+  },
+  "assets/generated/nine-suns/layers/archer-standing.svg": {
+    "provider": "handwritten-svg",
+    "createdAt": "2026-07-30",
+    "license": "本仓库原创（MIT）",
+    "note": "手写 SVG 路径数据，可查阅源码核对"
+  },
+  "assets/generated/nine-suns/layers/falling-crow.svg": {
+    "provider": "handwritten-svg",
+    "createdAt": "2026-07-30",
+    "license": "本仓库原创（MIT）",
+    "note": "手写 SVG 路径数据，可查阅源码核对"
+  },
+  "assets/generated/nine-suns/layers/archer-drawing.svg": {
+    "provider": "handwritten-svg",
+    "createdAt": "2026-07-30",
+    "license": "本仓库原创（MIT）",
+    "note": "手写 SVG 路径数据，可查阅源码核对"
+  },
+  "assets/generated/nine-suns/dawn-fields.svg": {
+    "provider": "handwritten-svg",
+    "createdAt": "2026-07-30",
+    "license": "本仓库原创（MIT）",
+    "note": "手写 SVG 路径数据，可查阅源码核对"
+  }
+}
