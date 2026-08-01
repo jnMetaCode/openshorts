@@ -11,7 +11,7 @@
     "accent": "#e59a2c",
     "subtitleBackground": "rgba(43,16,10,.87)"
   },
-  "soundtrackSrc": "audio/nine-suns/original-underscore.wav",
+  "soundtrackSrc": "audio/nine-suns/underscore.wav",
   "soundtrackVolume": 0.42,
   "production": {
     "plannerVersion": 1,
@@ -33,13 +33,185 @@
         "description": "化作太阳的三足神鸟"
       }
     ],
-    "assetPlan": []
+    "assetPlan": [
+      {
+        "id": "asset-01",
+        "role": "background",
+        "name": "焦土",
+        "prompt": "",
+        "requirements": [],
+        "status": "approved",
+        "src": "assets/generated/nine-suns/scorched-earth.svg",
+        "promptVersions": [],
+        "reviewHistory": [],
+        "generation": {
+          "provider": "handwritten-svg",
+          "model": "-",
+          "parameters": {
+            "usedIn": 2,
+            "license": "本仓库原创（MIT）",
+            "note": "手写 SVG 路径数据，可查阅源码核对"
+          },
+          "createdAt": "2026-07-30"
+        }
+      },
+      {
+        "id": "asset-02",
+        "role": "secondary",
+        "name": "金乌一",
+        "prompt": "",
+        "requirements": [],
+        "status": "approved",
+        "src": "assets/generated/nine-suns/layers/sun-crow.svg",
+        "promptVersions": [],
+        "reviewHistory": [],
+        "generation": {
+          "provider": "handwritten-svg",
+          "model": "-",
+          "parameters": {
+            "usedIn": 13,
+            "license": "本仓库原创（MIT）",
+            "note": "手写 SVG 路径数据，可查阅源码核对"
+          },
+          "createdAt": "2026-07-30"
+        }
+      },
+      {
+        "id": "asset-03",
+        "role": "primary",
+        "name": "避日的人们",
+        "prompt": "",
+        "requirements": [],
+        "status": "approved",
+        "src": "assets/generated/nine-suns/layers/villagers.svg",
+        "promptVersions": [],
+        "reviewHistory": [],
+        "generation": {
+          "provider": "handwritten-svg",
+          "model": "-",
+          "parameters": {
+            "usedIn": 3,
+            "license": "本仓库原创（MIT）",
+            "note": "手写 SVG 路径数据，可查阅源码核对"
+          },
+          "createdAt": "2026-07-30"
+        }
+      },
+      {
+        "id": "asset-04",
+        "role": "background",
+        "name": "高山",
+        "prompt": "",
+        "requirements": [],
+        "status": "approved",
+        "src": "assets/generated/nine-suns/mountain-peak.svg",
+        "promptVersions": [],
+        "reviewHistory": [],
+        "generation": {
+          "provider": "handwritten-svg",
+          "model": "-",
+          "parameters": {
+            "usedIn": 3,
+            "license": "本仓库原创（MIT）",
+            "note": "手写 SVG 路径数据，可查阅源码核对"
+          },
+          "createdAt": "2026-07-30"
+        }
+      },
+      {
+        "id": "asset-05",
+        "role": "primary",
+        "name": "后羿登山",
+        "prompt": "",
+        "requirements": [],
+        "status": "approved",
+        "src": "assets/generated/nine-suns/layers/archer-standing.svg",
+        "promptVersions": [],
+        "reviewHistory": [],
+        "generation": {
+          "provider": "handwritten-svg",
+          "model": "-",
+          "parameters": {
+            "usedIn": 3,
+            "license": "本仓库原创（MIT）",
+            "note": "手写 SVG 路径数据，可查阅源码核对"
+          },
+          "createdAt": "2026-07-30"
+        }
+      },
+      {
+        "id": "asset-06",
+        "role": "secondary",
+        "name": "坠落的金乌",
+        "prompt": "",
+        "requirements": [],
+        "status": "approved",
+        "src": "assets/generated/nine-suns/layers/falling-crow.svg",
+        "promptVersions": [],
+        "reviewHistory": [],
+        "generation": {
+          "provider": "handwritten-svg",
+          "model": "-",
+          "parameters": {
+            "usedIn": 1,
+            "license": "本仓库原创（MIT）",
+            "note": "手写 SVG 路径数据，可查阅源码核对"
+          },
+          "createdAt": "2026-07-30"
+        }
+      },
+      {
+        "id": "asset-07",
+        "role": "primary",
+        "name": "后羿开弓",
+        "prompt": "",
+        "requirements": [],
+        "status": "approved",
+        "src": "assets/generated/nine-suns/layers/archer-drawing.svg",
+        "promptVersions": [],
+        "reviewHistory": [],
+        "generation": {
+          "provider": "handwritten-svg",
+          "model": "-",
+          "parameters": {
+            "usedIn": 1,
+            "license": "本仓库原创（MIT）",
+            "note": "手写 SVG 路径数据，可查阅源码核对"
+          },
+          "createdAt": "2026-07-30"
+        }
+      },
+      {
+        "id": "asset-08",
+        "role": "background",
+        "name": "复苏的田野",
+        "prompt": "",
+        "requirements": [],
+        "status": "approved",
+        "src": "assets/generated/nine-suns/dawn-fields.svg",
+        "promptVersions": [],
+        "reviewHistory": [],
+        "generation": {
+          "provider": "handwritten-svg",
+          "model": "-",
+          "parameters": {
+            "usedIn": 1,
+            "license": "本仓库原创（MIT）",
+            "note": "手写 SVG 路径数据，可查阅源码核对"
+          },
+          "createdAt": "2026-07-30"
+        }
+      }
+    ],
+    "music": {
+      "mood": "epic"
+    }
   },
   "scenes": [
     {
       "id": "hook",
       "name": "1. 问题钩子与十日危机",
-      "durationFrames": 352,
+      "durationFrames": 324,
       "backgroundColor": "#2b1410",
       "cameraZoom": 1.05,
       "layers": [
@@ -165,34 +337,34 @@
       ],
       "captions": [
         {
-          "text": "如果天上同时挂着十个太阳，河干",
+          "text": "如果天上同时挂着十个太阳，",
           "fromFrame": 4,
-          "toFrame": 107,
+          "toFrame": 87,
           "words": []
         },
         {
-          "text": "了，地裂了，庄稼一晒就冒烟。",
-          "fromFrame": 107,
-          "toFrame": 203,
+          "text": "河干了，地裂了，庄稼一晒就冒烟。",
+          "fromFrame": 87,
+          "toFrame": 189,
           "words": []
         },
         {
           "text": "你会怎么办？",
-          "fromFrame": 203,
-          "toFrame": 244,
+          "fromFrame": 189,
+          "toFrame": 227,
           "words": []
         },
         {
           "text": "上古的答案只有三个字：射下来。",
-          "fromFrame": 244,
-          "toFrame": 348,
+          "fromFrame": 227,
+          "toFrame": 322,
           "words": []
         }
       ],
       "narrationSrc": "audio/nine-suns/01-hook.wav",
       "audioCues": [
         {
-          "src": "audio/nine-suns/impact.wav",
+          "src": "audio/common/impact.wav",
           "fromFrame": 0,
           "volume": 0.5
         }
@@ -201,7 +373,7 @@
     {
       "id": "crisis",
       "name": "2. 建立灾难与失序",
-      "durationFrames": 399,
+      "durationFrames": 394,
       "backgroundColor": "#2b1410",
       "cameraZoom": 1.035,
       "layers": [
@@ -293,34 +465,40 @@
       ],
       "captions": [
         {
-          "text": "传说里，十只金乌本该轮流值班，一天只出一个。",
+          "text": "传说里，十只金乌本该轮流值班，",
           "fromFrame": 4,
-          "toFrame": 150,
+          "toFrame": 103,
+          "words": []
+        },
+        {
+          "text": "一天只出一个。",
+          "fromFrame": 103,
+          "toFrame": 149,
           "words": []
         },
         {
           "text": "可它们偏要一起上天。",
-          "fromFrame": 150,
-          "toFrame": 216,
+          "fromFrame": 149,
+          "toFrame": 215,
           "words": []
         },
         {
-          "text": "草木枯焦，江河见底，老百姓连",
-          "fromFrame": 216,
-          "toFrame": 309,
+          "text": "草木枯焦，江河见底，",
+          "fromFrame": 215,
+          "toFrame": 281,
           "words": []
         },
         {
-          "text": "一片躲太阳的影子都找不到。",
-          "fromFrame": 309,
-          "toFrame": 395,
+          "text": "老百姓连一片躲太阳的影子都找不到。",
+          "fromFrame": 281,
+          "toFrame": 392,
           "words": []
         }
       ],
       "narrationSrc": "audio/nine-suns/02-crisis.wav",
       "audioCues": [
         {
-          "src": "audio/nine-suns/whoosh.wav",
+          "src": "audio/common/whoosh.wav",
           "fromFrame": 6,
           "volume": 0.25
         }
@@ -329,7 +507,7 @@
     {
       "id": "archer",
       "name": "3. 英雄登场",
-      "durationFrames": 324,
+      "durationFrames": 327,
       "backgroundColor": "#2b1410",
       "cameraZoom": 1.035,
       "layers": [
@@ -406,26 +584,32 @@
         {
           "text": "这时候站出来一个人，后羿。",
           "fromFrame": 4,
-          "toFrame": 90,
+          "toFrame": 91,
           "words": []
         },
         {
-          "text": "他背着一张红色的大弓，一步一步登上最高的山。",
-          "fromFrame": 90,
-          "toFrame": 235,
+          "text": "他背着一张红色的大弓，",
+          "fromFrame": 91,
+          "toFrame": 165,
+          "words": []
+        },
+        {
+          "text": "一步一步登上最高的山。",
+          "fromFrame": 165,
+          "toFrame": 239,
           "words": []
         },
         {
           "text": "风把他的衣角吹得像一面旗。",
-          "fromFrame": 235,
-          "toFrame": 320,
+          "fromFrame": 239,
+          "toFrame": 325,
           "words": []
         }
       ],
       "narrationSrc": "audio/nine-suns/03-archer.wav",
       "audioCues": [
         {
-          "src": "audio/nine-suns/whoosh.wav",
+          "src": "audio/common/whoosh.wav",
           "fromFrame": 10,
           "volume": 0.3
         }
@@ -434,7 +618,7 @@
     {
       "id": "shooting",
       "name": "4. 高潮动作",
-      "durationFrames": 304,
+      "durationFrames": 281,
       "backgroundColor": "#2b1410",
       "cameraZoom": 1.07,
       "layers": [
@@ -511,41 +695,47 @@
         {
           "text": "一箭，一只金乌坠落。",
           "fromFrame": 4,
-          "toFrame": 82,
+          "toFrame": 76,
           "words": []
         },
         {
           "text": "再一箭，又一只。",
-          "fromFrame": 82,
-          "toFrame": 144,
+          "fromFrame": 76,
+          "toFrame": 134,
           "words": []
         },
         {
-          "text": "九支箭，九个太阳，一个接一个从天上熄灭。",
-          "fromFrame": 144,
-          "toFrame": 300,
+          "text": "九支箭，九个太阳，",
+          "fromFrame": 134,
+          "toFrame": 199,
+          "words": []
+        },
+        {
+          "text": "一个接一个从天上熄灭。",
+          "fromFrame": 199,
+          "toFrame": 279,
           "words": []
         }
       ],
       "narrationSrc": "audio/nine-suns/04-shooting.wav",
       "audioCues": [
         {
-          "src": "audio/nine-suns/whoosh.wav",
+          "src": "audio/common/whoosh.wav",
           "fromFrame": 0,
           "volume": 0.45
         },
         {
-          "src": "audio/nine-suns/impact.wav",
+          "src": "audio/common/impact.wav",
           "fromFrame": 16,
           "volume": 0.5
         },
         {
-          "src": "audio/nine-suns/whoosh.wav",
+          "src": "audio/common/whoosh.wav",
           "fromFrame": 34,
           "volume": 0.4
         },
         {
-          "src": "audio/nine-suns/impact.wav",
+          "src": "audio/common/impact.wav",
           "fromFrame": 50,
           "volume": 0.45
         }
@@ -554,7 +744,7 @@
     {
       "id": "mercy",
       "name": "5. 转折与克制",
-      "durationFrames": 275,
+      "durationFrames": 265,
       "backgroundColor": "#2b1410",
       "cameraZoom": 1.03,
       "layers": [
@@ -614,26 +804,26 @@
         {
           "text": "只剩最后一个的时候，他却收了弓。",
           "fromFrame": 4,
-          "toFrame": 114,
+          "toFrame": 110,
           "words": []
         },
         {
           "text": "有人问为什么。",
-          "fromFrame": 114,
-          "toFrame": 162,
+          "fromFrame": 110,
+          "toFrame": 156,
           "words": []
         },
         {
           "text": "他说，万物生长，总得留一个太阳。",
-          "fromFrame": 162,
-          "toFrame": 271,
+          "fromFrame": 156,
+          "toFrame": 263,
           "words": []
         }
       ],
       "narrationSrc": "audio/nine-suns/05-mercy.wav",
       "audioCues": [
         {
-          "src": "audio/nine-suns/whoosh.wav",
+          "src": "audio/common/whoosh.wav",
           "fromFrame": 8,
           "volume": 0.15
         }
@@ -642,7 +832,7 @@
     {
       "id": "ending",
       "name": "6. 余味与主题",
-      "durationFrames": 275,
+      "durationFrames": 270,
       "backgroundColor": "#2b1410",
       "cameraZoom": 1.035,
       "layers": [
@@ -717,28 +907,28 @@
       ],
       "captions": [
         {
-          "text": "后来人们记住了那九箭，也记",
+          "text": "后来人们记住了那九箭，",
           "fromFrame": 4,
-          "toFrame": 89,
+          "toFrame": 75,
           "words": []
         },
         {
-          "text": "住了那支没有射出去的箭。",
-          "fromFrame": 89,
-          "toFrame": 167,
+          "text": "也记住了那支没有射出去的箭。",
+          "fromFrame": 75,
+          "toFrame": 165,
           "words": []
         },
         {
           "text": "英雄的分寸，比英雄的力气更难得。",
-          "fromFrame": 167,
-          "toFrame": 271,
+          "fromFrame": 165,
+          "toFrame": 268,
           "words": []
         }
       ],
       "narrationSrc": "audio/nine-suns/06-ending.wav",
       "audioCues": [
         {
-          "src": "audio/nine-suns/whoosh.wav",
+          "src": "audio/common/whoosh.wav",
           "fromFrame": 4,
           "volume": 0.18
         }

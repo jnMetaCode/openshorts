@@ -6,8 +6,8 @@ PaperCut Studio 的故事案例复用 `youtube-doodle/make-doodle.js` 已验证�
 
 ```bash
 pipx install edge-tts
-npm run story:audio
-npm run story:render:fallback
+npm run story -- lychee-road audio
+npm run story -- lychee-road render --fallback
 ```
 
 默认音色为 `zh-CN-YunjianNeural`，语速 `+6%`、不改音高——与 youtube-doodle 实测最耐听的配方一致。可直接调整：
@@ -34,8 +34,8 @@ youtube-doodle 的试听结论可直接复用：`YunjianNeural` 激情叙事、`
 如果本机已经安装 `kokoro`、`misaki[zh]`、PyTorch 和 SoundFile，并缓存 Kokoro-82M 模型，可直接运行：
 
 ```bash
-npm run story:audio:local
-npm run story:render:fallback
+npm run story -- lychee-road audio:local
+npm run story -- lychee-road render --fallback
 ```
 
 只检查本机环境和模型是否可用（不生成音频）：
@@ -75,5 +75,5 @@ npm run story:release:local
 ```bash
 PAPERCUT_KOKORO_PYTHON=/path/to/venv/bin/python \
 PAPERCUT_KOKORO_MODEL_DIR=/path/to/Kokoro-82M \
-npm run story:audio:local
+npm run story -- lychee-road audio:local
 ```

@@ -1,9 +1,9 @@
 {
   "storyId": "nine-suns",
-  "voice": "zh-CN-YunjianNeural",
-  "rate": "+6%",
+  "voice": "zh-CN-YunyangNeural",
+  "rate": "+0%",
   "pitch": "+0Hz",
-  "totalDuration": 60.888,
+  "totalDuration": 58.608000000000004,
   "segments": [
     {
       "id": "hook",
@@ -13,8 +13,8 @@
       "file": "public/audio/nine-suns/01-hook.wav",
       "provider": "edge",
       "start": 0,
-      "end": 11.16,
-      "duration": 11.16
+      "end": 10.224,
+      "duration": 10.224
     },
     {
       "id": "crisis",
@@ -23,9 +23,9 @@
       "index": 1,
       "file": "public/audio/nine-suns/02-crisis.wav",
       "provider": "edge",
-      "start": 11.16,
-      "end": 23.904,
-      "duration": 12.744
+      "start": 10.224,
+      "end": 22.8,
+      "duration": 12.576
     },
     {
       "id": "archer",
@@ -34,9 +34,9 @@
       "index": 2,
       "file": "public/audio/nine-suns/03-archer.wav",
       "provider": "edge",
-      "start": 23.904,
-      "end": 34.128,
-      "duration": 10.224
+      "start": 22.8,
+      "end": 33.120000000000005,
+      "duration": 10.32
     },
     {
       "id": "shooting",
@@ -45,9 +45,9 @@
       "index": 3,
       "file": "public/audio/nine-suns/04-shooting.wav",
       "provider": "edge",
-      "start": 34.128,
-      "end": 43.68,
-      "duration": 9.552
+      "start": 33.120000000000005,
+      "end": 41.904,
+      "duration": 8.784
     },
     {
       "id": "mercy",
@@ -56,9 +56,9 @@
       "index": 4,
       "file": "public/audio/nine-suns/05-mercy.wav",
       "provider": "edge",
-      "start": 43.68,
-      "end": 52.272,
-      "duration": 8.592
+      "start": 41.904,
+      "end": 50.184000000000005,
+      "duration": 8.28
     },
     {
       "id": "ending",
@@ -67,9 +67,9 @@
       "index": 5,
       "file": "public/audio/nine-suns/06-ending.wav",
       "provider": "edge",
-      "start": 52.272,
-      "end": 60.888,
-      "duration": 8.616
+      "start": 50.184000000000005,
+      "end": 58.608000000000004,
+      "duration": 8.424
     }
   ]
 }

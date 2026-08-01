@@ -10,3 +10,6 @@ public/uploads/
 coverage/
 models/
 __pycache__/
+
+# 第三方配乐不进仓库：授权因来源而异，各自本地导入
+public/audio/custom/

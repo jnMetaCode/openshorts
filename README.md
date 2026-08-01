@@ -147,43 +147,129 @@ npm run studio
 仓库内置一个 55 秒、1080×1920 的六镜头故事工程：`projects/lychee-road.json`。它包含独立背景与人物图层、完整口播文案、烧录字幕、原创配乐，以及雨声、马蹄、冲击和转场音效。
 
 ```bash
-# 不启动浏览器或本地端口，直接用 FFmpeg 生成带声音的预览成片
-npm run story:render:fallback
+# 正式渲染：Remotion 出画面（入场动画、关键帧、纸片描边），再统一做音频母带
+npm run story -- lychee-road render
+
+# 没有 Chrome 时的降级预览：纯 FFmpeg，只有推镜，没有入场动画
+npm run story -- lychee-road render --fallback
 
 # macOS 普通终端：生成有效中文旁白并按实际时长重建工程
-npm run story:audio
+npm run story -- lychee-road audio
 
 # 已安装 Kokoro 时完全离线生成中文旁白
-npm run story:audio:local
-
-# 使用 Remotion 正式渲染
-npm run story:render
+npm run story -- lychee-road audio:local
 ```
 
-`story:audio` 复用了 `youtube-doodle` 的逐镜 `edge-tts` 方案，默认使用 `zh-CN-YunjianNeural`、`+6%` 语速、不改音高（对齐该项目实测最耐听的配方），并按“音色 + 参数 + 文案”缓存。它会验证每段语音的文件大小和真实时长，空音频立即中止，不会生成“有音轨但没有人声”的假成片。`edge-tts` 客户端虽然开源免费，但调用的是微软在线语音服务，并非离线模型；完全离线部署可直接使用已接入的中文专用 Kokoro-82M-v1.1-zh（Apache-2.0，见 `docs/tts.md`）。研究来源、史实边界和发布文案位于 `content/lychee-road/`。
+### 两条渲染路径的关系
+
+| | `render.mjs`（Remotion） | `render-story-ffmpeg.mjs`（降级） |
+| --- | --- | --- |
+| 依赖 | Chrome / Chromium | 仅 FFmpeg + ImageMagick |
+| 入场动画、关键帧、漂浮 | ✅ | ❌ 只有推镜 |
+| 纸片描边与落影 | ✅ | ❌ |
+| 逐字字幕高亮 | ✅ | ❌ |
+| 图层坐标与旋转锚点 | 基准 | 与基准一致（`scripts/lib/layout.mjs` 换算） |
+| 字幕排版与安全区 | 共用 `shared/captions.mjs` | 共用 `shared/captions.mjs` |
+| 音轨 | 共用 `scripts/lib/audio-master.mjs` | 共用 `scripts/lib/audio-master.mjs` |
+
+正式发布用 Remotion。降级路径只保证坐标、字幕和声音一致，不保证运动——它的定位是「没有 Chrome 时先看清排版」。
+
+音轨由 `npm run master -- <成片> <工程>` 独立完成，两条路径渲完都走这一步。
+
+`story ... audio` 复用了 `youtube-doodle` 的逐镜 `edge-tts` 方案，默认使用 `zh-CN-YunjianNeural`、`+6%` 语速、不改音高（对齐该项目实测最耐听的配方），并按“音色 + 参数 + 文案”缓存。它会验证每段语音的文件大小和真实时长，空音频立即中止，不会生成“有音轨但没有人声”的假成片。`edge-tts` 客户端虽然开源免费，但调用的是微软在线语音服务，并非离线模型；完全离线部署可直接使用已接入的中文专用 Kokoro-82M-v1.1-zh（Apache-2.0，见 `docs/tts.md`）。研究来源、史实边界和发布文案位于 `content/lychee-road/`。
 
 ## 第二个案例：《后羿射日》——用数据做一条新视频
 
 ![后羿射日 六镜头](docs/media/nine-suns-scenes.jpg)
 
-`lychee-road` 的分镜编排写在专用脚本里；第二个故事《后羿射日》改用**纯数据驱动**，验证了做一条新视频只需要三样东西，不用改一行渲染代码：
+两个故事现在都是**纯数据驱动**，做一条新视频只需要三样东西，不用改一行渲染代码，也不用往 `package.json` 里加脚本：
 
-- `content/nine-suns/story.json` —— 六段口播文案；
-- `content/nine-suns/storyboard.json` —— 分镜编排（每镜的图层、位置、入场、音效点位、镜头推进）；
-- `public/assets/generated/nine-suns/` —— 手绘纸艺风格 SVG 素材（三张背景 + 三足金乌、后羿、灾民等图层件）。
+- `content/<故事名>/story.json` —— 逐段口播文案；
+- `content/<故事名>/storyboard.json` —— 分镜编排（每镜的图层、位置、入场、音效点位、镜头推进）；
+- `public/assets/generated/<故事名>/` —— 分层素材（SVG 或透明 PNG 均可）。
+
+放好这三样，`npm run story -- <故事名>` 就能出片。关键帧的 `frame` 可以写 `"end"`，表示本镜最后一帧，旁白时长变化时运动终点自动跟上。
 
 ```bash
 # 生成旁白并构建工程
-npm run nine-suns:audio
+npm run story -- nine-suns audio
 
 # 渲染 + 媒体验收
-npm run nine-suns:render
+npm run story -- nine-suns render
 
 # 一键发布：渲染、验收、原子更新成片、Whisper 反识别、SHA-256 清单
-npm run nine-suns:release:local
+npm run story -- nine-suns release
 ```
 
-通用构建器 `scripts/build-story.mjs` 接受任意故事目录：`node scripts/build-story.mjs content/<你的故事>`，配套校验（旁白时序、媒体规格、字幕切分）与 `lychee-road` 完全一致。
+统一入口 `npm run story -- <故事名> [阶段]` 支持 `audio`、`audio:local`、`build`、`render`、`release` 五个阶段，加 `--fallback` 走无 Chrome 的降级渲染。不带参数会列出 `content/` 下所有可用的故事。
+
+音效（雨声、马蹄、冲击、转场）放在 `public/audio/common/` 共享，各故事目录保留自己的旁白和配乐。
+
+## 旁白音色
+
+写在 `content/<故事名>/storyboard.json`：
+
+```json
+"voice": {"name": "zh-CN-YunyangNeural", "rate": "+0%", "pitch": "+0Hz"}
+```
+
+试听候选音色并对比：
+
+```bash
+node scripts/preview-voices.mjs                                  # 同一句话，6 个音色各念一遍
+npm run story -- nine-suns audio --voice=zh-CN-YunxiNeural       # 临时覆盖，不改配置
+```
+
+语速为负时必须用等号形式（`--rate=-6%`），否则负号会被当成命令行标志。换音色会改变旁白时长，工程时间轴、字幕分配和配乐长度都会自动重算。
+
+## 配乐
+
+默认按故事情绪合成，写在 `storyboard.json`：
+
+```json
+"music": {"mood": "epic"}
+```
+
+可选 `epic`（宫调，开阔）、`urgent`（羽调，紧迫）、`elegiac`（低八度，苍凉）、`bright`（徵调，明快）。合成用 Karplus-Strong 弹拨弦加 Schroeder 混响，音高序列由故事名派生的 seed 决定——同一个故事永远得到同一首曲子，不同故事天然不同。
+
+### 接入自备配乐
+
+合成器的定位是兜底。有现成音乐时直接导入：
+
+```bash
+node scripts/import-music.mjs nine-suns ~/Downloads/track.mp3 \
+  --start=8 --credit="作者 - 曲名" --license="CC BY 4.0"
+```
+
+导入会做三件事：跳过指定的前奏、**把响度归一到 -20 LUFS**、写入 `storyboard.json`。
+
+归一这步不能省：外来音乐的响度从 -8 到 -25 LUFS 都常见，而旁白闪避的 sidechain 按幅度判定——太响会让压缩器全程压着，太轻则根本触发不了。归一后 `soundtrackVolume` 才是个有确定含义的数字。
+
+第三方音乐大多要求署名。`--credit` 会随工程流进验收报告；没填时 `npm run quality` 会告警。导入的文件放在 `public/audio/custom/`，已在 `.gitignore` 中——授权因来源而异，不适合进仓库。
+
+## 素材溯源
+
+来源不明的素材不能商用，而元数据很容易在处理环节丢失——本仓库《三天荔枝道》的 5 张 PNG 就是这么丢的：抠图时 ImageMagick 清掉了原始元数据，git 提交和文档都没记，现在已无从查证。
+
+所以溯源存在源头 `content/<故事名>/assets.json`，构建时才写进工程。**不要直接改 `projects/*.json` 里的 `assetPlan`——那是生成物，下次构建就没了。**
+
+生成完一张素材立刻记录：
+
+```bash
+npm run asset -- nine-suns assets/generated/nine-suns/layers/hou-yi.png \
+  --provider=comfyui --model=flux.1-dev --seed=42 \
+  --prompt="剪纸风格弓箭手，纯绿背景" --license=CC0
+```
+
+来源类型：`handwritten-svg`（手写 SVG，本仓库原创）、`comfyui`、`imagegen-agent`、`stock`、`photograph`、`unknown`。除 `unknown` 外都视为可商用；`comfyui` 和 `imagegen-agent` 必须同时提供 `--model`。
+
+`npm run quality` 会报告来源未知的素材。公开发布前把它升级为硬错误：
+
+```bash
+QUALITY_REQUIRE_PROVENANCE=1 npm run quality -- out/my-story.mp4 projects/my-story.json
+```
+
+当前状态：《后羿射日》8 个素材全部为手写 SVG，来源可查；《三天荔枝道》8 个中有 5 张 PNG 标注为来源未知，公开发布前需重新生成。
 
 ## 素材处理 CLI
 
@@ -339,7 +425,20 @@ npm run draft -- \
 | `entrance` | `none / left / right / up / down / scale / fade` |
 | `paperEdge` | 统一白色剪纸描边和落影 |
 
-完整示例见 [`projects/sample.json`](projects/sample.json)。协议由 Zod 在 [`src/domain/project.ts`](src/domain/project.ts) 中定义。
+完整示例见 [`projects/sample.json`](projects/sample.json)。
+
+协议由 Zod 在 [`shared/project-schema.mjs`](shared/project-schema.mjs) 中定义，这是唯一的一份：浏览器编辑器、Remotion 渲染器、Express 服务端和 `npm run validate` 全部从这里读同一个 schema，`src/domain/project.ts` 只负责导出推导出来的 TypeScript 类型。
+
+写入路径（`PUT /api/project`、模板创建、项目包导入）都会完整校验并补齐默认值；不合法的工程返回 400 并指出具体字段，不会存进磁盘：
+
+```json
+{
+  "error": "项目不符合 PaperCut v1 协议：\n- scenes.0.layers.0.src：Invalid input: expected string, received undefined",
+  "issues": ["scenes.0.layers.0.src：Invalid input: expected string, received undefined"]
+}
+```
+
+时间轴越界（关键帧或字幕超出镜头时长）不在写入时拦截——编辑器里缩短镜头是常规操作——而是由 `npm run quality` 在验收阶段报告。
 
 ## 推荐素材规范
 
@@ -348,6 +447,18 @@ npm run draft -- \
 - 素材表拆分：每个角色输出为独立透明 PNG，四周保留 2%～5% 空白。
 - 角色朝向：生成阶段明确左/右朝向；必要时使用 `flipX`，但文字和非对称服饰不建议镜像。
 - 音频：旁白按镜头切分；项目协议已保留 `narrationSrc` 和 `soundtrackSrc`。
+
+## 竖屏发布规范
+
+竖屏工程（`height > width`）的字幕与响度由渲染器统一处理，两条渲染路径共用 `shared/captions.mjs` 的同一套规则：
+
+- 字幕位于底部 20% 之上，避开抖音、快手、视频号的账号名、话题和进度条。
+- 单行上限 16 个汉字；断句只发生在标点处，不会把词拆开。
+- 字号按画面短边的 4.5% 计算，横屏与竖屏每行字数一致。
+- 成片响度对齐平台归一化目标 -14 LUFS，真峰值不超过 -1.5 dBFS。
+- 配乐按旁白自动闪避约 10 dB，并在短于成片时循环补齐。
+
+`npm run quality` 会校验以上各项；FFmpeg 渲染器自动探测中文字体，也可用 `PAPERCUT_SUBTITLE_FONT` 指定。
 
 ## 架构
 

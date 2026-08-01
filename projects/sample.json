@@ -5,30 +5,377 @@
   "width": 1920,
   "height": 1080,
   "fps": 30,
-  "theme": {"paper": "#f5eedc", "ink": "#201712", "accent": "#a72d24", "subtitleBackground": "rgba(31,20,15,.84)"},
+  "theme": {
+    "paper": "#f5eedc",
+    "ink": "#201712",
+    "accent": "#a72d24",
+    "subtitleBackground": "rgba(31,20,15,.84)"
+  },
   "scenes": [
     {
-      "id": "wide", "name": "盛唐长安全景", "durationFrames": 180, "backgroundColor": "#d7c4a0", "cameraZoom": 1.035,
+      "id": "wide",
+      "name": "盛唐长安全景",
+      "durationFrames": 180,
+      "backgroundColor": "#d7c4a0",
+      "cameraZoom": 1.035,
       "layers": [
-        {"id":"wide-bg","name":"宫殿山水底板","src":"assets/sample/tang-bg.svg","role":"background","x":0,"y":0,"width":1920,"rotation":0,"opacity":1,"zIndex":0,"delayFrames":0,"entrance":"none","flipX":false,"paperEdge":false},
-        {"id":"wide-ministers","name":"右侧后排群臣","src":"assets/sample/ministers.svg","role":"tertiary","x":1340,"y":545,"width":430,"rotation":-1,"opacity":0.86,"zIndex":2,"delayFrames":34,"entrance":"right","flipX":false,"paperEdge":true},
-        {"id":"wide-emperor","name":"皇帝主角","src":"assets/sample/emperor.svg","role":"primary","x":650,"y":235,"width":650,"rotation":0,"opacity":1,"zIndex":5,"delayFrames":4,"entrance":"up","flipX":false,"paperEdge":true},
-        {"id":"wide-left","name":"左侍女","src":"assets/sample/attendant.svg","role":"secondary","x":310,"y":535,"width":245,"rotation":-2,"opacity":1,"zIndex":6,"delayFrames":18,"entrance":"left","flipX":false,"paperEdge":true},
-        {"id":"wide-right","name":"右侍女","src":"assets/sample/attendant.svg","role":"secondary","x":1390,"y":530,"width":235,"rotation":2,"opacity":1,"zIndex":6,"delayFrames":26,"entrance":"right","flipX":true,"paperEdge":true},
-        {"id":"wide-foreground","name":"撕纸前景","src":"assets/sample/foreground.svg","role":"foreground","x":0,"y":795,"width":1920,"rotation":0,"opacity":1,"zIndex":10,"delayFrames":45,"entrance":"down","flipX":false,"paperEdge":false}
+        {
+          "id": "wide-bg",
+          "name": "宫殿山水底板",
+          "src": "assets/sample/tang-bg.svg",
+          "role": "background",
+          "x": 0,
+          "y": 0,
+          "width": 1920,
+          "rotation": 0,
+          "opacity": 1,
+          "zIndex": 0,
+          "delayFrames": 0,
+          "entrance": "none",
+          "flipX": false,
+          "paperEdge": false
+        },
+        {
+          "id": "wide-ministers",
+          "name": "右侧后排群臣",
+          "src": "assets/sample/ministers.svg",
+          "role": "tertiary",
+          "x": 1340,
+          "y": 545,
+          "width": 430,
+          "rotation": -1,
+          "opacity": 0.86,
+          "zIndex": 2,
+          "delayFrames": 34,
+          "entrance": "right",
+          "flipX": false,
+          "paperEdge": true
+        },
+        {
+          "id": "wide-emperor",
+          "name": "皇帝主角",
+          "src": "assets/sample/emperor.svg",
+          "role": "primary",
+          "x": 650,
+          "y": 235,
+          "width": 650,
+          "rotation": 0,
+          "opacity": 1,
+          "zIndex": 5,
+          "delayFrames": 4,
+          "entrance": "up",
+          "flipX": false,
+          "paperEdge": true
+        },
+        {
+          "id": "wide-left",
+          "name": "左侍女",
+          "src": "assets/sample/attendant.svg",
+          "role": "secondary",
+          "x": 310,
+          "y": 535,
+          "width": 245,
+          "rotation": -2,
+          "opacity": 1,
+          "zIndex": 6,
+          "delayFrames": 18,
+          "entrance": "left",
+          "flipX": false,
+          "paperEdge": true
+        },
+        {
+          "id": "wide-right",
+          "name": "右侍女",
+          "src": "assets/sample/attendant.svg",
+          "role": "secondary",
+          "x": 1390,
+          "y": 530,
+          "width": 235,
+          "rotation": 2,
+          "opacity": 1,
+          "zIndex": 6,
+          "delayFrames": 26,
+          "entrance": "right",
+          "flipX": true,
+          "paperEdge": true
+        },
+        {
+          "id": "wide-foreground",
+          "name": "撕纸前景",
+          "src": "assets/sample/foreground.svg",
+          "role": "foreground",
+          "x": 0,
+          "y": 795,
+          "width": 1920,
+          "rotation": 0,
+          "opacity": 1,
+          "zIndex": 10,
+          "delayFrames": 45,
+          "entrance": "down",
+          "flipX": false,
+          "paperEdge": false
+        }
       ],
-      "captions": [{"text":"长安城里，万国衣冠汇聚于此","fromFrame":25,"toFrame":155}]
+      "captions": [
+        {
+          "text": "长安城里，万国衣冠汇聚于此",
+          "fromFrame": 25,
+          "toFrame": 155
+        }
+      ]
     },
     {
-      "id": "close", "name": "万邦来朝特写", "durationFrames": 150, "backgroundColor": "#9f2f28", "cameraZoom": 1.045,
+      "id": "close",
+      "name": "万邦来朝特写",
+      "durationFrames": 150,
+      "backgroundColor": "#9f2f28",
+      "cameraZoom": 1.045,
       "layers": [
-        {"id":"close-bg","name":"朱红宫墙底板","src":"assets/sample/red-bg.svg","role":"background","x":0,"y":0,"width":1920,"rotation":0,"opacity":1,"zIndex":0,"delayFrames":0,"entrance":"none","flipX":false,"paperEdge":false},
-        {"id":"close-ministers","name":"后排使臣","src":"assets/sample/ministers.svg","role":"tertiary","x":1170,"y":475,"width":520,"rotation":1,"opacity":0.78,"zIndex":2,"delayFrames":25,"entrance":"right","flipX":false,"paperEdge":true},
-        {"id":"close-kneel","name":"前排跪拜人物","src":"assets/sample/attendant.svg","role":"secondary","x":320,"y":535,"width":330,"rotation":-7,"opacity":1,"zIndex":4,"delayFrames":16,"entrance":"left","flipX":false,"paperEdge":true},
-        {"id":"close-gift","name":"中央捧礼盒主角","src":"assets/sample/gift-bearer.svg","role":"primary","x":680,"y":205,"width":575,"rotation":0,"opacity":1,"zIndex":5,"delayFrames":3,"entrance":"scale","flipX":false,"paperEdge":true},
-        {"id":"close-foreground","name":"前景纸花","src":"assets/sample/foreground.svg","role":"foreground","x":0,"y":800,"width":1920,"rotation":0,"opacity":1,"zIndex":9,"delayFrames":38,"entrance":"down","flipX":true,"paperEdge":false}
+        {
+          "id": "close-bg",
+          "name": "朱红宫墙底板",
+          "src": "assets/sample/red-bg.svg",
+          "role": "background",
+          "x": 0,
+          "y": 0,
+          "width": 1920,
+          "rotation": 0,
+          "opacity": 1,
+          "zIndex": 0,
+          "delayFrames": 0,
+          "entrance": "none",
+          "flipX": false,
+          "paperEdge": false
+        },
+        {
+          "id": "close-ministers",
+          "name": "后排使臣",
+          "src": "assets/sample/ministers.svg",
+          "role": "tertiary",
+          "x": 1170,
+          "y": 475,
+          "width": 520,
+          "rotation": 1,
+          "opacity": 0.78,
+          "zIndex": 2,
+          "delayFrames": 25,
+          "entrance": "right",
+          "flipX": false,
+          "paperEdge": true
+        },
+        {
+          "id": "close-kneel",
+          "name": "前排跪拜人物",
+          "src": "assets/sample/attendant.svg",
+          "role": "secondary",
+          "x": 320,
+          "y": 535,
+          "width": 330,
+          "rotation": -7,
+          "opacity": 1,
+          "zIndex": 4,
+          "delayFrames": 16,
+          "entrance": "left",
+          "flipX": false,
+          "paperEdge": true
+        },
+        {
+          "id": "close-gift",
+          "name": "中央捧礼盒主角",
+          "src": "assets/sample/gift-bearer.svg",
+          "role": "primary",
+          "x": 680,
+          "y": 205,
+          "width": 575,
+          "rotation": 0,
+          "opacity": 1,
+          "zIndex": 5,
+          "delayFrames": 3,
+          "entrance": "scale",
+          "flipX": false,
+          "paperEdge": true
+        },
+        {
+          "id": "close-foreground",
+          "name": "前景纸花",
+          "src": "assets/sample/foreground.svg",
+          "role": "foreground",
+          "x": 0,
+          "y": 800,
+          "width": 1920,
+          "rotation": 0,
+          "opacity": 1,
+          "zIndex": 9,
+          "delayFrames": 38,
+          "entrance": "down",
+          "flipX": true,
+          "paperEdge": false
+        }
       ],
-      "captions": [{"text":"一层一层，才有真正的叙事纵深","fromFrame":18,"toFrame":132}]
+      "captions": [
+        {
+          "text": "一层一层，才有真正的叙事纵深",
+          "fromFrame": 18,
+          "toFrame": 132
+        }
+      ]
     }
-  ]
+  ],
+  "production": {
+    "plannerVersion": 1,
+    "sourceText": "盛唐纸片分层动画示例工程",
+    "style": {
+      "look": "唐风古籍拼贴"
+    },
+    "characters": [],
+    "assetPlan": [
+      {
+        "id": "asset-01",
+        "role": "background",
+        "name": "宫殿山水底板",
+        "prompt": "",
+        "requirements": [],
+        "status": "approved",
+        "src": "assets/sample/tang-bg.svg",
+        "promptVersions": [],
+        "reviewHistory": [],
+        "generation": {
+          "provider": "handwritten-svg",
+          "model": "-",
+          "parameters": {
+            "usedIn": 1,
+            "license": "本仓库原创（MIT）",
+            "note": "手写 SVG 路径数据，可查阅源码核对"
+          },
+          "createdAt": "2026-07-28"
+        }
+      },
+      {
+        "id": "asset-02",
+        "role": "tertiary",
+        "name": "右侧后排群臣",
+        "prompt": "",
+        "requirements": [],
+        "status": "approved",
+        "src": "assets/sample/ministers.svg",
+        "promptVersions": [],
+        "reviewHistory": [],
+        "generation": {
+          "provider": "handwritten-svg",
+          "model": "-",
+          "parameters": {
+            "usedIn": 2,
+            "license": "本仓库原创（MIT）",
+            "note": "手写 SVG 路径数据，可查阅源码核对"
+          },
+          "createdAt": "2026-07-28"
+        }
+      },
+      {
+        "id": "asset-03",
+        "role": "primary",
+        "name": "皇帝主角",
+        "prompt": "",
+        "requirements": [],
+        "status": "approved",
+        "src": "assets/sample/emperor.svg",
+        "promptVersions": [],
+        "reviewHistory": [],
+        "generation": {
+          "provider": "handwritten-svg",
+          "model": "-",
+          "parameters": {
+            "usedIn": 1,
+            "license": "本仓库原创（MIT）",
+            "note": "手写 SVG 路径数据，可查阅源码核对"
+          },
+          "createdAt": "2026-07-28"
+        }
+      },
+      {
+        "id": "asset-04",
+        "role": "secondary",
+        "name": "左侍女",
+        "prompt": "",
+        "requirements": [],
+        "status": "approved",
+        "src": "assets/sample/attendant.svg",
+        "promptVersions": [],
+        "reviewHistory": [],
+        "generation": {
+          "provider": "handwritten-svg",
+          "model": "-",
+          "parameters": {
+            "usedIn": 3,
+            "license": "本仓库原创（MIT）",
+            "note": "手写 SVG 路径数据，可查阅源码核对"
+          },
+          "createdAt": "2026-07-28"
+        }
+      },
+      {
+        "id": "asset-05",
+        "role": "foreground",
+        "name": "撕纸前景",
+        "prompt": "",
+        "requirements": [],
+        "status": "approved",
+        "src": "assets/sample/foreground.svg",
+        "promptVersions": [],
+        "reviewHistory": [],
+        "generation": {
+          "provider": "handwritten-svg",
+          "model": "-",
+          "parameters": {
+            "usedIn": 2,
+            "license": "本仓库原创（MIT）",
+            "note": "手写 SVG 路径数据，可查阅源码核对"
+          },
+          "createdAt": "2026-07-28"
+        }
+      },
+      {
+        "id": "asset-06",
+        "role": "background",
+        "name": "朱红宫墙底板",
+        "prompt": "",
+        "requirements": [],
+        "status": "approved",
+        "src": "assets/sample/red-bg.svg",
+        "promptVersions": [],
+        "reviewHistory": [],
+        "generation": {
+          "provider": "handwritten-svg",
+          "model": "-",
+          "parameters": {
+            "usedIn": 1,
+            "license": "本仓库原创（MIT）",
+            "note": "手写 SVG 路径数据，可查阅源码核对"
+          },
+          "createdAt": "2026-07-28"
+        }
+      },
+      {
+        "id": "asset-07",
+        "role": "primary",
+        "name": "中央捧礼盒主角",
+        "prompt": "",
+        "requirements": [],
+        "status": "approved",
+        "src": "assets/sample/gift-bearer.svg",
+        "promptVersions": [],
+        "reviewHistory": [],
+        "generation": {
+          "provider": "handwritten-svg",
+          "model": "-",
+          "parameters": {
+            "usedIn": 1,
+            "license": "本仓库原创（MIT）",
+            "note": "手写 SVG 路径数据，可查阅源码核对"
+          },
+          "createdAt": "2026-07-28"
+        }
+      }
+    ]
+  }
 }

@@ -2,7 +2,14 @@
   "backgroundColor": "#2b1410",
   "cameraZoom": 1.035,
   "soundtrackVolume": 0.42,
-  "fallbackDurations": [11, 12, 10, 9, 9, 9],
+  "fallbackDurations": [
+    11,
+    12,
+    10,
+    9,
+    9,
+    9
+  ],
   "theme": {
     "paper": "#f6eedb",
     "ink": "#2e1512",
@@ -16,75 +23,431 @@
       "disclaimer": "取材《淮南子》等后羿射日神话，为传说的戏剧化表达"
     },
     "characters": [
-      {"id": "houyi", "name": "后羿", "description": "射日的神箭手，懂得收弓的英雄"},
-      {"id": "suncrow", "name": "金乌", "description": "化作太阳的三足神鸟"}
+      {
+        "id": "houyi",
+        "name": "后羿",
+        "description": "射日的神箭手，懂得收弓的英雄"
+      },
+      {
+        "id": "suncrow",
+        "name": "金乌",
+        "description": "化作太阳的三足神鸟"
+      }
     ]
   },
   "scenes": [
     {
       "cameraZoom": 1.05,
       "layers": [
-        {"id": "bg-hook", "name": "焦土", "src": "assets/generated/nine-suns/scorched-earth.svg", "role": "background", "x": -140, "y": -50, "width": 1360, "zIndex": 0, "paperEdge": false},
-        {"id": "sun-1", "name": "金乌一", "src": "assets/generated/nine-suns/layers/sun-crow.svg", "role": "secondary", "x": 40, "y": 110, "width": 300, "zIndex": 2, "entrance": "scale", "delayFrames": 4},
-        {"id": "sun-2", "name": "金乌二", "src": "assets/generated/nine-suns/layers/sun-crow.svg", "role": "secondary", "x": 400, "y": 40, "width": 240, "zIndex": 2, "entrance": "scale", "delayFrames": 10},
-        {"id": "sun-3", "name": "金乌三", "src": "assets/generated/nine-suns/layers/sun-crow.svg", "role": "secondary", "x": 700, "y": 130, "width": 300, "zIndex": 2, "entrance": "scale", "delayFrames": 16},
-        {"id": "sun-4", "name": "金乌四", "src": "assets/generated/nine-suns/layers/sun-crow.svg", "role": "tertiary", "x": 210, "y": 350, "width": 190, "zIndex": 1, "entrance": "scale", "delayFrames": 22},
-        {"id": "sun-5", "name": "金乌五", "src": "assets/generated/nine-suns/layers/sun-crow.svg", "role": "tertiary", "x": 640, "y": 420, "width": 160, "zIndex": 1, "entrance": "scale", "delayFrames": 28},
-        {"id": "villagers-hook", "name": "避日的人们", "src": "assets/generated/nine-suns/layers/villagers.svg", "role": "primary", "x": 220, "y": 1150, "width": 640, "zIndex": 3, "entrance": "fade", "delayFrames": 12}
+        {
+          "id": "bg-hook",
+          "name": "焦土",
+          "src": "assets/generated/nine-suns/scorched-earth.svg",
+          "role": "background",
+          "x": -140,
+          "y": -50,
+          "width": 1360,
+          "zIndex": 0,
+          "paperEdge": false
+        },
+        {
+          "id": "sun-1",
+          "name": "金乌一",
+          "src": "assets/generated/nine-suns/layers/sun-crow.svg",
+          "role": "secondary",
+          "x": 40,
+          "y": 110,
+          "width": 300,
+          "zIndex": 2,
+          "entrance": "scale",
+          "delayFrames": 4
+        },
+        {
+          "id": "sun-2",
+          "name": "金乌二",
+          "src": "assets/generated/nine-suns/layers/sun-crow.svg",
+          "role": "secondary",
+          "x": 400,
+          "y": 40,
+          "width": 240,
+          "zIndex": 2,
+          "entrance": "scale",
+          "delayFrames": 10
+        },
+        {
+          "id": "sun-3",
+          "name": "金乌三",
+          "src": "assets/generated/nine-suns/layers/sun-crow.svg",
+          "role": "secondary",
+          "x": 700,
+          "y": 130,
+          "width": 300,
+          "zIndex": 2,
+          "entrance": "scale",
+          "delayFrames": 16
+        },
+        {
+          "id": "sun-4",
+          "name": "金乌四",
+          "src": "assets/generated/nine-suns/layers/sun-crow.svg",
+          "role": "tertiary",
+          "x": 210,
+          "y": 350,
+          "width": 190,
+          "zIndex": 1,
+          "entrance": "scale",
+          "delayFrames": 22
+        },
+        {
+          "id": "sun-5",
+          "name": "金乌五",
+          "src": "assets/generated/nine-suns/layers/sun-crow.svg",
+          "role": "tertiary",
+          "x": 640,
+          "y": 420,
+          "width": 160,
+          "zIndex": 1,
+          "entrance": "scale",
+          "delayFrames": 28
+        },
+        {
+          "id": "villagers-hook",
+          "name": "避日的人们",
+          "src": "assets/generated/nine-suns/layers/villagers.svg",
+          "role": "primary",
+          "x": 220,
+          "y": 1150,
+          "width": 640,
+          "zIndex": 3,
+          "entrance": "fade",
+          "delayFrames": 12
+        }
       ],
-      "audioCues": [{"src": "audio/nine-suns/impact.wav", "fromFrame": 0, "volume": 0.5}]
+      "audioCues": [
+        {
+          "src": "audio/common/impact.wav",
+          "fromFrame": 0,
+          "volume": 0.5
+        }
+      ]
     },
     {
       "layers": [
-        {"id": "bg-crisis", "name": "焦土", "src": "assets/generated/nine-suns/scorched-earth.svg", "role": "background", "x": -140, "y": -50, "width": 1360, "zIndex": 0, "paperEdge": false},
-        {"id": "sun-close-1", "name": "逼近的金乌", "src": "assets/generated/nine-suns/layers/sun-crow.svg", "role": "primary", "x": 30, "y": 90, "width": 380, "zIndex": 2, "entrance": "scale", "delayFrames": 6},
-        {"id": "sun-close-2", "name": "金乌", "src": "assets/generated/nine-suns/layers/sun-crow.svg", "role": "secondary", "x": 620, "y": 70, "width": 310, "zIndex": 2, "entrance": "scale", "delayFrames": 14},
-        {"id": "sun-close-3", "name": "金乌", "src": "assets/generated/nine-suns/layers/sun-crow.svg", "role": "secondary", "x": 380, "y": 360, "width": 250, "zIndex": 1, "entrance": "scale", "delayFrames": 22},
-        {"id": "villagers-crisis", "name": "无处躲藏", "src": "assets/generated/nine-suns/layers/villagers.svg", "role": "primary", "x": 160, "y": 1090, "width": 760, "zIndex": 3, "flipX": true, "entrance": "left", "delayFrames": 10}
+        {
+          "id": "bg-crisis",
+          "name": "焦土",
+          "src": "assets/generated/nine-suns/scorched-earth.svg",
+          "role": "background",
+          "x": -140,
+          "y": -50,
+          "width": 1360,
+          "zIndex": 0,
+          "paperEdge": false
+        },
+        {
+          "id": "sun-close-1",
+          "name": "逼近的金乌",
+          "src": "assets/generated/nine-suns/layers/sun-crow.svg",
+          "role": "primary",
+          "x": 30,
+          "y": 90,
+          "width": 380,
+          "zIndex": 2,
+          "entrance": "scale",
+          "delayFrames": 6
+        },
+        {
+          "id": "sun-close-2",
+          "name": "金乌",
+          "src": "assets/generated/nine-suns/layers/sun-crow.svg",
+          "role": "secondary",
+          "x": 620,
+          "y": 70,
+          "width": 310,
+          "zIndex": 2,
+          "entrance": "scale",
+          "delayFrames": 14
+        },
+        {
+          "id": "sun-close-3",
+          "name": "金乌",
+          "src": "assets/generated/nine-suns/layers/sun-crow.svg",
+          "role": "secondary",
+          "x": 380,
+          "y": 360,
+          "width": 250,
+          "zIndex": 1,
+          "entrance": "scale",
+          "delayFrames": 22
+        },
+        {
+          "id": "villagers-crisis",
+          "name": "无处躲藏",
+          "src": "assets/generated/nine-suns/layers/villagers.svg",
+          "role": "primary",
+          "x": 160,
+          "y": 1090,
+          "width": 760,
+          "zIndex": 3,
+          "flipX": true,
+          "entrance": "left",
+          "delayFrames": 10
+        }
       ],
-      "audioCues": [{"src": "audio/nine-suns/whoosh.wav", "fromFrame": 6, "volume": 0.25}]
+      "audioCues": [
+        {
+          "src": "audio/common/whoosh.wav",
+          "fromFrame": 6,
+          "volume": 0.25
+        }
+      ]
     },
     {
       "layers": [
-        {"id": "bg-archer", "name": "高山", "src": "assets/generated/nine-suns/mountain-peak.svg", "role": "background", "x": -140, "y": -50, "width": 1360, "zIndex": 0, "paperEdge": false},
-        {"id": "sun-watch-1", "name": "金乌", "src": "assets/generated/nine-suns/layers/sun-crow.svg", "role": "tertiary", "x": 60, "y": 110, "width": 260, "zIndex": 1, "entrance": "scale", "delayFrames": 8},
-        {"id": "sun-watch-2", "name": "金乌", "src": "assets/generated/nine-suns/layers/sun-crow.svg", "role": "tertiary", "x": 760, "y": 90, "width": 220, "zIndex": 1, "entrance": "scale", "delayFrames": 16},
-        {"id": "houyi-standing", "name": "后羿登山", "src": "assets/generated/nine-suns/layers/archer-standing.svg", "role": "primary", "x": 270, "y": 750, "width": 560, "zIndex": 3, "entrance": "right", "delayFrames": 6}
+        {
+          "id": "bg-archer",
+          "name": "高山",
+          "src": "assets/generated/nine-suns/mountain-peak.svg",
+          "role": "background",
+          "x": -140,
+          "y": -50,
+          "width": 1360,
+          "zIndex": 0,
+          "paperEdge": false
+        },
+        {
+          "id": "sun-watch-1",
+          "name": "金乌",
+          "src": "assets/generated/nine-suns/layers/sun-crow.svg",
+          "role": "tertiary",
+          "x": 60,
+          "y": 110,
+          "width": 260,
+          "zIndex": 1,
+          "entrance": "scale",
+          "delayFrames": 8
+        },
+        {
+          "id": "sun-watch-2",
+          "name": "金乌",
+          "src": "assets/generated/nine-suns/layers/sun-crow.svg",
+          "role": "tertiary",
+          "x": 760,
+          "y": 90,
+          "width": 220,
+          "zIndex": 1,
+          "entrance": "scale",
+          "delayFrames": 16
+        },
+        {
+          "id": "houyi-standing",
+          "name": "后羿登山",
+          "src": "assets/generated/nine-suns/layers/archer-standing.svg",
+          "role": "primary",
+          "x": 270,
+          "y": 750,
+          "width": 560,
+          "zIndex": 3,
+          "entrance": "right",
+          "delayFrames": 6
+        }
       ],
-      "audioCues": [{"src": "audio/nine-suns/whoosh.wav", "fromFrame": 10, "volume": 0.3}]
+      "audioCues": [
+        {
+          "src": "audio/common/whoosh.wav",
+          "fromFrame": 10,
+          "volume": 0.3
+        }
+      ]
     },
     {
       "cameraZoom": 1.07,
       "layers": [
-        {"id": "bg-shooting", "name": "高山", "src": "assets/generated/nine-suns/mountain-peak.svg", "role": "background", "x": -140, "y": -50, "width": 1360, "zIndex": 0, "paperEdge": false},
-        {"id": "sun-last", "name": "残余的金乌", "src": "assets/generated/nine-suns/layers/sun-crow.svg", "role": "tertiary", "x": 90, "y": 80, "width": 240, "zIndex": 1, "entrance": "none"},
-        {"id": "crow-falling", "name": "坠落的金乌", "src": "assets/generated/nine-suns/layers/falling-crow.svg", "role": "secondary", "x": 590, "y": 170, "width": 400, "zIndex": 2, "rotation": 14, "entrance": "fade", "delayFrames": 14},
-        {"id": "houyi-drawing", "name": "后羿开弓", "src": "assets/generated/nine-suns/layers/archer-drawing.svg", "role": "primary", "x": 50, "y": 950, "width": 700, "zIndex": 3, "entrance": "scale", "delayFrames": 4}
+        {
+          "id": "bg-shooting",
+          "name": "高山",
+          "src": "assets/generated/nine-suns/mountain-peak.svg",
+          "role": "background",
+          "x": -140,
+          "y": -50,
+          "width": 1360,
+          "zIndex": 0,
+          "paperEdge": false
+        },
+        {
+          "id": "sun-last",
+          "name": "残余的金乌",
+          "src": "assets/generated/nine-suns/layers/sun-crow.svg",
+          "role": "tertiary",
+          "x": 90,
+          "y": 80,
+          "width": 240,
+          "zIndex": 1,
+          "entrance": "none"
+        },
+        {
+          "id": "crow-falling",
+          "name": "坠落的金乌",
+          "src": "assets/generated/nine-suns/layers/falling-crow.svg",
+          "role": "secondary",
+          "x": 590,
+          "y": 170,
+          "width": 400,
+          "zIndex": 2,
+          "rotation": 14,
+          "entrance": "fade",
+          "delayFrames": 14
+        },
+        {
+          "id": "houyi-drawing",
+          "name": "后羿开弓",
+          "src": "assets/generated/nine-suns/layers/archer-drawing.svg",
+          "role": "primary",
+          "x": 50,
+          "y": 950,
+          "width": 700,
+          "zIndex": 3,
+          "entrance": "scale",
+          "delayFrames": 4
+        }
       ],
       "audioCues": [
-        {"src": "audio/nine-suns/whoosh.wav", "fromFrame": 0, "volume": 0.45},
-        {"src": "audio/nine-suns/impact.wav", "fromFrame": 16, "volume": 0.5},
-        {"src": "audio/nine-suns/whoosh.wav", "fromFrame": 34, "volume": 0.4},
-        {"src": "audio/nine-suns/impact.wav", "fromFrame": 50, "volume": 0.45}
+        {
+          "src": "audio/common/whoosh.wav",
+          "fromFrame": 0,
+          "volume": 0.45
+        },
+        {
+          "src": "audio/common/impact.wav",
+          "fromFrame": 16,
+          "volume": 0.5
+        },
+        {
+          "src": "audio/common/whoosh.wav",
+          "fromFrame": 34,
+          "volume": 0.4
+        },
+        {
+          "src": "audio/common/impact.wav",
+          "fromFrame": 50,
+          "volume": 0.45
+        }
       ]
     },
     {
       "cameraZoom": 1.03,
       "layers": [
-        {"id": "bg-mercy", "name": "高山", "src": "assets/generated/nine-suns/mountain-peak.svg", "role": "background", "x": -140, "y": -50, "width": 1360, "zIndex": 0, "paperEdge": false},
-        {"id": "sun-spared", "name": "留下的太阳", "src": "assets/generated/nine-suns/layers/sun-crow.svg", "role": "secondary", "x": 350, "y": 130, "width": 360, "zIndex": 1, "entrance": "scale", "delayFrames": 10},
-        {"id": "houyi-mercy", "name": "收弓的后羿", "src": "assets/generated/nine-suns/layers/archer-standing.svg", "role": "primary", "x": 300, "y": 820, "width": 520, "zIndex": 3, "flipX": true, "entrance": "fade", "delayFrames": 8}
+        {
+          "id": "bg-mercy",
+          "name": "高山",
+          "src": "assets/generated/nine-suns/mountain-peak.svg",
+          "role": "background",
+          "x": -140,
+          "y": -50,
+          "width": 1360,
+          "zIndex": 0,
+          "paperEdge": false
+        },
+        {
+          "id": "sun-spared",
+          "name": "留下的太阳",
+          "src": "assets/generated/nine-suns/layers/sun-crow.svg",
+          "role": "secondary",
+          "x": 350,
+          "y": 130,
+          "width": 360,
+          "zIndex": 1,
+          "entrance": "scale",
+          "delayFrames": 10
+        },
+        {
+          "id": "houyi-mercy",
+          "name": "收弓的后羿",
+          "src": "assets/generated/nine-suns/layers/archer-standing.svg",
+          "role": "primary",
+          "x": 300,
+          "y": 820,
+          "width": 520,
+          "zIndex": 3,
+          "flipX": true,
+          "entrance": "fade",
+          "delayFrames": 8
+        }
       ],
-      "audioCues": [{"src": "audio/nine-suns/whoosh.wav", "fromFrame": 8, "volume": 0.15}]
+      "audioCues": [
+        {
+          "src": "audio/common/whoosh.wav",
+          "fromFrame": 8,
+          "volume": 0.15
+        }
+      ]
     },
     {
       "layers": [
-        {"id": "bg-ending", "name": "复苏的田野", "src": "assets/generated/nine-suns/dawn-fields.svg", "role": "background", "x": -140, "y": -50, "width": 1360, "zIndex": 0, "paperEdge": false},
-        {"id": "sun-ending", "name": "唯一的太阳", "src": "assets/generated/nine-suns/layers/sun-crow.svg", "role": "secondary", "x": 390, "y": 100, "width": 300, "zIndex": 1, "entrance": "scale", "delayFrames": 6},
-        {"id": "villagers-ending", "name": "重新抬头的人们", "src": "assets/generated/nine-suns/layers/villagers.svg", "role": "primary", "x": 240, "y": 1170, "width": 600, "zIndex": 3, "entrance": "fade", "delayFrames": 14},
-        {"id": "houyi-away", "name": "远去的后羿", "src": "assets/generated/nine-suns/layers/archer-standing.svg", "role": "tertiary", "x": 740, "y": 900, "width": 280, "zIndex": 2, "opacity": 0.8, "entrance": "fade", "delayFrames": 24}
+        {
+          "id": "bg-ending",
+          "name": "复苏的田野",
+          "src": "assets/generated/nine-suns/dawn-fields.svg",
+          "role": "background",
+          "x": -140,
+          "y": -50,
+          "width": 1360,
+          "zIndex": 0,
+          "paperEdge": false
+        },
+        {
+          "id": "sun-ending",
+          "name": "唯一的太阳",
+          "src": "assets/generated/nine-suns/layers/sun-crow.svg",
+          "role": "secondary",
+          "x": 390,
+          "y": 100,
+          "width": 300,
+          "zIndex": 1,
+          "entrance": "scale",
+          "delayFrames": 6
+        },
+        {
+          "id": "villagers-ending",
+          "name": "重新抬头的人们",
+          "src": "assets/generated/nine-suns/layers/villagers.svg",
+          "role": "primary",
+          "x": 240,
+          "y": 1170,
+          "width": 600,
+          "zIndex": 3,
+          "entrance": "fade",
+          "delayFrames": 14
+        },
+        {
+          "id": "houyi-away",
+          "name": "远去的后羿",
+          "src": "assets/generated/nine-suns/layers/archer-standing.svg",
+          "role": "tertiary",
+          "x": 740,
+          "y": 900,
+          "width": 280,
+          "zIndex": 2,
+          "opacity": 0.8,
+          "entrance": "fade",
+          "delayFrames": 24
+        }
       ],
-      "audioCues": [{"src": "audio/nine-suns/whoosh.wav", "fromFrame": 4, "volume": 0.18}]
+      "audioCues": [
+        {
+          "src": "audio/common/whoosh.wav",
+          "fromFrame": 4,
+          "volume": 0.18
+        }
+      ]
     }
-  ]
+  ],
+  "music": {
+    "mood": "epic"
+  },
+  "voice": {
+    "name": "zh-CN-YunyangNeural",
+    "rate": "+0%",
+    "pitch": "+0Hz"
+  }
 }
