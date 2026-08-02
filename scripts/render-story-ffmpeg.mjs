@@ -35,7 +35,7 @@ if(usesSvg){
 const identify=async(file)=>{const {stdout}=await run('magick',['identify','-format','%w %h',file]);const [w,h]=stdout.trim().split(' ').map(Number);return {width:w,height:h};};
 
 for(const [sceneIndex,scene] of project.scenes.entries()){
-  const canvas=path.join(temp,`scene-${sceneIndex}.png`);const ordered=[...scene.layers].sort((a,b)=>a.zIndex-b.zIndex);const background=ordered.find(x=>x.role==='background'&&x.kind!=='text')??ordered.find(x=>x.kind!=='text');
+  const canvas=path.join(temp,`scene-${sceneIndex}.png`);const ordered=[...scene.layers].sort((a,b)=>a.zIndex-b.zIndex);const background=ordered.find(x=>x.role==='background'&&x.kind!=='text'&&x.kind!=='video')??ordered.find(x=>x.kind!=='text'&&x.kind!=='video');
   if(background)await run('magick',[publicFile(background.src),'-resize',`${project.width}x${project.height}^`,'-gravity','center','-extent',`${project.width}x${project.height}`,canvas]);else await run('magick',['-size',`${project.width}x${project.height}`,`xc:${scene.backgroundColor??'#000'}`,canvas]);
   for(const [layerIndex,layer] of ordered.filter(x=>x!==background).entries()){
     const sprite=path.join(temp,`sprite-${sceneIndex}-${layerIndex}.png`);

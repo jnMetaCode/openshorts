@@ -15,7 +15,7 @@
   "soundtrackVolume": 0.34,
   "production": {
     "plannerVersion": 1,
-    "sourceText": "有人给了 AI 一段《指环王》的开头，和大约十美元的预算。两个小时后，它交出五千五百行代码，把那段文字变成了一个能走进去的三维场景。\n说这话的是安德烈·卡帕西。他的重点不是画面多好看，而是：我们考核 AI 的题目变了。从前是画一只骑自行车的鹈鹕，现在是把一个故事变成一个世界。\n他说，真正的转折不在能力，在成本。这种活儿以前没人会干，太定制、太琐碎、不值当。而现在它几乎免费。于是「没人会做」变成了「那就做吧」。\n他兴奋的是接下来那一步：按需生成一个高度定制的世界，再把人放进去。你可以当一个旁观的路人，也可以就是故事里的那个角色。\n但同一件事也照出了短板。AI 看不了视频，也玩不了游戏。它只能一张张截图，慢慢核对自己到底做了什么。中间错了几次，画面就一直卡在那儿。\n它有近乎无限的耐心去做，却还没有一双眼睛去看。这大概就是这一代 AI 最真实的样子。",
+    "sourceText": "十美元，两小时，AI 造出了一个能走进去的世界。\n有人给了 AI 一段《指环王》的开头，和大约十美元的预算。两个小时后，它交出五千五百行代码，把那段文字变成了一个能走进去的三维场景。\n说这话的是安德烈·卡帕西。他的重点不是画面多好看，而是：我们考核 AI 的题目变了。从前是画一只骑自行车的鹈鹕，现在是把一个故事变成一个世界。\n他说，真正的转折不在能力，在成本。这种活儿以前没人会干，太定制、太琐碎、不值当。而现在它几乎免费。于是「没人会做」变成了「那就做吧」。\n他兴奋的是接下来那一步：按需生成一个高度定制的世界，再把人放进去。你可以当一个旁观的路人，也可以就是故事里的那个角色。\n但同一件事也照出了短板。AI 看不了视频，也玩不了游戏。它只能一张张截图，慢慢核对自己到底做了什么。中间错了几次，画面就一直卡在那儿。\n它有近乎无限的耐心去做，却还没有一双眼睛去看。这大概就是这一代 AI 最真实的样子。",
     "style": {
       "format": "9:16",
       "mode": "technical",
@@ -26,6 +26,28 @@
     "assetPlan": [
       {
         "id": "asset-01",
+        "role": "background",
+        "name": "全屏演示画面",
+        "prompt": "",
+        "requirements": [],
+        "status": "approved",
+        "src": "assets/quoted/karpathy-worlds/clip-bilbo.mp4",
+        "promptVersions": [],
+        "reviewHistory": [],
+        "generation": {
+          "provider": "quotation",
+          "model": "-",
+          "parameters": {
+            "usedIn": 2,
+            "license": "评论用途引用，非授权转载",
+            "credit": "Andrej Karpathy (@karpathy)",
+            "note": "引自 Andrej Karpathy 于 x.com/karpathy/status/2083749667410727319 发布的演示视频，评论/解说用途短引用，屏显已署名。素材本体不进仓库（.gitignore public/assets/quoted/），重新获取：yt-dlp 该推文链接后按 assets.json 中的时间点裁切。 片段时间点：50s-56s。"
+          },
+          "createdAt": "2026-08-02"
+        }
+      },
+      {
+        "id": "asset-02",
         "role": "background",
         "name": "终端底",
         "prompt": "",
@@ -41,28 +63,6 @@
             "usedIn": 2,
             "license": "本仓库原创（MIT）",
             "note": "手写 SVG 路径数据，纯几何图形，无第三方素材"
-          },
-          "createdAt": "2026-08-02"
-        }
-      },
-      {
-        "id": "asset-02",
-        "role": "secondary",
-        "name": "真实演示画面",
-        "prompt": "",
-        "requirements": [],
-        "status": "approved",
-        "src": "assets/quoted/karpathy-worlds/clip-bilbo.mp4",
-        "promptVersions": [],
-        "reviewHistory": [],
-        "generation": {
-          "provider": "quotation",
-          "model": "-",
-          "parameters": {
-            "usedIn": 1,
-            "license": "评论用途引用，非授权转载",
-            "credit": "Andrej Karpathy (@karpathy)",
-            "note": "引自 Andrej Karpathy 于 x.com/karpathy/status/2083749667410727319 发布的演示视频，评论/解说用途短引用，屏显已署名。素材本体不进仓库（.gitignore public/assets/quoted/），重新获取：yt-dlp 该推文链接后按 assets.json 中的时间点裁切。 片段时间点：50s-56s。"
           },
           "createdAt": "2026-08-02"
         }
@@ -267,8 +267,191 @@
   },
   "scenes": [
     {
+      "id": "cover",
+      "name": "1. 封面钩子",
+      "durationFrames": 153,
+      "backgroundColor": "#12151f",
+      "cameraZoom": 1.06,
+      "layers": [
+        {
+          "entrance": "none",
+          "delayFrames": 0,
+          "rotation": 0,
+          "opacity": 1,
+          "flipX": false,
+          "paperEdge": false,
+          "keyframes": [],
+          "id": "cv-bg",
+          "name": "全屏演示画面",
+          "kind": "video",
+          "src": "assets/quoted/karpathy-worlds/clip-bilbo.mp4",
+          "startFrom": 1.2,
+          "role": "background",
+          "x": -1180,
+          "y": -2,
+          "width": 3440,
+          "zIndex": 0
+        },
+        {
+          "entrance": "fade",
+          "delayFrames": 2,
+          "rotation": 0,
+          "opacity": 1,
+          "flipX": false,
+          "paperEdge": false,
+          "keyframes": [],
+          "id": "cv-kicker",
+          "name": "小标",
+          "kind": "text",
+          "role": "tertiary",
+          "x": 96,
+          "y": 330,
+          "width": 920,
+          "zIndex": 5,
+          "style": {
+            "text": "一次真实实验",
+            "fontSize": 50,
+            "fontWeight": 600,
+            "align": "center",
+            "background": "rgba(12,15,25,.72)",
+            "padding": 16,
+            "letterSpacing": 8
+          }
+        },
+        {
+          "entrance": "scale",
+          "delayFrames": 4,
+          "rotation": 0,
+          "opacity": 1,
+          "flipX": false,
+          "paperEdge": true,
+          "keyframes": [],
+          "id": "cv-hero",
+          "name": "十美元",
+          "kind": "text",
+          "role": "primary",
+          "x": 96,
+          "y": 450,
+          "width": 920,
+          "zIndex": 6,
+          "style": {
+            "text": "$10",
+            "fontSize": 230,
+            "fontWeight": 900,
+            "color": "#e8a33d",
+            "align": "center",
+            "background": "rgba(12,15,25,.72)",
+            "padding": 26
+          }
+        },
+        {
+          "entrance": "up",
+          "delayFrames": 16,
+          "rotation": 0,
+          "opacity": 1,
+          "flipX": false,
+          "paperEdge": true,
+          "keyframes": [],
+          "id": "cv-line2",
+          "name": "两小时",
+          "kind": "text",
+          "role": "primary",
+          "x": 96,
+          "y": 830,
+          "width": 920,
+          "zIndex": 6,
+          "style": {
+            "text": "两小时 · 5500 行代码",
+            "fontSize": 82,
+            "fontWeight": 900,
+            "align": "center",
+            "background": "rgba(12,15,25,.72)",
+            "padding": 20
+          }
+        },
+        {
+          "entrance": "up",
+          "delayFrames": 28,
+          "rotation": 0,
+          "opacity": 1,
+          "flipX": false,
+          "paperEdge": true,
+          "keyframes": [],
+          "id": "cv-line3",
+          "name": "结论",
+          "kind": "text",
+          "role": "primary",
+          "x": 96,
+          "y": 1010,
+          "width": 920,
+          "zIndex": 6,
+          "style": {
+            "text": "AI 造出一个能走进去的世界",
+            "fontSize": 64,
+            "fontWeight": 800,
+            "align": "center",
+            "background": "rgba(12,15,25,.72)",
+            "padding": 20
+          }
+        },
+        {
+          "entrance": "fade",
+          "delayFrames": 40,
+          "rotation": 0,
+          "opacity": 1,
+          "flipX": false,
+          "paperEdge": false,
+          "keyframes": [],
+          "id": "cv-credit",
+          "name": "署名",
+          "kind": "text",
+          "role": "tertiary",
+          "x": 96,
+          "y": 1180,
+          "width": 920,
+          "zIndex": 5,
+          "style": {
+            "text": "画面：@karpathy 原推演示",
+            "fontSize": 36,
+            "fontWeight": 500,
+            "color": "#b9c3d6",
+            "align": "center",
+            "background": "rgba(12,15,25,.72)",
+            "padding": 12
+          }
+        }
+      ],
+      "captions": [
+        {
+          "text": "十美元，两小时，",
+          "fromFrame": 4,
+          "toFrame": 53,
+          "words": []
+        },
+        {
+          "text": "AI 造出了一个能走进去的世界。",
+          "fromFrame": 53,
+          "toFrame": 151,
+          "words": []
+        }
+      ],
+      "narrationSrc": "audio/karpathy-worlds/01-cover.wav",
+      "audioCues": [
+        {
+          "src": "audio/common/impact.wav",
+          "fromFrame": 0,
+          "volume": 0.5
+        },
+        {
+          "src": "audio/common/whoosh.wav",
+          "fromFrame": 16,
+          "volume": 0.22
+        }
+      ]
+    },
+    {
       "id": "hook",
-      "name": "1. 用具体数字开场，制造反差",
+      "name": "2. 用具体数字开场，制造反差",
       "durationFrames": 368,
       "backgroundColor": "#12151f",
       "cameraZoom": 1.02,
@@ -548,7 +731,7 @@
           "words": []
         }
       ],
-      "narrationSrc": "audio/karpathy-worlds/01-hook.wav",
+      "narrationSrc": "audio/karpathy-worlds/02-hook.wav",
       "audioCues": [
         {
           "src": "audio/common/impact.wav",
@@ -564,7 +747,7 @@
     },
     {
       "id": "shift",
-      "name": "2. 点明出处与真正的论点",
+      "name": "3. 点明出处与真正的论点",
       "durationFrames": 445,
       "backgroundColor": "#12151f",
       "cameraZoom": 1.02,
@@ -797,7 +980,7 @@
           "words": []
         }
       ],
-      "narrationSrc": "audio/karpathy-worlds/02-shift.wav",
+      "narrationSrc": "audio/karpathy-worlds/03-shift.wav",
       "audioCues": [
         {
           "src": "audio/common/whoosh.wav",
@@ -808,7 +991,7 @@
     },
     {
       "id": "economics",
-      "name": "3. 核心洞察：经济学而非能力",
+      "name": "4. 核心洞察：经济学而非能力",
       "durationFrames": 427,
       "backgroundColor": "#12151f",
       "cameraZoom": 1.02,
@@ -1050,7 +1233,7 @@
           "words": []
         }
       ],
-      "narrationSrc": "audio/karpathy-worlds/03-economics.wav",
+      "narrationSrc": "audio/karpathy-worlds/04-economics.wav",
       "audioCues": [
         {
           "src": "audio/common/impact.wav",
@@ -1066,7 +1249,7 @@
     },
     {
       "id": "worlds",
-      "name": "4. 指向未来形态",
+      "name": "5. 指向未来形态",
       "durationFrames": 331,
       "backgroundColor": "#12151f",
       "cameraZoom": 1.02,
@@ -1248,7 +1431,7 @@
           "words": []
         }
       ],
-      "narrationSrc": "audio/karpathy-worlds/04-worlds.wav",
+      "narrationSrc": "audio/karpathy-worlds/05-worlds.wav",
       "audioCues": [
         {
           "src": "audio/common/whoosh.wav",
@@ -1259,7 +1442,7 @@
     },
     {
       "id": "weakness",
-      "name": "5. 转折：暴露的能力缺口",
+      "name": "6. 转折：暴露的能力缺口",
       "durationFrames": 429,
       "backgroundColor": "#12151f",
       "cameraZoom": 1.02,
@@ -1486,7 +1669,7 @@
           "words": []
         }
       ],
-      "narrationSrc": "audio/karpathy-worlds/05-weakness.wav",
+      "narrationSrc": "audio/karpathy-worlds/06-weakness.wav",
       "audioCues": [
         {
           "src": "audio/common/impact.wav",
@@ -1502,7 +1685,7 @@
     },
     {
       "id": "ending",
-      "name": "6. 收束为一句可记住的判断",
+      "name": "7. 收束为一句可记住的判断",
       "durationFrames": 251,
       "backgroundColor": "#12151f",
       "cameraZoom": 1.02,
@@ -1634,7 +1817,7 @@
           "words": []
         }
       ],
-      "narrationSrc": "audio/karpathy-worlds/06-ending.wav",
+      "narrationSrc": "audio/karpathy-worlds/07-ending.wav",
       "audioCues": [
         {
           "src": "audio/common/whoosh.wav",

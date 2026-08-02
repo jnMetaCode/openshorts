@@ -3,6 +3,7 @@
   "cameraZoom": 1.02,
   "soundtrackVolume": 0.34,
   "fallbackDurations": [
+    4.5,
     12,
     15,
     14,
@@ -34,6 +35,141 @@
     "characters": []
   },
   "scenes": [
+    {
+      "cameraZoom": 1.06,
+      "layers": [
+        {
+          "id": "cv-bg",
+          "name": "全屏演示画面",
+          "kind": "video",
+          "src": "assets/quoted/karpathy-worlds/clip-bilbo.mp4",
+          "startFrom": 1.2,
+          "role": "background",
+          "x": -1180,
+          "y": -2,
+          "width": 3440,
+          "zIndex": 0,
+          "paperEdge": false
+        },
+        {
+          "id": "cv-kicker",
+          "name": "小标",
+          "kind": "text",
+          "role": "tertiary",
+          "x": 96,
+          "y": 330,
+          "width": 920,
+          "zIndex": 5,
+          "entrance": "fade",
+          "delayFrames": 2,
+          "paperEdge": false,
+          "style": {
+            "text": "一次真实实验",
+            "fontSize": 50,
+            "fontWeight": 600,
+            "align": "center",
+            "background": "rgba(12,15,25,.72)",
+            "padding": 16,
+            "letterSpacing": 8
+          }
+        },
+        {
+          "id": "cv-hero",
+          "name": "十美元",
+          "kind": "text",
+          "role": "primary",
+          "x": 96,
+          "y": 450,
+          "width": 920,
+          "zIndex": 6,
+          "entrance": "scale",
+          "delayFrames": 4,
+          "style": {
+            "text": "$10",
+            "fontSize": 230,
+            "fontWeight": 900,
+            "color": "#e8a33d",
+            "align": "center",
+            "background": "rgba(12,15,25,.72)",
+            "padding": 26
+          }
+        },
+        {
+          "id": "cv-line2",
+          "name": "两小时",
+          "kind": "text",
+          "role": "primary",
+          "x": 96,
+          "y": 830,
+          "width": 920,
+          "zIndex": 6,
+          "entrance": "up",
+          "delayFrames": 16,
+          "style": {
+            "text": "两小时 · 5500 行代码",
+            "fontSize": 82,
+            "fontWeight": 900,
+            "align": "center",
+            "background": "rgba(12,15,25,.72)",
+            "padding": 20
+          }
+        },
+        {
+          "id": "cv-line3",
+          "name": "结论",
+          "kind": "text",
+          "role": "primary",
+          "x": 96,
+          "y": 1010,
+          "width": 920,
+          "zIndex": 6,
+          "entrance": "up",
+          "delayFrames": 28,
+          "style": {
+            "text": "AI 造出一个能走进去的世界",
+            "fontSize": 64,
+            "fontWeight": 800,
+            "align": "center",
+            "background": "rgba(12,15,25,.72)",
+            "padding": 20
+          }
+        },
+        {
+          "id": "cv-credit",
+          "name": "署名",
+          "kind": "text",
+          "role": "tertiary",
+          "x": 96,
+          "y": 1180,
+          "width": 920,
+          "zIndex": 5,
+          "entrance": "fade",
+          "delayFrames": 40,
+          "paperEdge": false,
+          "style": {
+            "text": "画面：@karpathy 原推演示",
+            "fontSize": 36,
+            "fontWeight": 500,
+            "color": "#b9c3d6",
+            "align": "center",
+            "background": "rgba(12,15,25,.72)",
+            "padding": 12
+          }
+        }
+      ],
+      "audioCues": [
+        {
+          "src": "audio/common/impact.wav",
+          "fromFrame": 0,
+          "volume": 0.5
+        },
+        {
+          "src": "audio/common/whoosh.wav",
+          "fromFrame": 16,
+          "volume": 0.22
+        }
+      ]
+    },
     {
       "layers": [
         {
