@@ -11,7 +11,7 @@ export const collectReleaseFiles = ({root, projectPath, storyPath, timingsPath, 
     ...project.scenes.flatMap((scene) => [
       scene.narrationSrc,
       ...(scene.audioCues ?? []).map((cue) => cue.src),
-      ...scene.layers.map((layer) => layer.src),
+      ...scene.layers.filter((layer) => layer.kind !== 'text').map((layer) => layer.src),
     ]),
   ].filter((src) => src && !isRemote(src));
   for (const src of publicSources) files.add(path.resolve(root, 'public', src.replace(/^\//, '')));

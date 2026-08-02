@@ -30,7 +30,7 @@ export const buildAssetPlan = ({board, provenance = {}}) => {
   const usedBy = new Map();
   for (const scene of board.scenes ?? []) {
     for (const layer of scene.layers ?? []) {
-      if (!layer.src) continue;
+      if (!layer.src || layer.kind === 'text') continue;   // 文字图层无文件可溯源
       if (!usedBy.has(layer.src)) usedBy.set(layer.src, []);
       usedBy.get(layer.src).push({role: layer.role, name: layer.name});
     }

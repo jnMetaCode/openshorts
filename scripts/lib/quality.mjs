@@ -70,7 +70,8 @@ export const analyzeProject = ({project, media, publicDir}) => {
       if (index < sortedCaptions.length - 1 && !/[。，、；：？！,.;:?!…—]$/.test(caption.text)) warnings.push(`${scene.name} 字幕“${caption.text}”没有停在标点上，可能在词中间断行`);
     }
     for (const layer of scene.layers) {
-      if (!isRemote(layer.src) && !fs.existsSync(path.join(publicDir, layer.src.replace(/^\//, '')))) errors.push(`素材不存在：${layer.src}`);
+      // 文字图层没有文件，跳过素材存在性检查
+      if (layer.kind !== 'text' && !isRemote(layer.src) && !fs.existsSync(path.join(publicDir, layer.src.replace(/^\//, '')))) errors.push(`素材不存在：${layer.src}`);
       if (layer.x + layer.width < 0 || layer.x > project.width || layer.y > project.height) warnings.push(`${scene.name} / ${layer.name} 完全位于画布外`);
       if (layer.delayFrames >= scene.durationFrames) warnings.push(`${scene.name} / ${layer.name} 的入场延迟超过镜头时长`);
       for (const keyframe of layer.keyframes ?? []) {

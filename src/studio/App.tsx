@@ -32,13 +32,27 @@ const LayoutCanvas = ({project, scene, selectedId, onSelect, onMoveStart, onMove
   onMoveStart: (event: React.PointerEvent<HTMLImageElement>, layer: Layer) => void;
   onMove: (event: React.PointerEvent<HTMLImageElement>) => void; onMoveEnd: () => void;
 }) => <div className="layout-canvas" style={{aspectRatio: `${project.width}/${project.height}`, background: scene.backgroundColor}}>
-  {[...scene.layers].sort((a, b) => a.zIndex - b.zIndex).map((item) => <img
-    key={item.id} src={assetUrl(item.src)} alt={item.name} draggable={false}
-    className={item.id === selectedId ? 'selected' : ''}
-    onClick={(event) => {event.stopPropagation(); onSelect(item.id);}}
-    onPointerDown={(event) => onMoveStart(event, item)} onPointerMove={onMove} onPointerUp={onMoveEnd} onPointerCancel={onMoveEnd}
-    style={{left: `${item.x / project.width * 100}%`, top: `${item.y / project.height * 100}%`, width: `${item.width / project.width * 100}%`, zIndex: item.zIndex, opacity: item.opacity, transform: `rotate(${item.rotation}deg) scaleX(${item.flipX ? -1 : 1})`}}
-  />)}
+  {[...scene.layers].sort((a, b) => a.zIndex - b.zIndex).map((item) => {
+    const box = {left: `${item.x / project.width * 100}%`, top: `${item.y / project.height * 100}%`, width: `${item.width / project.width * 100}%`, zIndex: item.zIndex, opacity: item.opacity, transform: `rotate(${item.rotation}deg) scaleX(${item.flipX ? -1 : 1})`};
+    const common = {
+      key: item.id,
+      className: item.id === selectedId ? 'selected' : '',
+      onClick: (event: React.MouseEvent) => {event.stopPropagation(); onSelect(item.id);},
+      onPointerDown: (event: React.PointerEvent<HTMLElement>) => onMoveStart(event as React.PointerEvent<HTMLImageElement>, item),
+      onPointerMove: onMove as unknown as (event: React.PointerEvent<HTMLElement>) => void,
+      onPointerUp: onMoveEnd, onPointerCancel: onMoveEnd,
+    };
+    // 文字图层没有 src，画布上直接渲染文字，否则拖拽排版会拿到 undefined
+    if (item.kind === 'text' && item.style) return <div {...common} style={{
+      ...box, position: 'absolute', whiteSpace: 'pre-wrap', cursor: 'grab',
+      textAlign: item.style.align, color: item.style.color ?? project.theme.paper,
+      background: item.style.background, padding: item.style.padding,
+      fontFamily: item.style.mono ? 'ui-monospace, Menlo, monospace' : 'inherit',
+      fontSize: `${item.style.fontSize / project.width * 100}cqw`,
+      fontWeight: item.style.fontWeight, lineHeight: item.style.lineHeight,
+    }}>{item.style.text}</div>;
+    return <img {...common} src={assetUrl(item.src ?? '')} alt={item.name} draggable={false} style={box}/>;
+  })}
   <span className="safe-area" style={{bottom: `${subtitleBottomRatio(project.width, project.height) * 100}%`}}>字幕安全区</span>
   {project.height > project.width && <span className="platform-unsafe">平台 UI 遮挡区</span>}
 </div>;
@@ -320,7 +334,7 @@ export const App: React.FC = () => {
 
   const inspectAsset = async () => {
     if (!layer) return;
-    const response = await fetch('/api/assets/inspect', {method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify({src: layer.src})});
+    const response = await fetch('/api/assets/inspect', {method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify({src: layer.src ?? ""})});
     const body = await response.json();
     if (!response.ok) return setNotice(body.error ?? '素材检查失败');
     setAssetInspection(body);
@@ -328,7 +342,7 @@ export const App: React.FC = () => {
 
   const keyAsset = async () => {
     if (!layer) return;
-    const response = await fetch('/api/assets/key', {method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify({src: layer.src, color: keyColor, fuzz: keyFuzz, preserveCanvas})});
+    const response = await fetch('/api/assets/key', {method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify({src: layer.src ?? "", color: keyColor, fuzz: keyFuzz, preserveCanvas})});
     const body = await response.json();
     if (!response.ok) return setNotice(body.error ?? '抠图失败');
     updateProject((draft) => {
@@ -493,8 +507,12 @@ export const App: React.FC = () => {
       <section className="caption-editor"><div className="section-title"><span>字幕时间轴</span><button onClick={addCaption}>＋ 添加</button></div>{scene.captions.map((caption, index) => <div className="caption-item" key={index}><div><b>{index + 1}</b><input value={caption.text} onChange={(event) => updateCaption(index, {text: event.target.value})}/><button onClick={() => deleteCaption(index)}>×</button></div><div className="caption-ranges"><label>入<input type="range" min="0" max={Math.max(1, scene.durationFrames - 1)} value={caption.fromFrame} onChange={(event) => updateCaption(index, {fromFrame: Number(event.target.value)})}/><em>{caption.fromFrame}f</em></label><label>出<input type="range" min="1" max={scene.durationFrames} value={caption.toFrame} onChange={(event) => updateCaption(index, {toFrame: Number(event.target.value)})}/><em>{caption.toFrame}f</em></label></div></div>)}</section>
       {layer ? <>
         <label className="field wide"><span>图层名称</span><input value={layer.name} onChange={(event) => updateLayer({name: event.target.value})}/></label>
-        <div className="asset-preview"><img src={assetUrl(layer.src)} alt="当前图层"/><div><small>素材路径</small><code>{layer.src}</code></div></div>
-        <label className="upload">替换透明 PNG / SVG<input type="file" accept="image/png,image/webp,image/svg+xml" onChange={(event) => event.target.files?.[0] && upload(event.target.files[0])}/></label>
+        {layer.kind === 'text'
+          ? <div className="asset-preview"><div><small>文字图层 · {layer.style?.fontSize}px{layer.style?.mono ? ' · 等宽' : ''}</small><code>{layer.style?.text.slice(0, 60)}</code></div></div>
+          : <>
+            <div className="asset-preview"><img src={assetUrl(layer.src ?? '')} alt="当前图层"/><div><small>素材路径</small><code>{layer.src}</code></div></div>
+            <label className="upload">替换透明 PNG / SVG<input type="file" accept="image/png,image/webp,image/svg+xml" onChange={(event) => event.target.files?.[0] && upload(event.target.files[0])}/></label>
+          </>}
         {plannedAsset && <><section className="prompt-history"><div className="section-title"><span>素材提示词 · {plannedAsset.status}</span><em>{plannedAsset.promptVersions.length} 版</em></div><textarea value={promptDraft} onChange={(event) => setPromptDraft(event.target.value)}/><button onClick={savePromptVersion}>保存为新版本</button><div>{plannedAsset.promptVersions.map((version) => <button key={version.id} className={version.id === plannedAsset.activePromptVersion ? 'active' : ''} onClick={() => activatePrompt(version.id)} title={version.note}>{version.id}</button>)}</div></section><section className="trace-editor"><div className="section-title"><span>生成来源溯源</span><em>{plannedAsset.generation ? '已记录' : '待记录'}</em></div><div><input value={traceDraft.provider} onChange={(event) => setTraceDraft({...traceDraft,provider:event.target.value})} placeholder="供应器"/><input value={traceDraft.model} onChange={(event) => setTraceDraft({...traceDraft,model:event.target.value})} placeholder="模型"/><input value={traceDraft.seed} onChange={(event) => setTraceDraft({...traceDraft,seed:event.target.value})} placeholder="Seed"/></div><textarea value={traceDraft.parameters} onChange={(event) => setTraceDraft({...traceDraft,parameters:event.target.value})}/><button onClick={saveGenerationTrace}>保存来源与参数</button></section></>}
         <section className="asset-tools"><div className="section-title"><span>素材处理</span><button onClick={inspectAsset}>检查</button></div>{assetInspection && <div className={`inspection ${assetInspection.touchesEdge ? 'warn' : ''}`}><b>{assetInspection.width}×{assetInspection.height}</b><span>{assetInspection.hasTransparency ? '透明通道 ✓' : '无透明通道'}</span><span>{assetInspection.touchesEdge ? '内容贴边，可能被裁切' : '边缘留白正常'}</span></div>}<div className="key-controls"><label>背景色<input type="color" value={keyColor} onChange={(event) => setKeyColor(event.target.value)}/></label><label>容差<input type="range" min="0" max="40" value={keyFuzz} onChange={(event) => setKeyFuzz(Number(event.target.value))}/><em>{keyFuzz}%</em></label><label className="preserve"><input type="checkbox" checked={preserveCanvas} onChange={(event) => setPreserveCanvas(event.target.checked)}/>保留画布，适合先抠图再拆素材表</label><button onClick={keyAsset}>移除纯色背景</button></div><div className="split-controls"><label>行<input type="number" min="1" max="12" value={grid.rows} onChange={(event) => setGrid({...grid, rows: Number(event.target.value)})}/></label><label>列<input type="number" min="1" max="12" value={grid.columns} onChange={(event) => setGrid({...grid, columns: Number(event.target.value)})}/></label><button onClick={splitAsset}>拆分素材表</button></div>{processedAssets.length > 0 && <><button className="auto-match" onClick={autoMatchAssets}>自动匹配这一批素材到计划图层</button><div className="processed-assets">{processedAssets.map((item) => <button key={item.path} onClick={() => {updateLayer({src: item.path}); setAssetInspection(item.inspection);}} title={item.path}><img src={assetUrl(item.path)} alt="处理后的素材"/><span>{item.inspection.width}×{item.inspection.height}</span></button>)}</div></>}</section>
         <div className="layer-actions"><button onClick={duplicateLayer}>复制</button><button onClick={() => updateLayer({zIndex: layer.zIndex + 1})}>上移一层</button><button onClick={() => updateLayer({zIndex: layer.zIndex - 1})}>下移一层</button><button className="danger" onClick={deleteLayer}>删除</button></div>

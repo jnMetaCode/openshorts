@@ -17,10 +17,30 @@ export const keyframeSchema = z.object({
   easing: easingSchema.default('ease-in-out'),
 });
 
+// 技术讲解的核心需求是「说到某个数字/术语时，它出现在屏幕上」。
+// 图层原来只能是图片，所以想让「$10」上屏就得去画一个金币 SVG——慢，而且信息量低。
+// kind:'text' 让文字成为一等图层；等宽 + 逐行显现就能表达代码与终端。
+export const textStyleSchema = z.object({
+  text: z.string().min(1),
+  fontSize: z.number().positive().default(96),
+  fontWeight: z.number().int().min(100).max(900).default(700),
+  color: z.string().optional(),                                   // 省略则用 theme.paper
+  align: z.enum(['left', 'center', 'right']).default('left'),
+  mono: z.boolean().default(false),                               // 代码与终端
+  lineHeight: z.number().positive().default(1.28),
+  letterSpacing: z.number().default(0),
+  background: z.string().optional(),                              // 卡片底色，便于压在画面上
+  padding: z.number().nonnegative().default(0),
+  // 逐行显现：每行间隔多少帧出现。0 表示整块一起出现。
+  revealFrames: z.number().nonnegative().default(0),
+});
+
 export const layerSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
-  src: z.string().min(1),
+  kind: z.enum(['image', 'text']).default('image'),
+  src: z.string().min(1).optional(),
+  style: textStyleSchema.optional(),
   role: roleSchema,
   x: z.number(),
   y: z.number(),
@@ -34,7 +54,12 @@ export const layerSchema = z.object({
   paperEdge: z.boolean().default(true),
   assetPlanId: z.string().optional(),
   keyframes: z.array(keyframeSchema).default([]),
-});
+}).refine(
+  (layer) => layer.kind === 'text' ? Boolean(layer.style) : Boolean(layer.src),
+  {message: '图片图层必须有 src，文字图层必须有 style'},
+);
+
+export const isTextLayer = (layer) => layer?.kind === 'text';
 
 export const captionSchema = z.object({
   text: z.string(),

@@ -1,13 +1,13 @@
 {
   "backgroundColor": "#12151f",
-  "cameraZoom": 1.035,
-  "soundtrackVolume": 0.38,
+  "cameraZoom": 1.02,
+  "soundtrackVolume": 0.34,
   "fallbackDurations": [
     12,
-    12,
-    12,
-    10,
-    12,
+    15,
+    14,
+    11,
+    14,
     8
   ],
   "voice": {
@@ -22,12 +22,13 @@
     "paper": "#f6eedb",
     "ink": "#12151f",
     "accent": "#e8a33d",
-    "subtitleBackground": "rgba(12,15,25,.88)"
+    "subtitleBackground": "rgba(12,15,25,.9)"
   },
   "production": {
     "style": {
       "format": "9:16",
-      "look": "深色终端底 + 暖白纸片几何图形，科技解读向",
+      "mode": "technical",
+      "look": "信息板式：关键数字与术语跟着口播上屏，视觉每 2-3 秒推进一次",
       "disclaimer": "本片为对 Andrej Karpathy 公开发言的解读与评论，观点归原作者"
     },
     "characters": []
@@ -36,132 +37,638 @@
     {
       "layers": [
         {
-          "id": "bg-hook",
-          "name": "终端夜色",
+          "id": "bg1",
+          "name": "终端底",
           "src": "assets/generated/karpathy-worlds/terminal-night.svg",
           "role": "background",
-          "x": -140,
-          "y": -50,
-          "width": 1360,
+          "x": -110,
+          "y": -40,
+          "width": 1300,
           "zIndex": 0,
+          "paperEdge": false
+        },
+        {
+          "id": "s1-kicker",
+          "name": "小标",
+          "kind": "text",
+          "role": "tertiary",
+          "x": 96,
+          "y": 250,
+          "width": 900,
+          "zIndex": 5,
+          "entrance": "fade",
+          "delayFrames": 4,
           "paperEdge": false,
-          "keyframes": [
-            {
-              "frame": 0,
-              "x": -140,
-              "y": -50,
-              "width": 1360,
-              "rotation": 0,
-              "opacity": 1,
-              "easing": "ease-in-out"
-            },
-            {
-              "frame": "end",
-              "x": -190,
-              "y": -100,
-              "width": 1470,
-              "rotation": 0,
-              "opacity": 1,
-              "easing": "ease-in-out"
-            }
-          ]
+          "style": {
+            "text": "一次实验",
+            "fontSize": 46,
+            "fontWeight": 600,
+            "color": "#7d8798",
+            "letterSpacing": 8
+          }
         },
         {
-          "id": "book-hook",
-          "name": "指环王开头",
-          "src": "assets/generated/karpathy-worlds/layers/book-page.svg",
+          "id": "s1-input",
+          "name": "输入",
+          "kind": "text",
           "role": "primary",
-          "x": 220,
-          "y": 700,
-          "width": 640,
-          "zIndex": 4,
-          "entrance": "scale",
-          "delayFrames": 6
+          "x": 96,
+          "y": 330,
+          "width": 920,
+          "zIndex": 5,
+          "entrance": "up",
+          "delayFrames": 8,
+          "style": {
+            "text": "给 AI 一段《指环王》开头",
+            "fontSize": 66,
+            "fontWeight": 800,
+            "lineHeight": 1.2
+          }
         },
         {
-          "id": "terrain-hook",
-          "name": "生成的三维场景",
+          "id": "s1-l1",
+          "name": "预算标签",
+          "kind": "text",
+          "role": "tertiary",
+          "x": 96,
+          "y": 620,
+          "width": 260,
+          "zIndex": 5,
+          "entrance": "fade",
+          "delayFrames": 108,
+          "paperEdge": false,
+          "style": {
+            "text": "预算",
+            "fontSize": 54,
+            "fontWeight": 500,
+            "color": "#7d8798"
+          }
+        },
+        {
+          "id": "s1-v1",
+          "name": "十美元",
+          "kind": "text",
+          "role": "primary",
+          "x": 400,
+          "y": 570,
+          "width": 600,
+          "zIndex": 6,
+          "entrance": "left",
+          "delayFrames": 108,
+          "style": {
+            "text": "$10",
+            "fontSize": 168,
+            "fontWeight": 900,
+            "color": "#e8a33d"
+          }
+        },
+        {
+          "id": "s1-l2",
+          "name": "耗时标签",
+          "kind": "text",
+          "role": "tertiary",
+          "x": 96,
+          "y": 830,
+          "width": 260,
+          "zIndex": 5,
+          "entrance": "fade",
+          "delayFrames": 163,
+          "paperEdge": false,
+          "style": {
+            "text": "耗时",
+            "fontSize": 54,
+            "fontWeight": 500,
+            "color": "#7d8798"
+          }
+        },
+        {
+          "id": "s1-v2",
+          "name": "两小时",
+          "kind": "text",
+          "role": "primary",
+          "x": 400,
+          "y": 800,
+          "width": 600,
+          "zIndex": 6,
+          "entrance": "left",
+          "delayFrames": 163,
+          "style": {
+            "text": "2 小时",
+            "fontSize": 132,
+            "fontWeight": 900
+          }
+        },
+        {
+          "id": "s1-l3",
+          "name": "产出标签",
+          "kind": "text",
+          "role": "tertiary",
+          "x": 96,
+          "y": 1030,
+          "width": 260,
+          "zIndex": 5,
+          "entrance": "fade",
+          "delayFrames": 196,
+          "paperEdge": false,
+          "style": {
+            "text": "产出",
+            "fontSize": 54,
+            "fontWeight": 500,
+            "color": "#7d8798"
+          }
+        },
+        {
+          "id": "s1-v3",
+          "name": "五千五百行",
+          "kind": "text",
+          "role": "primary",
+          "x": 400,
+          "y": 1000,
+          "width": 700,
+          "zIndex": 6,
+          "entrance": "left",
+          "delayFrames": 196,
+          "style": {
+            "text": "5500 行代码",
+            "fontSize": 104,
+            "fontWeight": 900
+          }
+        },
+        {
+          "id": "s1-out",
+          "name": "三维场景",
           "src": "assets/generated/karpathy-worlds/layers/lowpoly-terrain.svg",
           "role": "secondary",
-          "x": 430,
-          "y": 1130,
-          "width": 560,
-          "zIndex": 3,
+          "x": 320,
+          "y": 1180,
+          "width": 440,
+          "zIndex": 4,
           "entrance": "up",
-          "delayFrames": 34
+          "delayFrames": 256
         }
       ],
       "audioCues": [
         {
           "src": "audio/common/impact.wav",
-          "fromFrame": 0,
-          "volume": 0.42
+          "fromFrame": 108,
+          "volume": 0.3
+        },
+        {
+          "src": "audio/common/impact.wav",
+          "fromFrame": 196,
+          "volume": 0.3
         }
       ]
     },
     {
-      "cameraZoom": 1.05,
       "layers": [
         {
-          "id": "bg-shift",
+          "id": "bg2",
           "name": "纸面",
           "src": "assets/generated/karpathy-worlds/paper-desk.svg",
           "role": "background",
-          "x": -140,
-          "y": -50,
-          "width": 1360,
+          "x": -110,
+          "y": -40,
+          "width": 1300,
           "zIndex": 0,
-          "paperEdge": false,
-          "keyframes": [
-            {
-              "frame": 0,
-              "x": -140,
-              "y": -50,
-              "width": 1360,
-              "rotation": 0,
-              "opacity": 1,
-              "easing": "ease-in-out"
-            },
-            {
-              "frame": "end",
-              "x": -180,
-              "y": -90,
-              "width": 1450,
-              "rotation": 0,
-              "opacity": 1,
-              "easing": "ease-in-out"
-            }
-          ]
+          "paperEdge": false
         },
         {
-          "id": "pelican",
-          "name": "骑自行车的鹈鹕",
-          "src": "assets/generated/karpathy-worlds/layers/pelican-bike.svg",
+          "id": "s2-title",
+          "name": "标题",
+          "kind": "text",
           "role": "primary",
+          "x": 96,
+          "y": 250,
+          "width": 920,
+          "zIndex": 5,
+          "entrance": "up",
+          "delayFrames": 4,
+          "paperEdge": false,
+          "style": {
+            "text": "考题变了",
+            "fontSize": 96,
+            "fontWeight": 900,
+            "color": "#2a2418"
+          }
+        },
+        {
+          "id": "s2-sub",
+          "name": "副标",
+          "kind": "text",
+          "role": "tertiary",
+          "x": 96,
+          "y": 380,
+          "width": 920,
+          "zIndex": 5,
+          "entrance": "fade",
+          "delayFrames": 84,
+          "paperEdge": false,
+          "style": {
+            "text": "—— Andrej Karpathy",
+            "fontSize": 46,
+            "fontWeight": 500,
+            "color": "#7a6b4e"
+          }
+        },
+        {
+          "id": "s2-lbl-old",
+          "name": "从前",
+          "kind": "text",
+          "role": "tertiary",
+          "x": 96,
+          "y": 560,
+          "width": 300,
+          "zIndex": 5,
+          "entrance": "fade",
+          "delayFrames": 264,
+          "paperEdge": false,
+          "style": {
+            "text": "从前",
+            "fontSize": 50,
+            "fontWeight": 700,
+            "color": "#a89372",
+            "letterSpacing": 6
+          }
+        },
+        {
+          "id": "s2-pelican",
+          "name": "骑车的鹈鹕",
+          "src": "assets/generated/karpathy-worlds/layers/pelican-bike.svg",
+          "role": "secondary",
           "x": 90,
-          "y": 720,
-          "width": 620,
+          "y": 630,
+          "width": 330,
+          "zIndex": 4,
+          "entrance": "left",
+          "delayFrames": 264
+        },
+        {
+          "id": "s2-old",
+          "name": "旧考题",
+          "kind": "text",
+          "role": "primary",
+          "x": 460,
+          "y": 710,
+          "width": 560,
           "zIndex": 5,
           "entrance": "left",
-          "delayFrames": 8
+          "delayFrames": 270,
+          "paperEdge": false,
+          "style": {
+            "text": "画一只鹈鹕",
+            "fontSize": 76,
+            "fontWeight": 800,
+            "color": "#2a2418",
+            "lineHeight": 1.25
+          }
         },
         {
-          "id": "terrain-shift",
-          "name": "整个世界",
+          "id": "s2-lbl-new",
+          "name": "现在",
+          "kind": "text",
+          "role": "tertiary",
+          "x": 96,
+          "y": 1010,
+          "width": 300,
+          "zIndex": 5,
+          "entrance": "fade",
+          "delayFrames": 351,
+          "paperEdge": false,
+          "style": {
+            "text": "现在",
+            "fontSize": 50,
+            "fontWeight": 700,
+            "color": "#c2761f",
+            "letterSpacing": 6
+          }
+        },
+        {
+          "id": "s2-terrain",
+          "name": "一个世界",
           "src": "assets/generated/karpathy-worlds/layers/lowpoly-terrain.svg",
           "role": "secondary",
-          "x": 500,
+          "x": 90,
           "y": 1080,
-          "width": 540,
+          "width": 330,
           "zIndex": 4,
-          "entrance": "right",
-          "delayFrames": 40
+          "entrance": "left",
+          "delayFrames": 351
+        },
+        {
+          "id": "s2-new",
+          "name": "新考题",
+          "kind": "text",
+          "role": "primary",
+          "x": 460,
+          "y": 1160,
+          "width": 560,
+          "zIndex": 5,
+          "entrance": "left",
+          "delayFrames": 357,
+          "paperEdge": false,
+          "style": {
+            "text": "造一个世界",
+            "fontSize": 76,
+            "fontWeight": 800,
+            "color": "#8a4a12",
+            "lineHeight": 1.25
+          }
         }
       ],
       "audioCues": [
         {
           "src": "audio/common/whoosh.wav",
-          "fromFrame": 34,
+          "fromFrame": 264,
+          "volume": 0.2
+        }
+      ]
+    },
+    {
+      "layers": [
+        {
+          "id": "bg3",
+          "name": "纸面",
+          "src": "assets/generated/karpathy-worlds/paper-desk.svg",
+          "role": "background",
+          "x": -110,
+          "y": -40,
+          "width": 1300,
+          "zIndex": 0,
+          "paperEdge": false
+        },
+        {
+          "id": "s3-title",
+          "name": "标题",
+          "kind": "text",
+          "role": "primary",
+          "x": 96,
+          "y": 240,
+          "width": 920,
+          "zIndex": 5,
+          "entrance": "up",
+          "delayFrames": 4,
+          "paperEdge": false,
+          "style": {
+            "text": "转折在成本\n不在能力",
+            "fontSize": 92,
+            "fontWeight": 900,
+            "color": "#2a2418",
+            "lineHeight": 1.2
+          }
+        },
+        {
+          "id": "s3-lbl-a",
+          "name": "以前",
+          "kind": "text",
+          "role": "tertiary",
+          "x": 96,
+          "y": 570,
+          "width": 900,
+          "zIndex": 5,
+          "entrance": "fade",
+          "delayFrames": 111,
+          "paperEdge": false,
+          "style": {
+            "text": "以前",
+            "fontSize": 50,
+            "fontWeight": 700,
+            "color": "#a89372",
+            "letterSpacing": 6
+          }
+        },
+        {
+          "id": "s3-a",
+          "name": "不值当",
+          "kind": "text",
+          "role": "secondary",
+          "x": 96,
+          "y": 640,
+          "width": 920,
+          "zIndex": 5,
+          "entrance": "up",
+          "delayFrames": 111,
+          "paperEdge": false,
+          "style": {
+            "text": "定制 · 琐碎 · 不值当",
+            "fontSize": 58,
+            "fontWeight": 600,
+            "color": "#5c5140"
+          }
+        },
+        {
+          "id": "s3-a2",
+          "name": "没人会做",
+          "kind": "text",
+          "role": "primary",
+          "x": 96,
+          "y": 730,
+          "width": 920,
+          "zIndex": 6,
+          "entrance": "up",
+          "delayFrames": 205,
+          "paperEdge": false,
+          "style": {
+            "text": "「没人会做这个」",
+            "fontSize": 84,
+            "fontWeight": 900,
+            "color": "#8a7a5c"
+          }
+        },
+        {
+          "id": "s3-rule",
+          "name": "分隔",
+          "kind": "text",
+          "role": "tertiary",
+          "x": 96,
+          "y": 880,
+          "width": 920,
+          "zIndex": 5,
+          "entrance": "fade",
+          "delayFrames": 255,
+          "paperEdge": false,
+          "style": {
+            "text": "↓",
+            "fontSize": 72,
+            "fontWeight": 400,
+            "color": "#c2761f"
+          }
+        },
+        {
+          "id": "s3-lbl-b",
+          "name": "现在",
+          "kind": "text",
+          "role": "tertiary",
+          "x": 96,
+          "y": 1000,
+          "width": 900,
+          "zIndex": 5,
+          "entrance": "fade",
+          "delayFrames": 255,
+          "paperEdge": false,
+          "style": {
+            "text": "现在",
+            "fontSize": 50,
+            "fontWeight": 700,
+            "color": "#c2761f",
+            "letterSpacing": 6
+          }
+        },
+        {
+          "id": "s3-b",
+          "name": "几乎免费",
+          "kind": "text",
+          "role": "primary",
+          "x": 96,
+          "y": 1065,
+          "width": 920,
+          "zIndex": 6,
+          "entrance": "left",
+          "delayFrames": 255,
+          "paperEdge": false,
+          "style": {
+            "text": "约 $10 · 几乎免费",
+            "fontSize": 82,
+            "fontWeight": 900,
+            "color": "#2a2418"
+          }
+        },
+        {
+          "id": "s3-b2",
+          "name": "那就做吧",
+          "kind": "text",
+          "role": "primary",
+          "x": 96,
+          "y": 1190,
+          "width": 920,
+          "zIndex": 6,
+          "entrance": "up",
+          "delayFrames": 312,
+          "paperEdge": false,
+          "style": {
+            "text": "「行啊，那就做吧」",
+            "fontSize": 88,
+            "fontWeight": 900,
+            "color": "#c2761f"
+          }
+        }
+      ],
+      "audioCues": [
+        {
+          "src": "audio/common/impact.wav",
+          "fromFrame": 255,
+          "volume": 0.3
+        },
+        {
+          "src": "audio/common/impact.wav",
+          "fromFrame": 312,
+          "volume": 0.34
+        }
+      ]
+    },
+    {
+      "layers": [
+        {
+          "id": "bg4",
+          "name": "开放世界",
+          "src": "assets/generated/karpathy-worlds/open-world.svg",
+          "role": "background",
+          "x": -110,
+          "y": -40,
+          "width": 1300,
+          "zIndex": 0,
+          "paperEdge": false
+        },
+        {
+          "id": "s4-title",
+          "name": "标题",
+          "kind": "text",
+          "role": "primary",
+          "x": 96,
+          "y": 250,
+          "width": 920,
+          "zIndex": 5,
+          "entrance": "up",
+          "delayFrames": 4,
+          "style": {
+            "text": "按需生成的世界",
+            "fontSize": 92,
+            "fontWeight": 900
+          }
+        },
+        {
+          "id": "s4-p1",
+          "name": "要点",
+          "kind": "text",
+          "role": "secondary",
+          "x": 96,
+          "y": 400,
+          "width": 920,
+          "zIndex": 5,
+          "entrance": "up",
+          "delayFrames": 70,
+          "style": {
+            "text": "· 为你一个人生成\n· 只存在这一次",
+            "fontSize": 60,
+            "fontWeight": 600,
+            "color": "#b9c3d6",
+            "lineHeight": 1.5
+          }
+        },
+        {
+          "id": "s4-figure",
+          "name": "被放进去的人",
+          "src": "assets/generated/karpathy-worlds/layers/figure-enter.svg",
+          "role": "primary",
+          "x": 380,
+          "y": 640,
+          "width": 320,
+          "zIndex": 6,
+          "entrance": "up",
+          "delayFrames": 147
+        },
+        {
+          "id": "s4-r1",
+          "name": "角色一",
+          "kind": "text",
+          "role": "secondary",
+          "x": 96,
+          "y": 1240,
+          "width": 920,
+          "zIndex": 5,
+          "entrance": "left",
+          "delayFrames": 186,
+          "style": {
+            "text": "当个旁观 NPC",
+            "fontSize": 70,
+            "fontWeight": 800,
+            "align": "center"
+          }
+        },
+        {
+          "id": "s4-r2",
+          "name": "角色二",
+          "kind": "text",
+          "role": "primary",
+          "x": 96,
+          "y": 1340,
+          "width": 920,
+          "zIndex": 5,
+          "entrance": "left",
+          "delayFrames": 252,
+          "style": {
+            "text": "或者，成为主角",
+            "fontSize": 70,
+            "fontWeight": 800,
+            "color": "#e8a33d",
+            "align": "center"
+          }
+        }
+      ],
+      "audioCues": [
+        {
+          "src": "audio/common/whoosh.wav",
+          "fromFrame": 147,
           "volume": 0.22
         }
       ]
@@ -169,255 +676,222 @@
     {
       "layers": [
         {
-          "id": "bg-econ",
-          "name": "纸面",
-          "src": "assets/generated/karpathy-worlds/paper-desk.svg",
-          "role": "background",
-          "x": -140,
-          "y": -50,
-          "width": 1360,
-          "zIndex": 0,
-          "paperEdge": false,
-          "keyframes": [
-            {
-              "frame": 0,
-              "x": -160,
-              "y": -70,
-              "width": 1420,
-              "rotation": 0,
-              "opacity": 1,
-              "easing": "ease-in-out"
-            },
-            {
-              "frame": "end",
-              "x": -130,
-              "y": -40,
-              "width": 1345,
-              "rotation": 0,
-              "opacity": 1,
-              "easing": "ease-in-out"
-            }
-          ]
-        },
-        {
-          "id": "coins",
-          "name": "从不值当到几乎免费",
-          "src": "assets/generated/karpathy-worlds/layers/coin-swap.svg",
-          "role": "primary",
-          "x": 170,
-          "y": 820,
-          "width": 720,
-          "zIndex": 5,
-          "entrance": "scale",
-          "delayFrames": 10
-        }
-      ],
-      "audioCues": [
-        {
-          "src": "audio/common/impact.wav",
-          "fromFrame": 12,
-          "volume": 0.34
-        }
-      ]
-    },
-    {
-      "cameraZoom": 1.07,
-      "layers": [
-        {
-          "id": "bg-worlds",
-          "name": "开放世界",
-          "src": "assets/generated/karpathy-worlds/open-world.svg",
-          "role": "background",
-          "x": -140,
-          "y": -50,
-          "width": 1360,
-          "zIndex": 0,
-          "paperEdge": false,
-          "keyframes": [
-            {
-              "frame": 0,
-              "x": -140,
-              "y": -50,
-              "width": 1360,
-              "rotation": 0,
-              "opacity": 1,
-              "easing": "ease-in-out"
-            },
-            {
-              "frame": "end",
-              "x": -200,
-              "y": -110,
-              "width": 1490,
-              "rotation": 0,
-              "opacity": 1,
-              "easing": "ease-in-out"
-            }
-          ]
-        },
-        {
-          "id": "figure",
-          "name": "被放进世界的人",
-          "src": "assets/generated/karpathy-worlds/layers/figure-enter.svg",
-          "role": "primary",
-          "x": 350,
-          "y": 660,
-          "width": 380,
-          "zIndex": 6,
-          "entrance": "up",
-          "delayFrames": 12
-        },
-        {
-          "id": "terrain-worlds",
-          "name": "地形",
-          "src": "assets/generated/karpathy-worlds/layers/lowpoly-terrain.svg",
-          "role": "tertiary",
-          "x": 60,
-          "y": 1140,
-          "width": 460,
-          "zIndex": 3,
-          "opacity": 0.72,
-          "entrance": "left",
-          "delayFrames": 30
-        }
-      ],
-      "audioCues": [
-        {
-          "src": "audio/common/whoosh.wav",
-          "fromFrame": 6,
-          "volume": 0.24
-        }
-      ]
-    },
-    {
-      "layers": [
-        {
-          "id": "bg-weak",
-          "name": "终端夜色",
+          "id": "bg5",
+          "name": "终端底",
           "src": "assets/generated/karpathy-worlds/terminal-night.svg",
           "role": "background",
-          "x": -140,
-          "y": -50,
-          "width": 1360,
+          "x": -110,
+          "y": -40,
+          "width": 1300,
           "zIndex": 0,
-          "paperEdge": false,
-          "keyframes": [
-            {
-              "frame": 0,
-              "x": -140,
-              "y": -50,
-              "width": 1360,
-              "rotation": 0,
-              "opacity": 1,
-              "easing": "ease-in-out"
-            },
-            {
-              "frame": "end",
-              "x": -175,
-              "y": -85,
-              "width": 1440,
-              "rotation": 0,
-              "opacity": 1,
-              "easing": "ease-in-out"
-            }
-          ]
+          "paperEdge": false
         },
         {
-          "id": "eye",
-          "name": "看不见",
-          "src": "assets/generated/karpathy-worlds/layers/blind-eye.svg",
+          "id": "s5-title",
+          "name": "标题",
+          "kind": "text",
           "role": "primary",
-          "x": 200,
-          "y": 700,
-          "width": 680,
-          "zIndex": 6,
-          "entrance": "fade",
-          "delayFrames": 10
-        },
-        {
-          "id": "shots",
-          "name": "一张张截图",
-          "src": "assets/generated/karpathy-worlds/layers/screenshot-stack.svg",
-          "role": "secondary",
-          "x": 260,
-          "y": 1080,
-          "width": 560,
+          "x": 96,
+          "y": 240,
+          "width": 920,
           "zIndex": 5,
           "entrance": "up",
-          "delayFrames": 42
+          "delayFrames": 4,
+          "style": {
+            "text": "但它审核不了自己",
+            "fontSize": 92,
+            "fontWeight": 900
+          }
+        },
+        {
+          "id": "s5-x",
+          "name": "两个不能",
+          "kind": "text",
+          "role": "primary",
+          "x": 96,
+          "y": 420,
+          "width": 920,
+          "zIndex": 6,
+          "entrance": "up",
+          "delayFrames": 80,
+          "style": {
+            "text": "✗  看不了视频\n✗  玩不了游戏",
+            "fontSize": 76,
+            "fontWeight": 800,
+            "color": "#e2705f",
+            "lineHeight": 1.5
+          }
+        },
+        {
+          "id": "s5-only",
+          "name": "只能",
+          "kind": "text",
+          "role": "secondary",
+          "x": 96,
+          "y": 700,
+          "width": 920,
+          "zIndex": 5,
+          "entrance": "fade",
+          "delayFrames": 181,
+          "paperEdge": false,
+          "style": {
+            "text": "只能：",
+            "fontSize": 52,
+            "fontWeight": 600,
+            "color": "#7d8798"
+          }
+        },
+        {
+          "id": "s5-how",
+          "name": "笨办法",
+          "kind": "text",
+          "role": "primary",
+          "x": 96,
+          "y": 770,
+          "width": 920,
+          "zIndex": 6,
+          "entrance": "left",
+          "delayFrames": 181,
+          "style": {
+            "text": "截图 → 比对 → 再截图",
+            "fontSize": 68,
+            "fontWeight": 800
+          }
+        },
+        {
+          "id": "s5-shots",
+          "name": "截图堆叠",
+          "src": "assets/generated/karpathy-worlds/layers/screenshot-stack.svg",
+          "role": "secondary",
+          "x": 300,
+          "y": 900,
+          "width": 480,
+          "zIndex": 4,
+          "entrance": "up",
+          "delayFrames": 238
+        },
+        {
+          "id": "s5-fail",
+          "name": "出错",
+          "kind": "text",
+          "role": "primary",
+          "x": 96,
+          "y": 1320,
+          "width": 920,
+          "zIndex": 6,
+          "entrance": "up",
+          "delayFrames": 364,
+          "style": {
+            "text": "结果：留下一堆 jank",
+            "fontSize": 62,
+            "fontWeight": 800,
+            "color": "#e2705f",
+            "align": "center"
+          }
         }
       ],
       "audioCues": [
         {
           "src": "audio/common/impact.wav",
-          "fromFrame": 8,
-          "volume": 0.38
+          "fromFrame": 80,
+          "volume": 0.34
+        },
+        {
+          "src": "audio/common/whoosh.wav",
+          "fromFrame": 238,
+          "volume": 0.2
         }
       ]
     },
     {
       "layers": [
         {
-          "id": "bg-end",
+          "id": "bg6",
           "name": "开放世界",
           "src": "assets/generated/karpathy-worlds/open-world.svg",
           "role": "background",
-          "x": -140,
-          "y": -50,
-          "width": 1360,
+          "x": -110,
+          "y": -40,
+          "width": 1300,
           "zIndex": 0,
-          "paperEdge": false,
-          "keyframes": [
-            {
-              "frame": 0,
-              "x": -170,
-              "y": -80,
-              "width": 1430,
-              "rotation": 0,
-              "opacity": 1,
-              "easing": "ease-in-out"
-            },
-            {
-              "frame": "end",
-              "x": -140,
-              "y": -50,
-              "width": 1360,
-              "rotation": 0,
-              "opacity": 1,
-              "easing": "ease-in-out"
-            }
-          ]
+          "paperEdge": false
         },
         {
-          "id": "figure-end",
-          "name": "耐心",
-          "src": "assets/generated/karpathy-worlds/layers/figure-enter.svg",
+          "id": "s6-a",
+          "name": "有耐心",
+          "kind": "text",
           "role": "primary",
-          "x": 360,
-          "y": 560,
-          "width": 360,
-          "zIndex": 5,
-          "entrance": "scale",
-          "delayFrames": 8
+          "x": 96,
+          "y": 420,
+          "width": 920,
+          "zIndex": 6,
+          "entrance": "up",
+          "delayFrames": 4,
+          "style": {
+            "text": "有近乎无限的耐心",
+            "fontSize": 88,
+            "fontWeight": 900,
+            "align": "center"
+          }
         },
         {
-          "id": "eye-end",
-          "name": "还没有眼睛",
+          "id": "s6-b",
+          "name": "没眼睛",
+          "kind": "text",
+          "role": "primary",
+          "x": 96,
+          "y": 560,
+          "width": 920,
+          "zIndex": 6,
+          "entrance": "up",
+          "delayFrames": 74,
+          "style": {
+            "text": "却还没有一双眼睛",
+            "fontSize": 88,
+            "fontWeight": 900,
+            "color": "#e8a33d",
+            "align": "center"
+          }
+        },
+        {
+          "id": "s6-eye",
+          "name": "看不见",
           "src": "assets/generated/karpathy-worlds/layers/blind-eye.svg",
-          "role": "tertiary",
-          "x": 250,
-          "y": 1180,
+          "role": "secondary",
+          "x": 290,
+          "y": 760,
           "width": 500,
-          "zIndex": 4,
-          "opacity": 0.6,
+          "zIndex": 5,
           "entrance": "fade",
-          "delayFrames": 30
+          "delayFrames": 74
+        },
+        {
+          "id": "s6-src",
+          "name": "出处",
+          "kind": "text",
+          "role": "tertiary",
+          "x": 96,
+          "y": 1240,
+          "width": 920,
+          "zIndex": 5,
+          "entrance": "fade",
+          "delayFrames": 138,
+          "paperEdge": false,
+          "style": {
+            "text": "观点出自 Andrej Karpathy\n@karpathy · 解读与举例为本片所加",
+            "fontSize": 42,
+            "fontWeight": 500,
+            "color": "#8d99ad",
+            "align": "center",
+            "lineHeight": 1.5
+          }
         }
       ],
       "audioCues": [
         {
           "src": "audio/common/whoosh.wav",
-          "fromFrame": 14,
-          "volume": 0.2
+          "fromFrame": 4,
+          "volume": 0.18
         }
       ]
     }

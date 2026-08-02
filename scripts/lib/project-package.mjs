@@ -13,7 +13,7 @@ export const collectAssetPaths = (project) => {
   for (const scene of project.scenes ?? []) {
     if (scene.narrationSrc && !isRemote(scene.narrationSrc)) assets.add(scene.narrationSrc.replace(/^\//, ''));
     for (const cue of scene.audioCues ?? []) if (!isRemote(cue.src)) assets.add(cue.src.replace(/^\//, ''));
-    for (const layer of scene.layers ?? []) if (layer.src && !isRemote(layer.src)) assets.add(layer.src.replace(/^\//, ''));
+    for (const layer of scene.layers ?? []) if (layer.src && layer.kind !== 'text' && !isRemote(layer.src)) assets.add(layer.src.replace(/^\//, ''));
   }
   return [...assets];
 };
@@ -57,7 +57,7 @@ const replaceAssetPaths = (project, replacements) => {
   for (const scene of project.scenes ?? []) {
     scene.narrationSrc = replace(scene.narrationSrc);
     scene.audioCues = (scene.audioCues ?? []).map((cue) => ({...cue, src: replace(cue.src)}));
-    for (const layer of scene.layers ?? []) layer.src = replace(layer.src);
+    for (const layer of scene.layers ?? []) if (layer.src) layer.src = replace(layer.src);
   }
   return project;
 };
