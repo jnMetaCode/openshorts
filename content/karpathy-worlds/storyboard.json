@@ -423,8 +423,8 @@
           "delayFrames": 84,
           "paperEdge": false,
           "style": {
-            "text": "Andrej Karpathy\nOpenAI 创始成员 · 特斯拉前 AI 总监",
-            "fontSize": 44,
+            "text": "Andrej Karpathy\nOpenAI 创始成员 · 特斯拉前 AI 总监 · 现 Anthropic",
+            "fontSize": 36,
             "fontWeight": 500,
             "color": "#7a6b4e",
             "lineHeight": 1.45
