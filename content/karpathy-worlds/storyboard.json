@@ -195,16 +195,38 @@
           }
         },
         {
-          "id": "s1-out",
-          "name": "三维场景",
-          "src": "assets/generated/karpathy-worlds/layers/lowpoly-terrain.svg",
+          "id": "s1-demo",
+          "name": "真实演示画面",
+          "kind": "video",
+          "src": "assets/quoted/karpathy-worlds/clip-bilbo.mp4",
+          "startFrom": 0,
           "role": "secondary",
-          "x": 320,
-          "y": 1180,
-          "width": 440,
+          "x": 180,
+          "y": 1140,
+          "width": 720,
           "zIndex": 4,
           "entrance": "up",
-          "delayFrames": 256
+          "delayFrames": 256,
+          "paperEdge": false
+        },
+        {
+          "id": "s1-credit",
+          "name": "署名",
+          "kind": "text",
+          "role": "tertiary",
+          "x": 180,
+          "y": 1092,
+          "width": 720,
+          "zIndex": 5,
+          "entrance": "fade",
+          "delayFrames": 256,
+          "paperEdge": false,
+          "style": {
+            "text": "真实演示画面 · @karpathy",
+            "fontSize": 34,
+            "fontWeight": 500,
+            "color": "#7d8798"
+          }
         }
       ],
       "audioCues": [
@@ -344,18 +366,6 @@
           }
         },
         {
-          "id": "s2-terrain",
-          "name": "一个世界",
-          "src": "assets/generated/karpathy-worlds/layers/lowpoly-terrain.svg",
-          "role": "secondary",
-          "x": 90,
-          "y": 1080,
-          "width": 330,
-          "zIndex": 4,
-          "entrance": "left",
-          "delayFrames": 351
-        },
-        {
           "id": "s2-new",
           "name": "新考题",
           "kind": "text",
@@ -374,6 +384,21 @@
             "color": "#8a4a12",
             "lineHeight": 1.25
           }
+        },
+        {
+          "id": "s2-shire",
+          "name": "真实的夏尔",
+          "kind": "video",
+          "src": "assets/quoted/karpathy-worlds/clip-shire.mp4",
+          "startFrom": 0,
+          "role": "secondary",
+          "x": 90,
+          "y": 1100,
+          "width": 330,
+          "zIndex": 4,
+          "entrance": "left",
+          "delayFrames": 351,
+          "paperEdge": false
         }
       ],
       "audioCues": [
@@ -616,13 +641,28 @@
           }
         },
         {
+          "id": "s4-demo",
+          "name": "生成的世界",
+          "kind": "video",
+          "src": "assets/quoted/karpathy-worlds/clip-shire.mp4",
+          "startFrom": 1.5,
+          "role": "secondary",
+          "x": 96,
+          "y": 600,
+          "width": 920,
+          "zIndex": 4,
+          "entrance": "up",
+          "delayFrames": 70,
+          "paperEdge": false
+        },
+        {
           "id": "s4-figure",
           "name": "被放进去的人",
           "src": "assets/generated/karpathy-worlds/layers/figure-enter.svg",
           "role": "primary",
-          "x": 380,
-          "y": 640,
-          "width": 320,
+          "x": 130,
+          "y": 1150,
+          "width": 200,
           "zIndex": 6,
           "entrance": "up",
           "delayFrames": 147
@@ -632,17 +672,16 @@
           "name": "角色一",
           "kind": "text",
           "role": "secondary",
-          "x": 96,
-          "y": 1240,
-          "width": 920,
+          "x": 380,
+          "y": 1210,
+          "width": 620,
           "zIndex": 5,
           "entrance": "left",
           "delayFrames": 186,
           "style": {
             "text": "当个旁观 NPC",
-            "fontSize": 70,
-            "fontWeight": 800,
-            "align": "center"
+            "fontSize": 62,
+            "fontWeight": 800
           }
         },
         {
@@ -650,18 +689,17 @@
           "name": "角色二",
           "kind": "text",
           "role": "primary",
-          "x": 96,
-          "y": 1340,
-          "width": 920,
+          "x": 380,
+          "y": 1310,
+          "width": 640,
           "zIndex": 5,
           "entrance": "left",
           "delayFrames": 252,
           "style": {
             "text": "或者，成为主角",
-            "fontSize": 70,
+            "fontSize": 62,
             "fontWeight": 800,
-            "color": "#e8a33d",
-            "align": "center"
+            "color": "#e8a33d"
           }
         }
       ],
@@ -759,18 +797,6 @@
           }
         },
         {
-          "id": "s5-shots",
-          "name": "截图堆叠",
-          "src": "assets/generated/karpathy-worlds/layers/screenshot-stack.svg",
-          "role": "secondary",
-          "x": 300,
-          "y": 900,
-          "width": 480,
-          "zIndex": 4,
-          "entrance": "up",
-          "delayFrames": 238
-        },
-        {
           "id": "s5-fail",
           "name": "出错",
           "kind": "text",
@@ -788,6 +814,45 @@
             "color": "#e2705f",
             "align": "center"
           }
+        },
+        {
+          "id": "s5-still1",
+          "name": "截图·隧道",
+          "src": "assets/quoted/karpathy-worlds/still-tunnel.png",
+          "role": "tertiary",
+          "x": 120,
+          "y": 900,
+          "width": 520,
+          "zIndex": 3,
+          "rotation": -4,
+          "entrance": "up",
+          "delayFrames": 238
+        },
+        {
+          "id": "s5-still2",
+          "name": "截图·小路",
+          "src": "assets/quoted/karpathy-worlds/still-path.png",
+          "role": "secondary",
+          "x": 250,
+          "y": 950,
+          "width": 520,
+          "zIndex": 4,
+          "rotation": 2,
+          "entrance": "up",
+          "delayFrames": 262
+        },
+        {
+          "id": "s5-still3",
+          "name": "截图·夜晚",
+          "src": "assets/quoted/karpathy-worlds/still-night.png",
+          "role": "secondary",
+          "x": 380,
+          "y": 1000,
+          "width": 520,
+          "zIndex": 5,
+          "rotation": 6,
+          "entrance": "up",
+          "delayFrames": 286
         }
       ],
       "audioCues": [
@@ -878,7 +943,7 @@
           "delayFrames": 138,
           "paperEdge": false,
           "style": {
-            "text": "观点出自 Andrej Karpathy\n@karpathy · 解读与举例为本片所加",
+            "text": "观点与演示画面出自 Andrej Karpathy\n@karpathy · 解读与举例为本片所加",
             "fontSize": 42,
             "fontWeight": 500,
             "color": "#8d99ad",

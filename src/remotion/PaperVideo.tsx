@@ -1,5 +1,5 @@
 import React from 'react';
-import {AbsoluteFill, Audio, Img, Sequence, interpolate, spring, staticFile, useCurrentFrame, useVideoConfig} from 'remotion';
+import {AbsoluteFill, Audio, Img, OffthreadVideo, Sequence, interpolate, spring, staticFile, useCurrentFrame, useVideoConfig} from 'remotion';
 import {subtitleBottomRatio, subtitleFontSize} from '../../shared/captions.mjs';
 import type {Layer, PaperProject, Scene} from '../domain/project';
 import {entranceVector, roleMotion} from '../motion/animation';
@@ -62,6 +62,13 @@ const PaperLayer: React.FC<{layer: Layer; project: PaperProject}> = ({layer, pro
     transform: `translate(${translateX}px, ${translateY}px) rotate(${pose.rotation}deg) scale(${layer.flipX ? -scale : scale}, ${scale})`,
     filter: layer.paperEdge ? 'drop-shadow(3px 0 #f5eedc) drop-shadow(-3px 0 #f5eedc) drop-shadow(0 3px #f5eedc) drop-shadow(0 14px 8px rgba(20,15,12,.28))' : undefined,
   };
+
+  if (layer.kind === 'video') {
+    // 引用的真实画面。静音——声音统一走音频母带；圆角让它读作「窗口」而非穿帮。
+    return <div style={{...boxStyle, overflow: 'hidden', borderRadius: 14}}>
+      <OffthreadVideo src={assetUrl(layer.src!)} muted startFrom={Math.round((layer.startFrom ?? 0) * fps)} style={{width: '100%', display: 'block'}}/>
+    </div>;
+  }
 
   if (layer.kind === 'text') {
     // 文字自带描边会糊，改用落影保证压在画面上也读得清

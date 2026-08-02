@@ -50,6 +50,13 @@ for(const [sceneIndex,scene] of project.scenes.entries()){
       if(pad)args.push('-bordercolor',st.background??'none','-border',String(pad));
       if(layer.opacity!=null&&layer.opacity<1)args.push('-channel','A','-evaluate','multiply',String(layer.opacity),'+channel');
       args.push(sprite);await run('magick',args);
+    } else if(layer.kind==='video'){
+      // 降级路径不播视频：取 startFrom 处的海报帧当静态图，与「不保证运动」的定位一致
+      const poster=path.join(temp,`poster-${sceneIndex}-${layerIndex}.png`);
+      await run('ffmpeg',['-y','-v','error','-ss',String(layer.startFrom??0),'-i',publicFile(layer.src),'-frames:v','1',poster]);
+      const args=[poster,'-resize',`${Math.round(layer.width)}x`];
+      if(layer.opacity!=null&&layer.opacity<1)args.push('-channel','A','-evaluate','multiply',String(layer.opacity),'+channel');
+      args.push(sprite);await run('magick',args);
     } else {
       const args=['-background','none',publicFile(layer.src),'-resize',`${Math.round(layer.width)}x`];if(layer.flipX)args.push('-flop');if(layer.opacity!=null&&layer.opacity<1)args.push('-channel','A','-evaluate','multiply',String(layer.opacity),'+channel');args.push(sprite);await run('magick',args);
     }

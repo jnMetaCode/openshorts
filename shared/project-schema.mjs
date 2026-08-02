@@ -38,7 +38,9 @@ export const textStyleSchema = z.object({
 export const layerSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
-  kind: z.enum(['image', 'text']).default('image'),
+  kind: z.enum(['image', 'text', 'video']).default('image'),
+  // 视频图层：评论/解说时引用真实画面。startFrom 为从源视频第几秒开始播，静音（旁白与配乐来自母带）。
+  startFrom: z.number().nonnegative().default(0),
   src: z.string().min(1).optional(),
   style: textStyleSchema.optional(),
   role: roleSchema,
@@ -56,7 +58,7 @@ export const layerSchema = z.object({
   keyframes: z.array(keyframeSchema).default([]),
 }).refine(
   (layer) => layer.kind === 'text' ? Boolean(layer.style) : Boolean(layer.src),
-  {message: '图片图层必须有 src，文字图层必须有 style'},
+  {message: '图片/视频图层必须有 src，文字图层必须有 style'},
 );
 
 export const isTextLayer = (layer) => layer?.kind === 'text';

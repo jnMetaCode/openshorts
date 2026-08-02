@@ -51,6 +51,7 @@ const LayoutCanvas = ({project, scene, selectedId, onSelect, onMoveStart, onMove
       fontSize: `${item.style.fontSize / project.width * 100}cqw`,
       fontWeight: item.style.fontWeight, lineHeight: item.style.lineHeight,
     }}>{item.style.text}</div>;
+    if (item.kind === 'video') return <video {...common} src={assetUrl(item.src ?? '')} muted preload="auto" style={{...box, position: 'absolute', borderRadius: 8}}/>;
     return <img {...common} src={assetUrl(item.src ?? '')} alt={item.name} draggable={false} style={box}/>;
   })}
   <span className="safe-area" style={{bottom: `${subtitleBottomRatio(project.width, project.height) * 100}%`}}>字幕安全区</span>

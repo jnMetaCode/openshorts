@@ -15,6 +15,8 @@ export const PROVIDERS = {
   'imagegen-agent': {label: 'Agent 图像生成', needsModel: true, licensable: true},
   'stock': {label: '图库素材', needsModel: false, licensable: true},
   'photograph': {label: '自行拍摄', needsModel: false, licensable: true},
+  // 评论/解说用途的短引用，必须记录来源与作者；素材本体不进仓库（.gitignore public/assets/quoted/）
+  'quotation': {label: '第三方引用（评论用途）', needsModel: false, licensable: true},
   [UNKNOWN]: {label: '来源未知', needsModel: false, licensable: false},
 };
 

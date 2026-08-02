@@ -13,3 +13,6 @@ __pycache__/
 
 # 第三方配乐不进仓库：授权因来源而异，各自本地导入
 public/audio/custom/
+
+# 引用的第三方媒体（评论/解说用途）不进仓库：来源与再获取方式记录在 content/*/assets.json
+public/assets/quoted/
