@@ -15,7 +15,7 @@
   "soundtrackVolume": 0.34,
   "production": {
     "plannerVersion": 1,
-    "sourceText": "十美元，两小时，AI 造出了一个能走进去的世界。\n有人给了 AI 一段《指环王》的开头，和大约十美元的预算。两个小时后，它交出五千五百行代码，把那段文字变成了一个能走进去的三维场景。\n说这话的是安德烈·卡帕西。他的重点不是画面多好看，而是：我们考核 AI 的题目变了。从前是画一只骑自行车的鹈鹕，现在是把一个故事变成一个世界。\n他说，真正的转折不在能力，在成本。这种活儿以前没人会干，太定制、太琐碎、不值当。而现在它几乎免费。于是「没人会做」变成了「那就做吧」。\n他兴奋的是接下来那一步：按需生成一个高度定制的世界，再把人放进去。你可以当一个旁观的路人，也可以就是故事里的那个角色。\n但同一件事也照出了短板。AI 看不了视频，也玩不了游戏。它只能一张张截图，慢慢核对自己到底做了什么。中间错了几次，画面就一直卡在那儿。\n它有近乎无限的耐心去做，却还没有一双眼睛去看。这大概就是这一代 AI 最真实的样子。",
+    "sourceText": "十美元，两小时，AI 造出了一个能走进去的世界。\n有人给了 AI 一段《指环王》的开头，和大约十美元的预算。两个小时后，它交出五千五百行代码，把那段文字变成了一个能走进去的三维场景。\n说这话的是安德烈·卡帕西，OpenAI 创始成员、特斯拉前 AI 总监。但他的重点是：我们考核 AI 的题目变了。从前是画一只骑自行车的鹈鹕，现在是把一个故事变成一个世界。\n他说，真正的转折不在能力，在成本。这种活儿以前没人会干，太定制、太琐碎、不值当。而现在它几乎免费。于是「没人会做」变成了「那就做吧」。\n他兴奋的是接下来那一步：按需生成一个高度定制的世界，再把人放进去。你可以当一个旁观的路人，也可以就是故事里的那个角色。\n但同一件事也照出了短板。AI 看不了视频，也玩不了游戏。它只能一张张截图，慢慢核对自己到底做了什么。中间错了几次，画面就一直卡在那儿。\n它有近乎无限的耐心去做，却还没有一双眼睛去看。这大概就是这一代 AI 最真实的样子。",
     "style": {
       "format": "9:16",
       "mode": "technical",
@@ -309,13 +309,13 @@
           "width": 920,
           "zIndex": 5,
           "style": {
-            "text": "一次真实实验",
+            "text": "OpenAI 创始成员的实验",
             "fontSize": 50,
             "fontWeight": 600,
             "align": "center",
             "background": "rgba(12,15,25,.72)",
             "padding": 16,
-            "letterSpacing": 8
+            "letterSpacing": 4
           }
         },
         {
@@ -748,7 +748,7 @@
     {
       "id": "shift",
       "name": "3. 点明出处与真正的论点",
-      "durationFrames": 445,
+      "durationFrames": 504,
       "backgroundColor": "#12151f",
       "cameraZoom": 1.02,
       "layers": [
@@ -809,10 +809,11 @@
           "width": 920,
           "zIndex": 5,
           "style": {
-            "text": "—— Andrej Karpathy",
-            "fontSize": 46,
+            "text": "Andrej Karpathy\nOpenAI 创始成员 · 特斯拉前 AI 总监",
+            "fontSize": 44,
             "fontWeight": 500,
-            "color": "#7a6b4e"
+            "color": "#7a6b4e",
+            "lineHeight": 1.45
           }
         },
         {
@@ -950,33 +951,45 @@
       ],
       "captions": [
         {
-          "text": "说这话的是安德烈·卡帕西。",
+          "text": "说这话的是安德烈·卡帕西，",
           "fromFrame": 4,
-          "toFrame": 84,
+          "toFrame": 79,
           "words": []
         },
         {
-          "text": "他的重点不是画面多好看，而是：",
-          "fromFrame": 84,
-          "toFrame": 177,
+          "text": "OpenAI 创始成员、",
+          "fromFrame": 79,
+          "toFrame": 148,
+          "words": []
+        },
+        {
+          "text": "特斯拉前 AI 总监。",
+          "fromFrame": 148,
+          "toFrame": 212,
+          "words": []
+        },
+        {
+          "text": "但他的重点是：",
+          "fromFrame": 212,
+          "toFrame": 253,
           "words": []
         },
         {
           "text": "我们考核 AI 的题目变了。",
-          "fromFrame": 177,
-          "toFrame": 264,
+          "fromFrame": 253,
+          "toFrame": 334,
           "words": []
         },
         {
           "text": "从前是画一只骑自行车的鹈鹕，",
-          "fromFrame": 264,
-          "toFrame": 351,
+          "fromFrame": 334,
+          "toFrame": 415,
           "words": []
         },
         {
           "text": "现在是把一个故事变成一个世界。",
-          "fromFrame": 351,
-          "toFrame": 443,
+          "fromFrame": 415,
+          "toFrame": 502,
           "words": []
         }
       ],

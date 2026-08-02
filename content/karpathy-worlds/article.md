@@ -3,6 +3,8 @@
 > 本文是对 Andrej Karpathy [公开发言](https://x.com/karpathy/status/2083749667410727319)的解读与评论。
 > 观点归原作者，举例与延伸为本文作者所加。
 
+先说他是谁：**Andrej Karpathy**，OpenAI 创始团队成员、特斯拉前 AI 总监（曾主管 Autopilot 视觉团队），斯坦福 CS231n 课程的创立者。在「谁的话值得认真读」这件事上，他属于不需要加定语的那一类。
+
 ## 他做了什么
 
 Karpathy 给了 Opus 5 三样东西：
