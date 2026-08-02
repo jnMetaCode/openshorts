@@ -22,6 +22,14 @@ const captionWidth=Math.round(project.width*.86);
 const captionHeight=Math.round(fontSize*2.9);
 const captionMargin=Math.round(project.height*subtitleBottomRatio(project.width,project.height));
 
+// ImageMagick 没有 librsvg 时会退回自带的 MSVG 渲染器，它会丢掉 stroke——
+// 描边画的自行车、箭头、划线会整条消失。Remotion 走 Chrome，不受影响。
+const usesSvg=project.scenes.some(s=>s.layers.some(l=>/\.svgz?$/i.test(l.src)));
+if(usesSvg){
+  const {stdout}=await run('magick',['-list','delegate']).catch(()=>({stdout:''}));
+  if(!/rsvg-convert/.test(stdout)) console.warn('! 未检测到 librsvg，ImageMagick 将用内置 MSVG 渲染 SVG，描边可能丢失。\n  修复：brew install librsvg（或 apt install librsvg2-bin）。正式渲染走 Remotion 不受影响。');
+}
+
 const identify=async(file)=>{const {stdout}=await run('magick',['identify','-format','%w %h',file]);const [w,h]=stdout.trim().split(' ').map(Number);return {width:w,height:h};};
 
 for(const [sceneIndex,scene] of project.scenes.entries()){

@@ -1,0 +1,934 @@
+{
+  "schemaVersion": 1,
+  "id": "karpathy-worlds",
+  "title": "十美元，两小时，五千五百行",
+  "width": 1080,
+  "height": 1920,
+  "fps": 30,
+  "theme": {
+    "paper": "#f6eedb",
+    "ink": "#12151f",
+    "accent": "#e8a33d",
+    "subtitleBackground": "rgba(12,15,25,.88)"
+  },
+  "soundtrackSrc": "audio/karpathy-worlds/underscore.wav",
+  "soundtrackVolume": 0.38,
+  "production": {
+    "plannerVersion": 1,
+    "sourceText": "有人给了 AI 一段《指环王》的开头，和大约十美元的预算。两个小时后，它交出五千五百行代码，把那段文字变成了一个能走进去的三维场景。\n说这话的是安德烈·卡帕西。他的重点不是画面多好看，而是：我们考核 AI 的题目变了。从前是画一只骑自行车的鹈鹕，现在是把一个故事变成一个世界。\n他说，真正的转折不在能力，在成本。这种活儿以前没人会干，太定制、太琐碎、不值当。而现在它几乎免费。于是「没人会做」变成了「那就做吧」。\n他兴奋的是接下来那一步：按需生成一个高度定制的世界，再把人放进去。你可以当一个旁观的路人，也可以就是故事里的那个角色。\n但同一件事也照出了短板。AI 看不了视频，也玩不了游戏。它只能一张张截图，慢慢核对自己到底做了什么。中间错了几次，画面就一直卡在那儿。\n它有近乎无限的耐心去做，却还没有一双眼睛去看。这大概就是这一代 AI 最真实的样子。",
+    "style": {
+      "format": "9:16",
+      "look": "深色终端底 + 暖白纸片几何图形，科技解读向",
+      "disclaimer": "本片为对 Andrej Karpathy 公开发言的解读与评论，观点归原作者"
+    },
+    "characters": [],
+    "assetPlan": [
+      {
+        "id": "asset-01",
+        "role": "background",
+        "name": "终端夜色",
+        "prompt": "",
+        "requirements": [],
+        "status": "approved",
+        "src": "assets/generated/karpathy-worlds/terminal-night.svg",
+        "promptVersions": [],
+        "reviewHistory": [],
+        "generation": {
+          "provider": "handwritten-svg",
+          "model": "-",
+          "parameters": {
+            "usedIn": 2,
+            "license": "本仓库原创（MIT）",
+            "note": "手写 SVG 路径数据，纯几何图形，无第三方素材"
+          },
+          "createdAt": "2026-08-02"
+        }
+      },
+      {
+        "id": "asset-02",
+        "role": "primary",
+        "name": "指环王开头",
+        "prompt": "",
+        "requirements": [],
+        "status": "approved",
+        "src": "assets/generated/karpathy-worlds/layers/book-page.svg",
+        "promptVersions": [],
+        "reviewHistory": [],
+        "generation": {
+          "provider": "handwritten-svg",
+          "model": "-",
+          "parameters": {
+            "usedIn": 1,
+            "license": "本仓库原创（MIT）",
+            "note": "手写 SVG 路径数据，纯几何图形，无第三方素材"
+          },
+          "createdAt": "2026-08-02"
+        }
+      },
+      {
+        "id": "asset-03",
+        "role": "secondary",
+        "name": "生成的三维场景",
+        "prompt": "",
+        "requirements": [],
+        "status": "approved",
+        "src": "assets/generated/karpathy-worlds/layers/lowpoly-terrain.svg",
+        "promptVersions": [],
+        "reviewHistory": [],
+        "generation": {
+          "provider": "handwritten-svg",
+          "model": "-",
+          "parameters": {
+            "usedIn": 3,
+            "license": "本仓库原创（MIT）",
+            "note": "手写 SVG 路径数据，纯几何图形，无第三方素材"
+          },
+          "createdAt": "2026-08-02"
+        }
+      },
+      {
+        "id": "asset-04",
+        "role": "background",
+        "name": "纸面",
+        "prompt": "",
+        "requirements": [],
+        "status": "approved",
+        "src": "assets/generated/karpathy-worlds/paper-desk.svg",
+        "promptVersions": [],
+        "reviewHistory": [],
+        "generation": {
+          "provider": "handwritten-svg",
+          "model": "-",
+          "parameters": {
+            "usedIn": 2,
+            "license": "本仓库原创（MIT）",
+            "note": "手写 SVG 路径数据，纯几何图形，无第三方素材"
+          },
+          "createdAt": "2026-08-02"
+        }
+      },
+      {
+        "id": "asset-05",
+        "role": "primary",
+        "name": "骑自行车的鹈鹕",
+        "prompt": "",
+        "requirements": [],
+        "status": "approved",
+        "src": "assets/generated/karpathy-worlds/layers/pelican-bike.svg",
+        "promptVersions": [],
+        "reviewHistory": [],
+        "generation": {
+          "provider": "handwritten-svg",
+          "model": "-",
+          "parameters": {
+            "usedIn": 1,
+            "license": "本仓库原创（MIT）",
+            "note": "手写 SVG 路径数据，纯几何图形，无第三方素材"
+          },
+          "createdAt": "2026-08-02"
+        }
+      },
+      {
+        "id": "asset-06",
+        "role": "primary",
+        "name": "从不值当到几乎免费",
+        "prompt": "",
+        "requirements": [],
+        "status": "approved",
+        "src": "assets/generated/karpathy-worlds/layers/coin-swap.svg",
+        "promptVersions": [],
+        "reviewHistory": [],
+        "generation": {
+          "provider": "handwritten-svg",
+          "model": "-",
+          "parameters": {
+            "usedIn": 1,
+            "license": "本仓库原创（MIT）",
+            "note": "手写 SVG 路径数据，纯几何图形，无第三方素材"
+          },
+          "createdAt": "2026-08-02"
+        }
+      },
+      {
+        "id": "asset-07",
+        "role": "background",
+        "name": "开放世界",
+        "prompt": "",
+        "requirements": [],
+        "status": "approved",
+        "src": "assets/generated/karpathy-worlds/open-world.svg",
+        "promptVersions": [],
+        "reviewHistory": [],
+        "generation": {
+          "provider": "handwritten-svg",
+          "model": "-",
+          "parameters": {
+            "usedIn": 2,
+            "license": "本仓库原创（MIT）",
+            "note": "手写 SVG 路径数据，纯几何图形，无第三方素材"
+          },
+          "createdAt": "2026-08-02"
+        }
+      },
+      {
+        "id": "asset-08",
+        "role": "primary",
+        "name": "被放进世界的人",
+        "prompt": "",
+        "requirements": [],
+        "status": "approved",
+        "src": "assets/generated/karpathy-worlds/layers/figure-enter.svg",
+        "promptVersions": [],
+        "reviewHistory": [],
+        "generation": {
+          "provider": "handwritten-svg",
+          "model": "-",
+          "parameters": {
+            "usedIn": 2,
+            "license": "本仓库原创（MIT）",
+            "note": "手写 SVG 路径数据，纯几何图形，无第三方素材"
+          },
+          "createdAt": "2026-08-02"
+        }
+      },
+      {
+        "id": "asset-09",
+        "role": "primary",
+        "name": "看不见",
+        "prompt": "",
+        "requirements": [],
+        "status": "approved",
+        "src": "assets/generated/karpathy-worlds/layers/blind-eye.svg",
+        "promptVersions": [],
+        "reviewHistory": [],
+        "generation": {
+          "provider": "handwritten-svg",
+          "model": "-",
+          "parameters": {
+            "usedIn": 2,
+            "license": "本仓库原创（MIT）",
+            "note": "手写 SVG 路径数据，纯几何图形，无第三方素材"
+          },
+          "createdAt": "2026-08-02"
+        }
+      },
+      {
+        "id": "asset-10",
+        "role": "secondary",
+        "name": "一张张截图",
+        "prompt": "",
+        "requirements": [],
+        "status": "approved",
+        "src": "assets/generated/karpathy-worlds/layers/screenshot-stack.svg",
+        "promptVersions": [],
+        "reviewHistory": [],
+        "generation": {
+          "provider": "handwritten-svg",
+          "model": "-",
+          "parameters": {
+            "usedIn": 1,
+            "license": "本仓库原创（MIT）",
+            "note": "手写 SVG 路径数据，纯几何图形，无第三方素材"
+          },
+          "createdAt": "2026-08-02"
+        }
+      }
+    ],
+    "music": {
+      "mood": "epic"
+    }
+  },
+  "scenes": [
+    {
+      "id": "hook",
+      "name": "1. 用具体数字开场，制造反差",
+      "durationFrames": 368,
+      "backgroundColor": "#12151f",
+      "cameraZoom": 1.035,
+      "layers": [
+        {
+          "entrance": "none",
+          "delayFrames": 0,
+          "rotation": 0,
+          "opacity": 1,
+          "flipX": false,
+          "paperEdge": false,
+          "keyframes": [
+            {
+              "frame": 0,
+              "x": -140,
+              "y": -50,
+              "width": 1360,
+              "rotation": 0,
+              "opacity": 1,
+              "easing": "ease-in-out"
+            },
+            {
+              "frame": 367,
+              "x": -190,
+              "y": -100,
+              "width": 1470,
+              "rotation": 0,
+              "opacity": 1,
+              "easing": "ease-in-out"
+            }
+          ],
+          "id": "bg-hook",
+          "name": "终端夜色",
+          "src": "assets/generated/karpathy-worlds/terminal-night.svg",
+          "role": "background",
+          "x": -140,
+          "y": -50,
+          "width": 1360,
+          "zIndex": 0
+        },
+        {
+          "entrance": "scale",
+          "delayFrames": 6,
+          "rotation": 0,
+          "opacity": 1,
+          "flipX": false,
+          "paperEdge": true,
+          "keyframes": [],
+          "id": "book-hook",
+          "name": "指环王开头",
+          "src": "assets/generated/karpathy-worlds/layers/book-page.svg",
+          "role": "primary",
+          "x": 220,
+          "y": 700,
+          "width": 640,
+          "zIndex": 4
+        },
+        {
+          "entrance": "up",
+          "delayFrames": 34,
+          "rotation": 0,
+          "opacity": 1,
+          "flipX": false,
+          "paperEdge": true,
+          "keyframes": [],
+          "id": "terrain-hook",
+          "name": "生成的三维场景",
+          "src": "assets/generated/karpathy-worlds/layers/lowpoly-terrain.svg",
+          "role": "secondary",
+          "x": 430,
+          "y": 1130,
+          "width": 560,
+          "zIndex": 3
+        }
+      ],
+      "captions": [
+        {
+          "text": "有人给了 AI 一段《指环王》的开头，",
+          "fromFrame": 4,
+          "toFrame": 108,
+          "words": []
+        },
+        {
+          "text": "和大约十美元的预算。",
+          "fromFrame": 108,
+          "toFrame": 163,
+          "words": []
+        },
+        {
+          "text": "两个小时后，",
+          "fromFrame": 163,
+          "toFrame": 196,
+          "words": []
+        },
+        {
+          "text": "它交出五千五百行代码，",
+          "fromFrame": 196,
+          "toFrame": 256,
+          "words": []
+        },
+        {
+          "text": "把那段文字变成了一个能走进去的三维场景。",
+          "fromFrame": 256,
+          "toFrame": 366,
+          "words": []
+        }
+      ],
+      "narrationSrc": "audio/karpathy-worlds/01-hook.wav",
+      "audioCues": [
+        {
+          "src": "audio/common/impact.wav",
+          "fromFrame": 0,
+          "volume": 0.42
+        }
+      ]
+    },
+    {
+      "id": "shift",
+      "name": "2. 点明出处与真正的论点",
+      "durationFrames": 445,
+      "backgroundColor": "#12151f",
+      "cameraZoom": 1.05,
+      "layers": [
+        {
+          "entrance": "none",
+          "delayFrames": 0,
+          "rotation": 0,
+          "opacity": 1,
+          "flipX": false,
+          "paperEdge": false,
+          "keyframes": [
+            {
+              "frame": 0,
+              "x": -140,
+              "y": -50,
+              "width": 1360,
+              "rotation": 0,
+              "opacity": 1,
+              "easing": "ease-in-out"
+            },
+            {
+              "frame": 444,
+              "x": -180,
+              "y": -90,
+              "width": 1450,
+              "rotation": 0,
+              "opacity": 1,
+              "easing": "ease-in-out"
+            }
+          ],
+          "id": "bg-shift",
+          "name": "纸面",
+          "src": "assets/generated/karpathy-worlds/paper-desk.svg",
+          "role": "background",
+          "x": -140,
+          "y": -50,
+          "width": 1360,
+          "zIndex": 0
+        },
+        {
+          "entrance": "left",
+          "delayFrames": 8,
+          "rotation": 0,
+          "opacity": 1,
+          "flipX": false,
+          "paperEdge": true,
+          "keyframes": [],
+          "id": "pelican",
+          "name": "骑自行车的鹈鹕",
+          "src": "assets/generated/karpathy-worlds/layers/pelican-bike.svg",
+          "role": "primary",
+          "x": 90,
+          "y": 720,
+          "width": 620,
+          "zIndex": 5
+        },
+        {
+          "entrance": "right",
+          "delayFrames": 40,
+          "rotation": 0,
+          "opacity": 1,
+          "flipX": false,
+          "paperEdge": true,
+          "keyframes": [],
+          "id": "terrain-shift",
+          "name": "整个世界",
+          "src": "assets/generated/karpathy-worlds/layers/lowpoly-terrain.svg",
+          "role": "secondary",
+          "x": 500,
+          "y": 1080,
+          "width": 540,
+          "zIndex": 4
+        }
+      ],
+      "captions": [
+        {
+          "text": "说这话的是安德烈·卡帕西。",
+          "fromFrame": 4,
+          "toFrame": 84,
+          "words": []
+        },
+        {
+          "text": "他的重点不是画面多好看，而是：",
+          "fromFrame": 84,
+          "toFrame": 177,
+          "words": []
+        },
+        {
+          "text": "我们考核 AI 的题目变了。",
+          "fromFrame": 177,
+          "toFrame": 264,
+          "words": []
+        },
+        {
+          "text": "从前是画一只骑自行车的鹈鹕，",
+          "fromFrame": 264,
+          "toFrame": 351,
+          "words": []
+        },
+        {
+          "text": "现在是把一个故事变成一个世界。",
+          "fromFrame": 351,
+          "toFrame": 443,
+          "words": []
+        }
+      ],
+      "narrationSrc": "audio/karpathy-worlds/02-shift.wav",
+      "audioCues": [
+        {
+          "src": "audio/common/whoosh.wav",
+          "fromFrame": 34,
+          "volume": 0.22
+        }
+      ]
+    },
+    {
+      "id": "economics",
+      "name": "3. 核心洞察：经济学而非能力",
+      "durationFrames": 427,
+      "backgroundColor": "#12151f",
+      "cameraZoom": 1.035,
+      "layers": [
+        {
+          "entrance": "none",
+          "delayFrames": 0,
+          "rotation": 0,
+          "opacity": 1,
+          "flipX": false,
+          "paperEdge": false,
+          "keyframes": [
+            {
+              "frame": 0,
+              "x": -160,
+              "y": -70,
+              "width": 1420,
+              "rotation": 0,
+              "opacity": 1,
+              "easing": "ease-in-out"
+            },
+            {
+              "frame": 426,
+              "x": -130,
+              "y": -40,
+              "width": 1345,
+              "rotation": 0,
+              "opacity": 1,
+              "easing": "ease-in-out"
+            }
+          ],
+          "id": "bg-econ",
+          "name": "纸面",
+          "src": "assets/generated/karpathy-worlds/paper-desk.svg",
+          "role": "background",
+          "x": -140,
+          "y": -50,
+          "width": 1360,
+          "zIndex": 0
+        },
+        {
+          "entrance": "scale",
+          "delayFrames": 10,
+          "rotation": 0,
+          "opacity": 1,
+          "flipX": false,
+          "paperEdge": true,
+          "keyframes": [],
+          "id": "coins",
+          "name": "从不值当到几乎免费",
+          "src": "assets/generated/karpathy-worlds/layers/coin-swap.svg",
+          "role": "primary",
+          "x": 170,
+          "y": 820,
+          "width": 720,
+          "zIndex": 5
+        }
+      ],
+      "captions": [
+        {
+          "text": "他说，真正的转折不在能力，在成本。",
+          "fromFrame": 4,
+          "toFrame": 111,
+          "words": []
+        },
+        {
+          "text": "这种活儿以前没人会干，太定制、",
+          "fromFrame": 111,
+          "toFrame": 205,
+          "words": []
+        },
+        {
+          "text": "太琐碎、不值当。",
+          "fromFrame": 205,
+          "toFrame": 255,
+          "words": []
+        },
+        {
+          "text": "而现在它几乎免费。",
+          "fromFrame": 255,
+          "toFrame": 312,
+          "words": []
+        },
+        {
+          "text": "于是「没人会做」变成了「那就做吧」。",
+          "fromFrame": 312,
+          "toFrame": 425,
+          "words": []
+        }
+      ],
+      "narrationSrc": "audio/karpathy-worlds/03-economics.wav",
+      "audioCues": [
+        {
+          "src": "audio/common/impact.wav",
+          "fromFrame": 12,
+          "volume": 0.34
+        }
+      ]
+    },
+    {
+      "id": "worlds",
+      "name": "4. 指向未来形态",
+      "durationFrames": 331,
+      "backgroundColor": "#12151f",
+      "cameraZoom": 1.07,
+      "layers": [
+        {
+          "entrance": "none",
+          "delayFrames": 0,
+          "rotation": 0,
+          "opacity": 1,
+          "flipX": false,
+          "paperEdge": false,
+          "keyframes": [
+            {
+              "frame": 0,
+              "x": -140,
+              "y": -50,
+              "width": 1360,
+              "rotation": 0,
+              "opacity": 1,
+              "easing": "ease-in-out"
+            },
+            {
+              "frame": 330,
+              "x": -200,
+              "y": -110,
+              "width": 1490,
+              "rotation": 0,
+              "opacity": 1,
+              "easing": "ease-in-out"
+            }
+          ],
+          "id": "bg-worlds",
+          "name": "开放世界",
+          "src": "assets/generated/karpathy-worlds/open-world.svg",
+          "role": "background",
+          "x": -140,
+          "y": -50,
+          "width": 1360,
+          "zIndex": 0
+        },
+        {
+          "entrance": "up",
+          "delayFrames": 12,
+          "rotation": 0,
+          "opacity": 1,
+          "flipX": false,
+          "paperEdge": true,
+          "keyframes": [],
+          "id": "figure",
+          "name": "被放进世界的人",
+          "src": "assets/generated/karpathy-worlds/layers/figure-enter.svg",
+          "role": "primary",
+          "x": 350,
+          "y": 660,
+          "width": 380,
+          "zIndex": 6
+        },
+        {
+          "entrance": "left",
+          "delayFrames": 30,
+          "rotation": 0,
+          "opacity": 0.72,
+          "flipX": false,
+          "paperEdge": true,
+          "keyframes": [],
+          "id": "terrain-worlds",
+          "name": "地形",
+          "src": "assets/generated/karpathy-worlds/layers/lowpoly-terrain.svg",
+          "role": "tertiary",
+          "x": 60,
+          "y": 1140,
+          "width": 460,
+          "zIndex": 3
+        }
+      ],
+      "captions": [
+        {
+          "text": "他兴奋的是接下来那一步：",
+          "fromFrame": 4,
+          "toFrame": 70,
+          "words": []
+        },
+        {
+          "text": "按需生成一个高度定制的世界，",
+          "fromFrame": 70,
+          "toFrame": 147,
+          "words": []
+        },
+        {
+          "text": "再把人放进去。",
+          "fromFrame": 147,
+          "toFrame": 186,
+          "words": []
+        },
+        {
+          "text": "你可以当一个旁观的路人，",
+          "fromFrame": 186,
+          "toFrame": 252,
+          "words": []
+        },
+        {
+          "text": "也可以就是故事里的那个角色。",
+          "fromFrame": 252,
+          "toFrame": 329,
+          "words": []
+        }
+      ],
+      "narrationSrc": "audio/karpathy-worlds/04-worlds.wav",
+      "audioCues": [
+        {
+          "src": "audio/common/whoosh.wav",
+          "fromFrame": 6,
+          "volume": 0.24
+        }
+      ]
+    },
+    {
+      "id": "weakness",
+      "name": "5. 转折：暴露的能力缺口",
+      "durationFrames": 429,
+      "backgroundColor": "#12151f",
+      "cameraZoom": 1.035,
+      "layers": [
+        {
+          "entrance": "none",
+          "delayFrames": 0,
+          "rotation": 0,
+          "opacity": 1,
+          "flipX": false,
+          "paperEdge": false,
+          "keyframes": [
+            {
+              "frame": 0,
+              "x": -140,
+              "y": -50,
+              "width": 1360,
+              "rotation": 0,
+              "opacity": 1,
+              "easing": "ease-in-out"
+            },
+            {
+              "frame": 428,
+              "x": -175,
+              "y": -85,
+              "width": 1440,
+              "rotation": 0,
+              "opacity": 1,
+              "easing": "ease-in-out"
+            }
+          ],
+          "id": "bg-weak",
+          "name": "终端夜色",
+          "src": "assets/generated/karpathy-worlds/terminal-night.svg",
+          "role": "background",
+          "x": -140,
+          "y": -50,
+          "width": 1360,
+          "zIndex": 0
+        },
+        {
+          "entrance": "fade",
+          "delayFrames": 10,
+          "rotation": 0,
+          "opacity": 1,
+          "flipX": false,
+          "paperEdge": true,
+          "keyframes": [],
+          "id": "eye",
+          "name": "看不见",
+          "src": "assets/generated/karpathy-worlds/layers/blind-eye.svg",
+          "role": "primary",
+          "x": 200,
+          "y": 700,
+          "width": 680,
+          "zIndex": 6
+        },
+        {
+          "entrance": "up",
+          "delayFrames": 42,
+          "rotation": 0,
+          "opacity": 1,
+          "flipX": false,
+          "paperEdge": true,
+          "keyframes": [],
+          "id": "shots",
+          "name": "一张张截图",
+          "src": "assets/generated/karpathy-worlds/layers/screenshot-stack.svg",
+          "role": "secondary",
+          "x": 260,
+          "y": 1080,
+          "width": 560,
+          "zIndex": 5
+        }
+      ],
+      "captions": [
+        {
+          "text": "但同一件事也照出了短板。",
+          "fromFrame": 4,
+          "toFrame": 80,
+          "words": []
+        },
+        {
+          "text": "AI 看不了视频，也玩不了游戏。",
+          "fromFrame": 80,
+          "toFrame": 181,
+          "words": []
+        },
+        {
+          "text": "它只能一张张截图，",
+          "fromFrame": 181,
+          "toFrame": 238,
+          "words": []
+        },
+        {
+          "text": "慢慢核对自己到底做了什么。",
+          "fromFrame": 238,
+          "toFrame": 320,
+          "words": []
+        },
+        {
+          "text": "中间错了几次，",
+          "fromFrame": 320,
+          "toFrame": 364,
+          "words": []
+        },
+        {
+          "text": "画面就一直卡在那儿。",
+          "fromFrame": 364,
+          "toFrame": 427,
+          "words": []
+        }
+      ],
+      "narrationSrc": "audio/karpathy-worlds/05-weakness.wav",
+      "audioCues": [
+        {
+          "src": "audio/common/impact.wav",
+          "fromFrame": 8,
+          "volume": 0.38
+        }
+      ]
+    },
+    {
+      "id": "ending",
+      "name": "6. 收束为一句可记住的判断",
+      "durationFrames": 251,
+      "backgroundColor": "#12151f",
+      "cameraZoom": 1.035,
+      "layers": [
+        {
+          "entrance": "none",
+          "delayFrames": 0,
+          "rotation": 0,
+          "opacity": 1,
+          "flipX": false,
+          "paperEdge": false,
+          "keyframes": [
+            {
+              "frame": 0,
+              "x": -170,
+              "y": -80,
+              "width": 1430,
+              "rotation": 0,
+              "opacity": 1,
+              "easing": "ease-in-out"
+            },
+            {
+              "frame": 250,
+              "x": -140,
+              "y": -50,
+              "width": 1360,
+              "rotation": 0,
+              "opacity": 1,
+              "easing": "ease-in-out"
+            }
+          ],
+          "id": "bg-end",
+          "name": "开放世界",
+          "src": "assets/generated/karpathy-worlds/open-world.svg",
+          "role": "background",
+          "x": -140,
+          "y": -50,
+          "width": 1360,
+          "zIndex": 0
+        },
+        {
+          "entrance": "scale",
+          "delayFrames": 8,
+          "rotation": 0,
+          "opacity": 1,
+          "flipX": false,
+          "paperEdge": true,
+          "keyframes": [],
+          "id": "figure-end",
+          "name": "耐心",
+          "src": "assets/generated/karpathy-worlds/layers/figure-enter.svg",
+          "role": "primary",
+          "x": 360,
+          "y": 560,
+          "width": 360,
+          "zIndex": 5
+        },
+        {
+          "entrance": "fade",
+          "delayFrames": 30,
+          "rotation": 0,
+          "opacity": 0.6,
+          "flipX": false,
+          "paperEdge": true,
+          "keyframes": [],
+          "id": "eye-end",
+          "name": "还没有眼睛",
+          "src": "assets/generated/karpathy-worlds/layers/blind-eye.svg",
+          "role": "tertiary",
+          "x": 250,
+          "y": 1180,
+          "width": 500,
+          "zIndex": 4
+        }
+      ],
+      "captions": [
+        {
+          "text": "它有近乎无限的耐心去做，",
+          "fromFrame": 4,
+          "toFrame": 74,
+          "words": []
+        },
+        {
+          "text": "却还没有一双眼睛去看。",
+          "fromFrame": 74,
+          "toFrame": 138,
+          "words": []
+        },
+        {
+          "text": "这大概就是这一代 AI 最真实的样子。",
+          "fromFrame": 138,
+          "toFrame": 249,
+          "words": []
+        }
+      ],
+      "narrationSrc": "audio/karpathy-worlds/06-ending.wav",
+      "audioCues": [
+        {
+          "src": "audio/common/whoosh.wav",
+          "fromFrame": 14,
+          "volume": 0.2
+        }
+      ]
+    }
+  ]
+}

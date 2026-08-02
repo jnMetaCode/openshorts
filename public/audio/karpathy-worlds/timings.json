@@ -1,0 +1,75 @@
+{
+  "storyId": "karpathy-worlds",
+  "voice": "zh-CN-YunyangNeural",
+  "rate": "+0%",
+  "pitch": "+0Hz",
+  "totalDuration": 71.64,
+  "segments": [
+    {
+      "id": "hook",
+      "text": "有人给了 AI 一段《指环王》的开头，和大约十美元的预算。两个小时后，它交出五千五百行代码，把那段文字变成了一个能走进去的三维场景。",
+      "purpose": "用具体数字开场，制造反差",
+      "index": 0,
+      "file": "public/audio/karpathy-worlds/01-hook.wav",
+      "provider": "edge",
+      "start": 0,
+      "end": 11.688,
+      "duration": 11.688
+    },
+    {
+      "id": "shift",
+      "text": "说这话的是安德烈·卡帕西。他的重点不是画面多好看，而是：我们考核 AI 的题目变了。从前是画一只骑自行车的鹈鹕，现在是把一个故事变成一个世界。",
+      "purpose": "点明出处与真正的论点",
+      "index": 1,
+      "file": "public/audio/karpathy-worlds/02-shift.wav",
+      "provider": "edge",
+      "start": 11.688,
+      "end": 25.968,
+      "duration": 14.28
+    },
+    {
+      "id": "economics",
+      "text": "他说，真正的转折不在能力，在成本。这种活儿以前没人会干，太定制、太琐碎、不值当。而现在它几乎免费。于是「没人会做」变成了「那就做吧」。",
+      "purpose": "核心洞察：经济学而非能力",
+      "index": 2,
+      "file": "public/audio/karpathy-worlds/03-economics.wav",
+      "provider": "edge",
+      "start": 25.968,
+      "end": 39.647999999999996,
+      "duration": 13.68
+    },
+    {
+      "id": "worlds",
+      "text": "他兴奋的是接下来那一步：按需生成一个高度定制的世界，再把人放进去。你可以当一个旁观的路人，也可以就是故事里的那个角色。",
+      "purpose": "指向未来形态",
+      "index": 3,
+      "file": "public/audio/karpathy-worlds/04-worlds.wav",
+      "provider": "edge",
+      "start": 39.647999999999996,
+      "end": 50.111999999999995,
+      "duration": 10.464
+    },
+    {
+      "id": "weakness",
+      "text": "但同一件事也照出了短板。AI 看不了视频，也玩不了游戏。它只能一张张截图，慢慢核对自己到底做了什么。中间错了几次，画面就一直卡在那儿。",
+      "purpose": "转折：暴露的能力缺口",
+      "index": 4,
+      "file": "public/audio/karpathy-worlds/05-weakness.wav",
+      "provider": "edge",
+      "start": 50.111999999999995,
+      "end": 63.839999999999996,
+      "duration": 13.728
+    },
+    {
+      "id": "ending",
+      "text": "它有近乎无限的耐心去做，却还没有一双眼睛去看。这大概就是这一代 AI 最真实的样子。",
+      "purpose": "收束为一句可记住的判断",
+      "index": 5,
+      "file": "public/audio/karpathy-worlds/06-ending.wav",
+      "provider": "edge",
+      "start": 63.839999999999996,
+      "end": 71.64,
+      "duration": 7.8
+    }
+  ]
+}

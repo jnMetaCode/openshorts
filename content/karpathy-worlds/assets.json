@@ -1,0 +1,62 @@
+{
+  "assets/generated/karpathy-worlds/terminal-night.svg": {
+    "provider": "handwritten-svg",
+    "createdAt": "2026-08-02",
+    "license": "本仓库原创（MIT）",
+    "note": "手写 SVG 路径数据，纯几何图形，无第三方素材"
+  },
+  "assets/generated/karpathy-worlds/layers/book-page.svg": {
+    "provider": "handwritten-svg",
+    "createdAt": "2026-08-02",
+    "license": "本仓库原创（MIT）",
+    "note": "手写 SVG 路径数据，纯几何图形，无第三方素材"
+  },
+  "assets/generated/karpathy-worlds/layers/lowpoly-terrain.svg": {
+    "provider": "handwritten-svg",
+    "createdAt": "2026-08-02",
+    "license": "本仓库原创（MIT）",
+    "note": "手写 SVG 路径数据，纯几何图形，无第三方素材"
+  },
+  "assets/generated/karpathy-worlds/paper-desk.svg": {
+    "provider": "handwritten-svg",
+    "createdAt": "2026-08-02",
+    "license": "本仓库原创（MIT）",
+    "note": "手写 SVG 路径数据，纯几何图形，无第三方素材"
+  },
+  "assets/generated/karpathy-worlds/layers/pelican-bike.svg": {
+    "provider": "handwritten-svg",
+    "createdAt": "2026-08-02",
+    "license": "本仓库原创（MIT）",
+    "note": "手写 SVG 路径数据，纯几何图形，无第三方素材"
+  },
+  "assets/generated/karpathy-worlds/layers/coin-swap.svg": {
+    "provider": "handwritten-svg",
+    "createdAt": "2026-08-02",
+    "license": "本仓库原创（MIT）",
+    "note": "手写 SVG 路径数据，纯几何图形，无第三方素材"
+  },
+  "assets/generated/karpathy-worlds/open-world.svg": {
+    "provider": "handwritten-svg",
+    "createdAt": "2026-08-02",
+    "license": "本仓库原创（MIT）",
+    "note": "手写 SVG 路径数据，纯几何图形，无第三方素材"
+  },
+  "assets/generated/karpathy-worlds/layers/figure-enter.svg": {
+    "provider": "handwritten-svg",
+    "createdAt": "2026-08-02",
+    "license": "本仓库原创（MIT）",
+    "note": "手写 SVG 路径数据，纯几何图形，无第三方素材"
+  },
+  "assets/generated/karpathy-worlds/layers/blind-eye.svg": {
+    "provider": "handwritten-svg",
+    "createdAt": "2026-08-02",
+    "license": "本仓库原创（MIT）",
+    "note": "手写 SVG 路径数据，纯几何图形，无第三方素材"
+  },
+  "assets/generated/karpathy-worlds/layers/screenshot-stack.svg": {
+    "provider": "handwritten-svg",
+    "createdAt": "2026-08-02",
+    "license": "本仓库原创（MIT）",
+    "note": "手写 SVG 路径数据，纯几何图形，无第三方素材"
+  }
+}

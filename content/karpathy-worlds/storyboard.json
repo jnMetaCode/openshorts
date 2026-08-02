@@ -1,0 +1,425 @@
+{
+  "backgroundColor": "#12151f",
+  "cameraZoom": 1.035,
+  "soundtrackVolume": 0.38,
+  "fallbackDurations": [
+    12,
+    12,
+    12,
+    10,
+    12,
+    8
+  ],
+  "voice": {
+    "name": "zh-CN-YunyangNeural",
+    "rate": "+0%",
+    "pitch": "+0Hz"
+  },
+  "music": {
+    "mood": "epic"
+  },
+  "theme": {
+    "paper": "#f6eedb",
+    "ink": "#12151f",
+    "accent": "#e8a33d",
+    "subtitleBackground": "rgba(12,15,25,.88)"
+  },
+  "production": {
+    "style": {
+      "format": "9:16",
+      "look": "深色终端底 + 暖白纸片几何图形，科技解读向",
+      "disclaimer": "本片为对 Andrej Karpathy 公开发言的解读与评论，观点归原作者"
+    },
+    "characters": []
+  },
+  "scenes": [
+    {
+      "layers": [
+        {
+          "id": "bg-hook",
+          "name": "终端夜色",
+          "src": "assets/generated/karpathy-worlds/terminal-night.svg",
+          "role": "background",
+          "x": -140,
+          "y": -50,
+          "width": 1360,
+          "zIndex": 0,
+          "paperEdge": false,
+          "keyframes": [
+            {
+              "frame": 0,
+              "x": -140,
+              "y": -50,
+              "width": 1360,
+              "rotation": 0,
+              "opacity": 1,
+              "easing": "ease-in-out"
+            },
+            {
+              "frame": "end",
+              "x": -190,
+              "y": -100,
+              "width": 1470,
+              "rotation": 0,
+              "opacity": 1,
+              "easing": "ease-in-out"
+            }
+          ]
+        },
+        {
+          "id": "book-hook",
+          "name": "指环王开头",
+          "src": "assets/generated/karpathy-worlds/layers/book-page.svg",
+          "role": "primary",
+          "x": 220,
+          "y": 700,
+          "width": 640,
+          "zIndex": 4,
+          "entrance": "scale",
+          "delayFrames": 6
+        },
+        {
+          "id": "terrain-hook",
+          "name": "生成的三维场景",
+          "src": "assets/generated/karpathy-worlds/layers/lowpoly-terrain.svg",
+          "role": "secondary",
+          "x": 430,
+          "y": 1130,
+          "width": 560,
+          "zIndex": 3,
+          "entrance": "up",
+          "delayFrames": 34
+        }
+      ],
+      "audioCues": [
+        {
+          "src": "audio/common/impact.wav",
+          "fromFrame": 0,
+          "volume": 0.42
+        }
+      ]
+    },
+    {
+      "cameraZoom": 1.05,
+      "layers": [
+        {
+          "id": "bg-shift",
+          "name": "纸面",
+          "src": "assets/generated/karpathy-worlds/paper-desk.svg",
+          "role": "background",
+          "x": -140,
+          "y": -50,
+          "width": 1360,
+          "zIndex": 0,
+          "paperEdge": false,
+          "keyframes": [
+            {
+              "frame": 0,
+              "x": -140,
+              "y": -50,
+              "width": 1360,
+              "rotation": 0,
+              "opacity": 1,
+              "easing": "ease-in-out"
+            },
+            {
+              "frame": "end",
+              "x": -180,
+              "y": -90,
+              "width": 1450,
+              "rotation": 0,
+              "opacity": 1,
+              "easing": "ease-in-out"
+            }
+          ]
+        },
+        {
+          "id": "pelican",
+          "name": "骑自行车的鹈鹕",
+          "src": "assets/generated/karpathy-worlds/layers/pelican-bike.svg",
+          "role": "primary",
+          "x": 90,
+          "y": 720,
+          "width": 620,
+          "zIndex": 5,
+          "entrance": "left",
+          "delayFrames": 8
+        },
+        {
+          "id": "terrain-shift",
+          "name": "整个世界",
+          "src": "assets/generated/karpathy-worlds/layers/lowpoly-terrain.svg",
+          "role": "secondary",
+          "x": 500,
+          "y": 1080,
+          "width": 540,
+          "zIndex": 4,
+          "entrance": "right",
+          "delayFrames": 40
+        }
+      ],
+      "audioCues": [
+        {
+          "src": "audio/common/whoosh.wav",
+          "fromFrame": 34,
+          "volume": 0.22
+        }
+      ]
+    },
+    {
+      "layers": [
+        {
+          "id": "bg-econ",
+          "name": "纸面",
+          "src": "assets/generated/karpathy-worlds/paper-desk.svg",
+          "role": "background",
+          "x": -140,
+          "y": -50,
+          "width": 1360,
+          "zIndex": 0,
+          "paperEdge": false,
+          "keyframes": [
+            {
+              "frame": 0,
+              "x": -160,
+              "y": -70,
+              "width": 1420,
+              "rotation": 0,
+              "opacity": 1,
+              "easing": "ease-in-out"
+            },
+            {
+              "frame": "end",
+              "x": -130,
+              "y": -40,
+              "width": 1345,
+              "rotation": 0,
+              "opacity": 1,
+              "easing": "ease-in-out"
+            }
+          ]
+        },
+        {
+          "id": "coins",
+          "name": "从不值当到几乎免费",
+          "src": "assets/generated/karpathy-worlds/layers/coin-swap.svg",
+          "role": "primary",
+          "x": 170,
+          "y": 820,
+          "width": 720,
+          "zIndex": 5,
+          "entrance": "scale",
+          "delayFrames": 10
+        }
+      ],
+      "audioCues": [
+        {
+          "src": "audio/common/impact.wav",
+          "fromFrame": 12,
+          "volume": 0.34
+        }
+      ]
+    },
+    {
+      "cameraZoom": 1.07,
+      "layers": [
+        {
+          "id": "bg-worlds",
+          "name": "开放世界",
+          "src": "assets/generated/karpathy-worlds/open-world.svg",
+          "role": "background",
+          "x": -140,
+          "y": -50,
+          "width": 1360,
+          "zIndex": 0,
+          "paperEdge": false,
+          "keyframes": [
+            {
+              "frame": 0,
+              "x": -140,
+              "y": -50,
+              "width": 1360,
+              "rotation": 0,
+              "opacity": 1,
+              "easing": "ease-in-out"
+            },
+            {
+              "frame": "end",
+              "x": -200,
+              "y": -110,
+              "width": 1490,
+              "rotation": 0,
+              "opacity": 1,
+              "easing": "ease-in-out"
+            }
+          ]
+        },
+        {
+          "id": "figure",
+          "name": "被放进世界的人",
+          "src": "assets/generated/karpathy-worlds/layers/figure-enter.svg",
+          "role": "primary",
+          "x": 350,
+          "y": 660,
+          "width": 380,
+          "zIndex": 6,
+          "entrance": "up",
+          "delayFrames": 12
+        },
+        {
+          "id": "terrain-worlds",
+          "name": "地形",
+          "src": "assets/generated/karpathy-worlds/layers/lowpoly-terrain.svg",
+          "role": "tertiary",
+          "x": 60,
+          "y": 1140,
+          "width": 460,
+          "zIndex": 3,
+          "opacity": 0.72,
+          "entrance": "left",
+          "delayFrames": 30
+        }
+      ],
+      "audioCues": [
+        {
+          "src": "audio/common/whoosh.wav",
+          "fromFrame": 6,
+          "volume": 0.24
+        }
+      ]
+    },
+    {
+      "layers": [
+        {
+          "id": "bg-weak",
+          "name": "终端夜色",
+          "src": "assets/generated/karpathy-worlds/terminal-night.svg",
+          "role": "background",
+          "x": -140,
+          "y": -50,
+          "width": 1360,
+          "zIndex": 0,
+          "paperEdge": false,
+          "keyframes": [
+            {
+              "frame": 0,
+              "x": -140,
+              "y": -50,
+              "width": 1360,
+              "rotation": 0,
+              "opacity": 1,
+              "easing": "ease-in-out"
+            },
+            {
+              "frame": "end",
+              "x": -175,
+              "y": -85,
+              "width": 1440,
+              "rotation": 0,
+              "opacity": 1,
+              "easing": "ease-in-out"
+            }
+          ]
+        },
+        {
+          "id": "eye",
+          "name": "看不见",
+          "src": "assets/generated/karpathy-worlds/layers/blind-eye.svg",
+          "role": "primary",
+          "x": 200,
+          "y": 700,
+          "width": 680,
+          "zIndex": 6,
+          "entrance": "fade",
+          "delayFrames": 10
+        },
+        {
+          "id": "shots",
+          "name": "一张张截图",
+          "src": "assets/generated/karpathy-worlds/layers/screenshot-stack.svg",
+          "role": "secondary",
+          "x": 260,
+          "y": 1080,
+          "width": 560,
+          "zIndex": 5,
+          "entrance": "up",
+          "delayFrames": 42
+        }
+      ],
+      "audioCues": [
+        {
+          "src": "audio/common/impact.wav",
+          "fromFrame": 8,
+          "volume": 0.38
+        }
+      ]
+    },
+    {
+      "layers": [
+        {
+          "id": "bg-end",
+          "name": "开放世界",
+          "src": "assets/generated/karpathy-worlds/open-world.svg",
+          "role": "background",
+          "x": -140,
+          "y": -50,
+          "width": 1360,
+          "zIndex": 0,
+          "paperEdge": false,
+          "keyframes": [
+            {
+              "frame": 0,
+              "x": -170,
+              "y": -80,
+              "width": 1430,
+              "rotation": 0,
+              "opacity": 1,
+              "easing": "ease-in-out"
+            },
+            {
+              "frame": "end",
+              "x": -140,
+              "y": -50,
+              "width": 1360,
+              "rotation": 0,
+              "opacity": 1,
+              "easing": "ease-in-out"
+            }
+          ]
+        },
+        {
+          "id": "figure-end",
+          "name": "耐心",
+          "src": "assets/generated/karpathy-worlds/layers/figure-enter.svg",
+          "role": "primary",
+          "x": 360,
+          "y": 560,
+          "width": 360,
+          "zIndex": 5,
+          "entrance": "scale",
+          "delayFrames": 8
+        },
+        {
+          "id": "eye-end",
+          "name": "还没有眼睛",
+          "src": "assets/generated/karpathy-worlds/layers/blind-eye.svg",
+          "role": "tertiary",
+          "x": 250,
+          "y": 1180,
+          "width": 500,
+          "zIndex": 4,
+          "opacity": 0.6,
+          "entrance": "fade",
+          "delayFrames": 30
+        }
+      ],
+      "audioCues": [
+        {
+          "src": "audio/common/whoosh.wav",
+          "fromFrame": 14,
+          "volume": 0.2
+        }
+      ]
+    }
+  ]
+}

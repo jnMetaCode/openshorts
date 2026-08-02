@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="440" viewBox="0 0 640 440">
+ <g stroke="#12151f" stroke-width="3">
+  <path d="M60 330 190 150 320 330Z" fill="#7fb3a6"/>
+  <path d="M190 150 320 330 330 120Z" fill="#5f9488"/>
+  <path d="M320 330 330 120 470 330Z" fill="#4d7d73"/>
+  <path d="M330 120 470 330 580 200Z" fill="#3d6660"/>
+  <path d="M60 330h520l-40 90H100Z" fill="#2f4f4c"/>
+ </g>
+ <g fill="#e8a33d">
+  <circle cx="190" cy="150" r="11"/><circle cx="330" cy="120" r="11"/><circle cx="580" cy="200" r="11"/>
+  <circle cx="60" cy="330" r="11"/><circle cx="470" cy="330" r="11"/>
+ </g>
+</svg>

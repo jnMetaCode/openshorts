@@ -9,6 +9,8 @@ export const PLATFORM_LOUDNESS_RANGE = 7;
 export const DUCKING = {threshold: 0.03, ratio: 8, attack: 5, release: 350, makeup: 1};
 // 片尾淡出时长；旁白通常在此之前就结束了，淡的是配乐尾巴。
 export const TAIL_FADE_SECONDS = 1.6;
+// 采样峰值与采样间真峰值之间预留的余量，见下方 alimiter 处说明。
+export const INTERSAMPLE_HEADROOM_DB = 1;
 
 export const collectAudioSources = (project) => [...new Set([
   project.soundtrackSrc,
@@ -64,7 +66,11 @@ export const buildAudioGraph = ({project, totalSeconds, firstAudioInput = 1}) =>
 
   // 片尾淡出：配乐长度和成片长度几乎不可能正好相等，不淡出就会在最后一帧硬切。
   const fadeStart = Math.max(0, totalSeconds - TAIL_FADE_SECONDS).toFixed(3);
-  filters.push(`${mix.join('')}amix=inputs=${mix.length}:duration=longest:normalize=0,apad=whole_dur=${duration},atrim=0:${duration},afade=t=out:st=${fadeStart}:d=${TAIL_FADE_SECONDS},loudnorm=I=${PLATFORM_TARGET_LUFS}:LRA=${PLATFORM_LOUDNESS_RANGE}:TP=${PLATFORM_TRUE_PEAK_DBFS}[a]`);
+  // loudnorm 的 TP 是单遍估算，不同素材会漂（实测有片子冲到 -0.9 dBTP）。后面串一级确定性限幅。
+  // 注意 alimiter 限的是采样峰值，而平台看的是采样间真峰值（true peak），后者天然高出 0.5~1 dB。
+  // 所以天花板要比目标再压 1 dB，否则真峰值仍会超标。
+  const ceiling = (10 ** ((PLATFORM_TRUE_PEAK_DBFS - INTERSAMPLE_HEADROOM_DB) / 20)).toFixed(4);
+  filters.push(`${mix.join('')}amix=inputs=${mix.length}:duration=longest:normalize=0,apad=whole_dur=${duration},atrim=0:${duration},afade=t=out:st=${fadeStart}:d=${TAIL_FADE_SECONDS},loudnorm=I=${PLATFORM_TARGET_LUFS}:LRA=${PLATFORM_LOUDNESS_RANGE}:TP=${PLATFORM_TRUE_PEAK_DBFS},alimiter=limit=${ceiling}:level=disabled[a]`);
   return {sources, filters, outLabel: '[a]'};
 };
 
