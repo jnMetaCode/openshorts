@@ -93,5 +93,12 @@
     "credit": "Andrej Karpathy (@karpathy)",
     "license": "评论用途引用，非授权转载",
     "note": "引自 Andrej Karpathy 于 x.com/karpathy/status/2083749667410727319 发布的演示视频，评论/解说用途短引用，屏显已署名。素材本体不进仓库（.gitignore public/assets/quoted/），重新获取：yt-dlp 该推文链接后按 assets.json 中的时间点裁切。 片段时间点：79.4s。"
+  },
+  "assets/quoted/karpathy-worlds/clip-night.mp4": {
+    "provider": "quotation",
+    "createdAt": "2026-08-02",
+    "credit": "Andrej Karpathy (@karpathy)",
+    "license": "评论用途引用，非授权转载",
+    "note": "引自 Andrej Karpathy 于 x.com/karpathy/status/2083749667410727319 发布的演示视频，评论/解说用途短引用，屏显已署名。素材本体不进仓库（.gitignore public/assets/quoted/），重新获取：yt-dlp 该推文链接后按 assets.json 中的时间点裁切。 片段时间点：79s-85s。"
   }
 }

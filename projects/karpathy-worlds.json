@@ -133,6 +133,27 @@
       },
       {
         "id": "asset-06",
+        "role": "secondary",
+        "name": "成本对换",
+        "prompt": "",
+        "requirements": [],
+        "status": "approved",
+        "src": "assets/generated/karpathy-worlds/layers/coin-swap.svg",
+        "promptVersions": [],
+        "reviewHistory": [],
+        "generation": {
+          "provider": "handwritten-svg",
+          "model": "-",
+          "parameters": {
+            "usedIn": 1,
+            "license": "本仓库原创（MIT）",
+            "note": "手写 SVG 路径数据，纯几何图形，无第三方素材"
+          },
+          "createdAt": "2026-08-02"
+        }
+      },
+      {
+        "id": "asset-07",
         "role": "background",
         "name": "开放世界",
         "prompt": "",
@@ -145,7 +166,7 @@
           "provider": "handwritten-svg",
           "model": "-",
           "parameters": {
-            "usedIn": 2,
+            "usedIn": 1,
             "license": "本仓库原创（MIT）",
             "note": "手写 SVG 路径数据，纯几何图形，无第三方素材"
           },
@@ -153,7 +174,7 @@
         }
       },
       {
-        "id": "asset-07",
+        "id": "asset-08",
         "role": "primary",
         "name": "被放进去的人",
         "prompt": "",
@@ -174,7 +195,7 @@
         }
       },
       {
-        "id": "asset-08",
+        "id": "asset-09",
         "role": "tertiary",
         "name": "截图·隧道",
         "prompt": "",
@@ -196,7 +217,7 @@
         }
       },
       {
-        "id": "asset-09",
+        "id": "asset-10",
         "role": "secondary",
         "name": "截图·小路",
         "prompt": "",
@@ -218,7 +239,7 @@
         }
       },
       {
-        "id": "asset-10",
+        "id": "asset-11",
         "role": "secondary",
         "name": "截图·夜晚",
         "prompt": "",
@@ -240,7 +261,29 @@
         }
       },
       {
-        "id": "asset-11",
+        "id": "asset-12",
+        "role": "background",
+        "name": "夜景演示画面",
+        "prompt": "",
+        "requirements": [],
+        "status": "approved",
+        "src": "assets/quoted/karpathy-worlds/clip-night.mp4",
+        "promptVersions": [],
+        "reviewHistory": [],
+        "generation": {
+          "provider": "quotation",
+          "model": "-",
+          "parameters": {
+            "usedIn": 1,
+            "license": "评论用途引用，非授权转载",
+            "credit": "Andrej Karpathy (@karpathy)",
+            "note": "引自 Andrej Karpathy 于 x.com/karpathy/status/2083749667410727319 发布的演示视频，评论/解说用途短引用，屏显已署名。素材本体不进仓库（.gitignore public/assets/quoted/），重新获取：yt-dlp 该推文链接后按 assets.json 中的时间点裁切。 片段时间点：79s-85s。"
+          },
+          "createdAt": "2026-08-02"
+        }
+      },
+      {
+        "id": "asset-13",
         "role": "secondary",
         "name": "看不见",
         "prompt": "",
@@ -262,7 +305,7 @@
       }
     ],
     "music": {
-      "mood": "epic"
+      "mood": "pulse"
     }
   },
   "scenes": [
@@ -1218,6 +1261,23 @@
             "fontWeight": 900,
             "color": "#c2761f"
           }
+        },
+        {
+          "entrance": "up",
+          "delayFrames": 130,
+          "rotation": 0,
+          "opacity": 1,
+          "flipX": false,
+          "paperEdge": false,
+          "keyframes": [],
+          "id": "s3-coin",
+          "name": "成本对换",
+          "src": "assets/generated/karpathy-worlds/layers/coin-swap.svg",
+          "role": "secondary",
+          "x": 660,
+          "y": 250,
+          "width": 340,
+          "zIndex": 4
         }
       ],
       "captions": [
@@ -1717,13 +1777,15 @@
           "flipX": false,
           "paperEdge": false,
           "keyframes": [],
-          "id": "bg6",
-          "name": "开放世界",
-          "src": "assets/generated/karpathy-worlds/open-world.svg",
+          "id": "e-bg",
+          "name": "夜景演示画面",
+          "kind": "video",
+          "src": "assets/quoted/karpathy-worlds/clip-night.mp4",
+          "startFrom": 0,
           "role": "background",
-          "x": -110,
-          "y": -40,
-          "width": 1300,
+          "x": -1180,
+          "y": -2,
+          "width": 3440,
           "zIndex": 0
         },
         {
@@ -1739,14 +1801,16 @@
           "kind": "text",
           "role": "primary",
           "x": 96,
-          "y": 420,
+          "y": 380,
           "width": 920,
           "zIndex": 6,
           "style": {
             "text": "有近乎无限的耐心",
-            "fontSize": 88,
+            "fontSize": 84,
             "fontWeight": 900,
-            "align": "center"
+            "align": "center",
+            "background": "rgba(12,15,25,.78)",
+            "padding": 20
           }
         },
         {
@@ -1762,15 +1826,17 @@
           "kind": "text",
           "role": "primary",
           "x": 96,
-          "y": 560,
+          "y": 545,
           "width": 920,
           "zIndex": 6,
           "style": {
             "text": "却还没有一双眼睛",
-            "fontSize": 88,
+            "fontSize": 84,
             "fontWeight": 900,
             "color": "#e8a33d",
-            "align": "center"
+            "align": "center",
+            "background": "rgba(12,15,25,.78)",
+            "padding": 20
           }
         },
         {
@@ -1785,9 +1851,9 @@
           "name": "看不见",
           "src": "assets/generated/karpathy-worlds/layers/blind-eye.svg",
           "role": "secondary",
-          "x": 290,
-          "y": 760,
-          "width": 500,
+          "x": 330,
+          "y": 810,
+          "width": 420,
           "zIndex": 5
         },
         {
@@ -1799,20 +1865,22 @@
           "paperEdge": false,
           "keyframes": [],
           "id": "s6-src",
-          "name": "出处",
+          "name": "出处与披露",
           "kind": "text",
           "role": "tertiary",
           "x": 96,
-          "y": 1240,
+          "y": 1150,
           "width": 920,
           "zIndex": 5,
           "style": {
-            "text": "观点与演示画面出自 Andrej Karpathy\n@karpathy · 解读与举例为本片所加",
-            "fontSize": 42,
+            "text": "观点与演示画面出自 Andrej Karpathy (@karpathy)\n实验所用 Opus 5 为其现任职的 Anthropic 出品\n解读与举例为本片所加",
+            "fontSize": 36,
             "fontWeight": 500,
-            "color": "#8d99ad",
+            "color": "#c9d2e0",
             "align": "center",
-            "lineHeight": 1.5
+            "lineHeight": 1.55,
+            "background": "rgba(12,15,25,.78)",
+            "padding": 18
           }
         }
       ],

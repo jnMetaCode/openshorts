@@ -17,7 +17,7 @@
     "pitch": "+0Hz"
   },
   "music": {
-    "mood": "epic"
+    "mood": "pulse"
   },
   "theme": {
     "paper": "#f6eedb",
@@ -713,6 +713,21 @@
             "fontWeight": 900,
             "color": "#c2761f"
           }
+        },
+        {
+          "id": "s3-coin",
+          "name": "成本对换",
+          "src": "assets/generated/karpathy-worlds/layers/coin-swap.svg",
+          "role": "secondary",
+          "x": 660,
+          "y": 250,
+          "width": 340,
+          "zIndex": 4,
+          "entrance": "up",
+          "delayFrames": 130,
+          "paperEdge": false,
+          "rotation": 0,
+          "opacity": 1
         }
       ],
       "audioCues": [
@@ -1008,13 +1023,15 @@
     {
       "layers": [
         {
-          "id": "bg6",
-          "name": "开放世界",
-          "src": "assets/generated/karpathy-worlds/open-world.svg",
+          "id": "e-bg",
+          "name": "夜景演示画面",
+          "kind": "video",
+          "src": "assets/quoted/karpathy-worlds/clip-night.mp4",
+          "startFrom": 0,
           "role": "background",
-          "x": -110,
-          "y": -40,
-          "width": 1300,
+          "x": -1180,
+          "y": -2,
+          "width": 3440,
           "zIndex": 0,
           "paperEdge": false
         },
@@ -1024,16 +1041,18 @@
           "kind": "text",
           "role": "primary",
           "x": 96,
-          "y": 420,
+          "y": 380,
           "width": 920,
           "zIndex": 6,
           "entrance": "up",
           "delayFrames": 4,
           "style": {
             "text": "有近乎无限的耐心",
-            "fontSize": 88,
+            "fontSize": 84,
             "fontWeight": 900,
-            "align": "center"
+            "align": "center",
+            "background": "rgba(12,15,25,.78)",
+            "padding": 20
           }
         },
         {
@@ -1042,17 +1061,19 @@
           "kind": "text",
           "role": "primary",
           "x": 96,
-          "y": 560,
+          "y": 545,
           "width": 920,
           "zIndex": 6,
           "entrance": "up",
           "delayFrames": 74,
           "style": {
             "text": "却还没有一双眼睛",
-            "fontSize": 88,
+            "fontSize": 84,
             "fontWeight": 900,
             "color": "#e8a33d",
-            "align": "center"
+            "align": "center",
+            "background": "rgba(12,15,25,.78)",
+            "padding": 20
           }
         },
         {
@@ -1060,32 +1081,34 @@
           "name": "看不见",
           "src": "assets/generated/karpathy-worlds/layers/blind-eye.svg",
           "role": "secondary",
-          "x": 290,
-          "y": 760,
-          "width": 500,
+          "x": 330,
+          "y": 810,
+          "width": 420,
           "zIndex": 5,
           "entrance": "fade",
           "delayFrames": 74
         },
         {
           "id": "s6-src",
-          "name": "出处",
+          "name": "出处与披露",
           "kind": "text",
           "role": "tertiary",
           "x": 96,
-          "y": 1240,
+          "y": 1150,
           "width": 920,
           "zIndex": 5,
           "entrance": "fade",
           "delayFrames": 138,
           "paperEdge": false,
           "style": {
-            "text": "观点与演示画面出自 Andrej Karpathy\n@karpathy · 解读与举例为本片所加",
-            "fontSize": 42,
+            "text": "观点与演示画面出自 Andrej Karpathy (@karpathy)\n实验所用 Opus 5 为其现任职的 Anthropic 出品\n解读与举例为本片所加",
+            "fontSize": 36,
             "fontWeight": 500,
-            "color": "#8d99ad",
+            "color": "#c9d2e0",
             "align": "center",
-            "lineHeight": 1.5
+            "lineHeight": 1.55,
+            "background": "rgba(12,15,25,.78)",
+            "padding": 18
           }
         }
       ],

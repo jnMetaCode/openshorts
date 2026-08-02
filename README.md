@@ -230,7 +230,7 @@ npm run story -- nine-suns audio --voice=zh-CN-YunxiNeural       # 临时覆盖�
 "music": {"mood": "epic"}
 ```
 
-可选 `epic`（宫调，开阔）、`urgent`（羽调，紧迫）、`elegiac`（低八度，苍凉）、`bright`（徵调，明快）。合成用 Karplus-Strong 弹拨弦加 Schroeder 混响，音高序列由故事名派生的 seed 决定——同一个故事永远得到同一首曲子，不同故事天然不同。
+可选 `epic`（宫调，开阔）、`urgent`（羽调，紧迫）、`elegiac`（低八度，苍凉）、`bright`（徵调，明快）、`pulse`（电子脉冲，科技解说向）。合成用 Karplus-Strong 弹拨弦加 Schroeder 混响，音高序列由故事名派生的 seed 决定——同一个故事永远得到同一首曲子，不同故事天然不同。
 
 ### 接入自备配乐
 

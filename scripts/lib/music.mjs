@@ -21,6 +21,8 @@ export const MOODS = {
   urgent: {mode: 'yu', octave: 0, tempo: 0.44, decay: 0.9938, brightness: 0.54, padLevel: 0.06, swell: false, reverb: 0.26},
   elegiac: {mode: 'yu', octave: -12, tempo: 0.86, decay: 0.9968, brightness: 0.34, padLevel: 0.09, swell: true, reverb: 0.46},
   bright: {mode: 'zhi', octave: 12, tempo: 0.5, decay: 0.9948, brightness: 0.58, padLevel: 0.05, swell: false, reverb: 0.30},
+  // 科技/解说向：短促高亮的拨弦当合成器琶音用，快拍、干混响、重低音衬底
+  pulse: {mode: 'yu', octave: 0, tempo: 0.36, decay: 0.9915, brightness: 0.78, padLevel: 0.11, swell: false, reverb: 0.16},
 };
 
 const midiToFreq = (midi) => 440 * Math.pow(2, (midi - 69) / 12);
@@ -118,6 +120,7 @@ const PATTERNS = {
   urgent: [1, 1, 0, 1, 1, 0, 1, 0],
   elegiac: [1, 0, 0, 1, 0, 0, 1, 0],
   bright: [1, 0, 1, 0, 1, 1, 0, 1],
+  pulse: [1, 0, 1, 1, 0, 1, 1, 0],
 };
 
 export const renderMusic = ({mood: moodName = 'epic', seconds = 60, seed = 20260801}) => {
