@@ -71,6 +71,27 @@ test('时间轴越界不在写入时拦截，留给验收阶段报告', () => {
   assert.equal(parseProject(shortened).ok, true, '缩短镜头是编辑器常规操作，不应挡住存盘');
 });
 
+test('文字图层必须有 style，图片/视频图层必须有 src', () => {
+  const base = sample();
+  const scene = base.scenes[0];
+  scene.layers.push({id: 'txt', name: '文字', kind: 'text', role: 'primary', x: 0, y: 0, width: 900, zIndex: 9,
+    style: {text: '$10', fontSize: 200}});
+  scene.layers.push({id: 'vid', name: '视频', kind: 'video', src: 'assets/x.mp4', startFrom: 1.2, role: 'secondary',
+    x: 0, y: 0, width: 720, zIndex: 8});
+  const ok = parseProject(base);
+  assert.ok(ok.ok, ok.ok ? '' : ok.errors.join('; '));
+  assert.equal(ok.project.scenes[0].layers.at(-2).style.align, 'left', '文字样式默认值应补齐');
+  assert.equal(ok.project.scenes[0].layers.at(-1).startFrom, 1.2);
+
+  const noStyle = sample();
+  noStyle.scenes[0].layers.push({id: 'bad', name: 'x', kind: 'text', role: 'primary', x: 0, y: 0, width: 100, zIndex: 1});
+  assert.equal(parseProject(noStyle).ok, false, '缺 style 的文字图层应被拦下');
+
+  const noSrc = sample();
+  noSrc.scenes[0].layers.push({id: 'bad2', name: 'x', kind: 'video', role: 'primary', x: 0, y: 0, width: 100, zIndex: 1});
+  assert.equal(parseProject(noSrc).ok, false, '缺 src 的视频图层应被拦下');
+});
+
 test('projectSchema 与 parseProject 是同一份定义', () => {
   assert.equal(projectSchema.safeParse(sample()).success, true);
 });

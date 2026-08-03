@@ -460,6 +460,23 @@ npm run draft -- \
 | `delayFrames` | 错峰入场时间 |
 | `entrance` | `none / left / right / up / down / scale / fade` |
 | `paperEdge` | 统一白色剪纸描边和落影 |
+| `kind` | `image / text / video`，默认 `image` |
+| `style` | 仅 `text`：字号、字重、对齐、等宽、卡片底色、逐行显现（`revealFrames`） |
+| `startFrom` | 仅 `video`：从源视频第几秒起播；视频图层强制静音，声音统一走音频母带 |
+
+三种图层对应两条内容产线：故事片用 `image`（分层纸片动画），技术讲解用 `text`（信息板/PPT/代码终端是同一原语的不同排版）加 `video`（引用真实画面佐证论点）。文字与视频图层示例：
+
+```json
+{"id": "hero", "kind": "text", "role": "primary", "x": 96, "y": 450, "width": 920, "zIndex": 6,
+ "style": {"text": "$10", "fontSize": 230, "fontWeight": 900, "color": "#e8a33d", "align": "center"}}
+```
+
+```json
+{"id": "demo", "kind": "video", "src": "assets/quoted/my-story/clip.mp4", "startFrom": 1.2,
+ "role": "secondary", "x": 96, "y": 1140, "width": 720, "zIndex": 4}
+```
+
+降级渲染（无 Chrome）下文字由 ImageMagick 排版、视频取海报帧当静态图，位置与 Remotion 一致。
 
 完整示例见 [`projects/sample.json`](projects/sample.json)。
 

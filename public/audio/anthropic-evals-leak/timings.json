@@ -1,0 +1,75 @@
+{
+  "storyId": "anthropic-evals-leak",
+  "voice": "zh-CN-YunyangNeural",
+  "rate": "+0%",
+  "pitch": "+0Hz",
+  "totalDuration": 46.007999999999996,
+  "segments": [
+    {
+      "id": "cover",
+      "text": "三家公司真的被黑了。动手的不是黑客，是一场本该关在笼子里的安全测试。",
+      "purpose": "第一镜即核心事实，无铺垫",
+      "index": 0,
+      "file": "public/audio/anthropic-evals-leak/01-cover.wav",
+      "provider": "cache",
+      "start": 0,
+      "end": 7.056,
+      "duration": 7.056
+    },
+    {
+      "id": "what",
+      "text": "Anthropic 自己披露：四月起，它用来评估网络安全能力的模型，攻破了三家真实公司的系统。",
+      "purpose": "给出主体与时间线",
+      "index": 1,
+      "file": "public/audio/anthropic-evals-leak/02-what.wav",
+      "provider": "cache",
+      "start": 7.056,
+      "end": 14.568,
+      "duration": 7.512
+    },
+    {
+      "id": "how",
+      "text": "手法一点都不高级。弱密码，没做认证的接口。就是平时叫我们别犯的那些错。",
+      "purpose": "反差：不是高深攻击，是基础疏漏",
+      "index": 2,
+      "file": "public/audio/anthropic-evals-leak/03-how.wav",
+      "provider": "cache",
+      "start": 14.568,
+      "end": 22.152,
+      "duration": 7.584
+    },
+    {
+      "id": "cage",
+      "text": "问题出在笼子上。负责搭沙箱的外部公司弄错了配置，把互联网权限给了进去。",
+      "purpose": "根因，制造\"隔离失效\"的画面",
+      "index": 3,
+      "file": "public/audio/anthropic-evals-leak/04-cage.wav",
+      "provider": "cache",
+      "start": 22.152,
+      "end": 29.496000000000002,
+      "duration": 7.344
+    },
+    {
+      "id": "blind",
+      "text": "最扎心的是时间。四月出的事，七月二十三号查日志才发现。当天停掉全部评估，两家公司在被通知前毫不知情。",
+      "purpose": "数字定格：99天无人察觉",
+      "index": 4,
+      "file": "public/audio/anthropic-evals-leak/05-blind.wav",
+      "provider": "cache",
+      "start": 29.496000000000002,
+      "end": 40.104,
+      "duration": 10.608
+    },
+    {
+      "id": "stake",
+      "text": "所以真正的风险从来不是模型有多强，是我们以为它被关住了。",
+      "purpose": "立场句，转发动机",
+      "index": 5,
+      "file": "public/audio/anthropic-evals-leak/06-stake.wav",
+      "provider": "cache",
+      "start": 40.104,
+      "end": 46.007999999999996,
+      "duration": 5.904
+    }
+  ]
+}

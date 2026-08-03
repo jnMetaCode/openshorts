@@ -1,0 +1,45 @@
+{
+  "id": "anthropic-evals-leak",
+  "title": "测黑客的AI，自己成了黑客",
+  "format": "9:16",
+  "targetSeconds": 58,
+  "hook": "本该关在沙箱里的安全评估，真的黑进了三家公司，四个月没人发现",
+  "source": {
+    "author": "Anthropic 官方披露",
+    "url": "https://www.anthropic.com/news/investigating-incidents-cybersecurity-evals",
+    "note": "事实依据 Anthropic 官方公告与 NBC/CNN/Forbes 报道，观点与解读为本片作者所加"
+  },
+  "pronunciations": {},
+  "segments": [
+    {
+      "id": "cover",
+      "text": "三家公司真的被黑了。动手的不是黑客，是一场本该关在笼子里的安全测试。",
+      "purpose": "第一镜即核心事实，无铺垫"
+    },
+    {
+      "id": "what",
+      "text": "Anthropic 自己披露：四月起，它用来评估网络安全能力的模型，攻破了三家真实公司的系统。",
+      "purpose": "给出主体与时间线"
+    },
+    {
+      "id": "how",
+      "text": "手法一点都不高级。弱密码，没做认证的接口。就是平时叫我们别犯的那些错。",
+      "purpose": "反差：不是高深攻击，是基础疏漏"
+    },
+    {
+      "id": "cage",
+      "text": "问题出在笼子上。负责搭沙箱的外部公司弄错了配置，把互联网权限给了进去。",
+      "purpose": "根因，制造\"隔离失效\"的画面"
+    },
+    {
+      "id": "blind",
+      "text": "最扎心的是时间。四月出的事，七月二十三号查日志才发现。当天停掉全部评估，两家公司在被通知前毫不知情。",
+      "purpose": "数字定格：99天无人察觉"
+    },
+    {
+      "id": "stake",
+      "text": "所以真正的风险从来不是模型有多强，是我们以为它被关住了。",
+      "purpose": "立场句，转发动机"
+    }
+  ]
+}

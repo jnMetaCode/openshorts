@@ -5,7 +5,11 @@ export const listPlanners = (env = process.env) => [
   {id: 'openai-compatible', name: 'OpenAI 兼容规划器', configured: Boolean(env.PAPERCUT_PLANNER_URL), description: '接入支持 Chat Completions JSON 输出的模型服务'},
 ];
 
-const planningPrompt = (input) => `请把以下中文口播文案规划为 1-12 个纸片分层动画镜头。只输出 JSON：{"scenes":[{"narration":"原文片段","shotType":"wide|medium|close","purpose":"镜头叙事目的"}]}。不得遗漏或改写事实。\n标题：${input.title ?? ''}\n文案：${input.text ?? ''}\n角色：${input.characterBible ?? ''}`;
+// 分镜规则源自 docs/x-viral-video-playbook.md（84 条 X 高浏览视频蒸馏）：
+// 第一镜即主体、每 2-3 秒推进、结尾定格不总结——这三条直接写进提示词，规划出的分镜天然合规。
+const planningPrompt = (input) => `请把以下中文口播文案规划为 1-12 个纸片分层动画镜头。只输出 JSON：{"scenes":[{"narration":"原文片段","shotType":"wide|medium|close","purpose":"镜头叙事目的"}]}。不得遗漏或改写事实。
+分镜硬性规则：①第 1 镜直接进入核心画面/核心论点，禁止片头、问候或背景铺垫；②每个镜头承载的口播不超过 3 秒（约 25 字），长句拆多镜保持视觉推进；③最后一镜用画面/数字定格收尾，不做总结陈词。
+标题：${input.title ?? ''}\n文案：${input.text ?? ''}\n角色：${input.characterBible ?? ''}`;
 
 const contentOf = (data) => data?.choices?.[0]?.message?.content ?? data?.output_text ?? data?.content;
 const parseModelJson = (content) => {
