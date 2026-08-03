@@ -1,8 +1,8 @@
 # OpenShorts
 
-![OpenShorts 纸片分层动画演示](docs/assets/openshorts-hero.jpg)
+![OpenShorts 演示](docs/assets/openshorts-hero.jpg)
 
-<p align="center"><img src="docs/assets/openshorts-demo.gif" width="800" alt="OpenShorts 逐字字幕与分层动画演示"></p>
+<p align="center"><img src="docs/assets/openshorts-demo.gif" width="800" alt="OpenShorts 自举演示：这条视频由它自己生成"></p>
 
 一个本地优先、可视化、可扩展的分层纸片动画生产工具。它把“背景、后排、主体、前景分别运动”的方法固化为开放的 JSON 项目协议，并使用 Remotion 预览和渲染。
 
