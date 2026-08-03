@@ -6,7 +6,11 @@ COPY . .
 RUN npm run build
 
 FROM node:22-bookworm-slim
-RUN apt-get update && apt-get install -y --no-install-recommends chromium ffmpeg imagemagick fonts-noto-cjk ca-certificates && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends chromium ffmpeg imagemagick librsvg2-bin fonts-noto-cjk ca-certificates && rm -rf /var/lib/apt/lists/* \
+    # Debian 的 ImageMagick 是 6.x，没有 magick 统一命令；代码按 IM7 约定调用，补一个转发垫片。
+    # librsvg2-bin 让 SVG 描边正确渲染（内置 MSVG 会丢 stroke）。
+    && printf '#!/bin/bash\nif [ "$1" = "identify" ]; then shift; exec identify "$@"; fi\nexec convert "$@"\n' > /usr/local/bin/magick \
+    && chmod +x /usr/local/bin/magick && magick -list delegate >/dev/null
 WORKDIR /app
 ENV NODE_ENV=production HOST=0.0.0.0 PORT=4174 CHROME_PATH=/usr/bin/chromium
 COPY package.json package-lock.json ./

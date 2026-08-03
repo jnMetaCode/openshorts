@@ -15,6 +15,9 @@ const videoPath = path.resolve(process.argv[2] ?? path.join(root, 'out', `${proj
 const reportDir = path.join(root, 'out', 'quality');
 await fs.mkdir(reportDir, {recursive: true});
 
+await fs.access(videoPath).catch(() => {
+  throw new Error(`成片不存在：${videoPath}\n先渲染：npm run story -- ${project.id} render（out/ 不入库，克隆后需本地渲染）`);
+});
 const {stdout} = await run('ffprobe', ['-v', 'error', '-show_streams', '-show_format', '-of', 'json', videoPath], {maxBuffer: 10 * 1024 * 1024});
 const media = mediaSummaryFromProbe(JSON.parse(stdout));
 const analysis = analyzeProject({project, media, publicDir: path.join(root, 'public')});
