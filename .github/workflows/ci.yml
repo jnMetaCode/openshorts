@@ -13,7 +13,7 @@ jobs:
           cache: npm
       - name: 安装媒体依赖（apt 的 ImageMagick 是 6.x，无 magick 命令，补垫片）
         run: |
-          sudo apt-get update -q && sudo apt-get install -y --no-install-recommends imagemagick ffmpeg
+          sudo apt-get update -q && sudo apt-get install -y --no-install-recommends imagemagick ffmpeg librsvg2-bin
           printf '#!/bin/bash\nif [ "$1" = "identify" ]; then shift; exec identify "$@"; fi\nexec convert "$@"\n' | sudo tee /usr/local/bin/magick >/dev/null
           sudo chmod +x /usr/local/bin/magick
           magick -list delegate >/dev/null && ffmpeg -version | head -1
