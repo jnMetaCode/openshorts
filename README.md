@@ -4,7 +4,22 @@
 
 <p align="center"><img src="docs/assets/openshorts-demo.gif" width="800" alt="OpenShorts 自举演示：这条视频由它自己生成"></p>
 
-一个本地优先、可视化、可扩展的分层纸片动画生产工具。它把“背景、后排、主体、前景分别运动”的方法固化为开放的 JSON 项目协议，并使用 Remotion 预览和渲染。
+![License](https://img.shields.io/badge/license-MIT-green) ![Node](https://img.shields.io/badge/node-%E2%89%A520-brightgreen) ![Tests](https://img.shields.io/badge/tests-121%20passing-brightgreen) ![Format](https://img.shields.io/badge/format-9%3A16%20%7C%2016%3A9-blue)
+
+一条本地优先的开源短视频生产线：**文案进，成片出**。三条内容路线共用同一套 JSON 协议、Remotion 渲染与七道质量门禁——上面这条演示 GIF，就是它自己渲的。
+
+> **English**: OpenShorts is a local-first, open-source short-video production line — script in, finished video out. Three content routes (paper-cut story animation / info-board tech explainer / product demo) share one JSON protocol, a Remotion renderer with an FFmpeg fallback, per-story TTS + synthesized music, platform-safe burned subtitles, and a seven-gate QA pipeline (loudness −14 LUFS, true peak, caption safe-zones, asset provenance, Whisper content verification, SHA-256 release manifest). The demo GIF above was rendered by the pipeline itself.
+
+## 成片示例
+
+| 成片 | 路线 | 时长 | 内容源 |
+| --- | --- | --- | --- |
+| 《后羿射日》 | 故事片 · 纸片动画 | 62s | [content/nine-suns](content/nine-suns) |
+| 《三天荔枝道》 | 故事片 · 纸片动画 | 55s | [content/lychee-road](content/lychee-road) |
+| 《十美元，两小时，五千五百行》 | 技术解读 · 信息板 | 84s | [content/karpathy-worlds](content/karpathy-worlds) |
+| 《这条视频是它自己生成的》 | 产品演示 · 自举 | 48s | [content/openshorts-demo](content/openshorts-demo) |
+
+每条都由 `npm run story -- <名字> render` 一条命令渲出，并通过全部验收门禁。
 
 > 当前为 v1.0：覆盖文案分镜、分层素材、审核溯源、关键帧、旁白波形、本地 ASR 逐字字幕、Remotion 渲染和 FFmpeg 验收，并提供 Docker 与 CI。
 
@@ -200,6 +215,19 @@ npm run story -- nine-suns render
 # 一键发布：渲染、验收、原子更新成片、Whisper 反识别、SHA-256 清单
 npm run story -- nine-suns release
 ```
+
+### 从一个话题开始（可选，需 LLM 服务）
+
+连上任意 OpenAI 兼容服务后，一个话题直接起稿：
+
+```bash
+export OPENSHORTS_PLANNER_URL="http://127.0.0.1:1234/v1/chat/completions"
+npm run new -- sky-blue --topic="为什么天空是蓝的" --format=9:16
+```
+
+产出 `content/sky-blue/{story,storyboard,assets}.json` **可审阅草稿**（信息板骨架，文案已按爆款分镜规则拆段），人工校对事实后走常规流水线。这里与一键出片工具的分野是刻意的：草稿必须过人眼，成片必须过门禁。
+
+画幅由 `story.json` 的 `format` 决定（`9:16` / `16:9`），字幕安全区与字号自动适配。
 
 统一入口 `npm run story -- <故事名> [阶段]` 支持 `audio`、`audio:local`、`build`、`render`、`release` 五个阶段，加 `--fallback` 走无 Chrome 的降级渲染。不带参数会列出 `content/` 下所有可用的故事。
 

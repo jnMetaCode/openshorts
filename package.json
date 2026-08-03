@@ -51,7 +51,8 @@
     "music": "node scripts/import-music.mjs",
     "voices": "node scripts/preview-voices.mjs",
     "asset": "node scripts/record-asset.mjs",
-    "comfy": "node scripts/comfy-asset.mjs"
+    "comfy": "node scripts/comfy-asset.mjs",
+    "new": "node scripts/draft-story.mjs"
   },
   "dependencies": {
     "@remotion/bundler": "4.0.499",

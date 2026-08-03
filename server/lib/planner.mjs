@@ -11,8 +11,8 @@ const planningPrompt = (input) => `请把以下中文口播文案规划为 1-12 
 分镜硬性规则：①第 1 镜直接进入核心画面/核心论点，禁止片头、问候或背景铺垫；②每个镜头承载的口播不超过 3 秒（约 25 字），长句拆多镜保持视觉推进；③最后一镜用画面/数字定格收尾，不做总结陈词。
 标题：${input.title ?? ''}\n文案：${input.text ?? ''}\n角色：${input.characterBible ?? ''}`;
 
-const contentOf = (data) => data?.choices?.[0]?.message?.content ?? data?.output_text ?? data?.content;
-const parseModelJson = (content) => {
+export const contentOf = (data) => data?.choices?.[0]?.message?.content ?? data?.output_text ?? data?.content;
+export const parseModelJson = (content) => {
   if (typeof content === 'object' && content) return content;
   const text = String(content ?? '').replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
   return JSON.parse(text);

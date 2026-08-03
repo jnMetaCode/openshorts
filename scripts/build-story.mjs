@@ -69,9 +69,11 @@ const scenes = story.segments.map((segment, i) => {
   };
 });
 
+// 画幅由 story.format 决定（对齐头部项目的双画幅支持）；字幕安全区与字号已按短边自适应
+const [width, height] = story.format === '16:9' ? [1920, 1080] : [1080, 1920];
 const project = {
   schemaVersion: 1, id: story.id, title: story.title,
-  width: 1080, height: 1920, fps,
+  width, height, fps,
   theme: board.theme,
   // 自带配乐优先，否则用按故事情绪合成的那首
   soundtrackSrc: board.music?.file ?? `audio/${story.id}/underscore.wav`,
