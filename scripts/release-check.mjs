@@ -12,4 +12,4 @@ if(!changelog.includes(`## ${pkg.version}`)) throw new Error(`CHANGELOG 缺少 $
 const run=(command,args)=>execFileSync(command,args,{cwd:root,stdio:'inherit',env:process.env});
 run('npm',['test']);run('npm',['run','build']);run('npm',['run','validate','--','projects/sample.json']);
 try{run('docker',['compose','config','--quiet']);}catch(error){if(error?.code==='ENOENT') console.warn('! Docker CLI 未安装，跳过 Compose 解析');else throw error;}
-console.log(`✓ PaperCut Studio ${pkg.version} 发布检查通过`);
+console.log(`✓ OpenShorts ${pkg.version} 发布检查通过`);

@@ -25,8 +25,8 @@ export const transcriptToCaptions = (transcript, fps, maxFrames) => transcript.s
 });
 
 export const runAsr = async ({audioPath,env=process.env,runner=exec}) => {
-  if (!env.PAPERCUT_ASR_COMMAND) throw new Error('未设置 PAPERCUT_ASR_COMMAND');
-  let extra=[]; try {extra=JSON.parse(env.PAPERCUT_ASR_ARGS_JSON ?? '[]');} catch {throw new Error('PAPERCUT_ASR_ARGS_JSON 必须是 JSON 数组');}
-  const {stdout} = await runner(env.PAPERCUT_ASR_COMMAND,[...extra,audioPath],{maxBuffer:20*1024*1024});
+  if (!env.OPENSHORTS_ASR_COMMAND) throw new Error('未设置 OPENSHORTS_ASR_COMMAND');
+  let extra=[]; try {extra=JSON.parse(env.OPENSHORTS_ASR_ARGS_JSON ?? '[]');} catch {throw new Error('OPENSHORTS_ASR_ARGS_JSON 必须是 JSON 数组');}
+  const {stdout} = await runner(env.OPENSHORTS_ASR_COMMAND,[...extra,audioPath],{maxBuffer:20*1024*1024});
   return normalizeTranscript(JSON.parse(String(stdout)));
 };

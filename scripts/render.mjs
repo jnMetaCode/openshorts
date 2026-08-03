@@ -11,7 +11,7 @@ const systemChrome = '/Applications/Google Chrome.app/Contents/MacOS/Google Chro
 const chromeCandidates = [process.env.CHROME_PATH,systemChrome,'/usr/bin/chromium','/usr/bin/google-chrome'].filter(Boolean);
 let browserExecutable = null; for (const candidate of chromeCandidates) {if (await fs.access(candidate).then(() => true).catch(() => false)) {browserExecutable=candidate;break;}}
 const serveUrl = await bundle({entryPoint: path.join(root, 'src', 'remotion', 'index.ts'), webpackOverride: (config) => config});
-const composition = await selectComposition({serveUrl, id: 'PaperCutVideo', inputProps: {project}, browserExecutable});
+const composition = await selectComposition({serveUrl, id: 'OpenShortsVideo', inputProps: {project}, browserExecutable});
 const output = path.join(root, 'out', `${project.id}.mp4`);
 await fs.mkdir(path.dirname(output), {recursive: true});
 await renderMedia({composition, serveUrl, codec: 'h264', outputLocation: output, inputProps: {project}, browserExecutable, concurrency: 1, onProgress: ({progress}) => process.stdout.write(`\r渲染 ${Math.round(progress * 100)}%`)});

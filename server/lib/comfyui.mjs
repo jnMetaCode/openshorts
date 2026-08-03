@@ -13,7 +13,7 @@ export const collectComfyImages = (history) => {
 
 export const runComfyWorkflow = async ({endpoint, workflow, signal, timeoutMs = 180000, pollIntervalMs = 1000, fetchImpl = fetch, onPoll = () => {}}) => {
   if (!workflow || typeof workflow !== 'object' || Array.isArray(workflow) || !Object.keys(workflow).length) throw new Error('ComfyUI workflow 必须是非空 API JSON 对象');
-  const base = String(endpoint).replace(/\/$/, ''); const clientId = `papercut-${randomUUID()}`;
+  const base = String(endpoint).replace(/\/$/, ''); const clientId = `openshorts-${randomUUID()}`;
   const queued = await fetchImpl(`${base}/prompt`, {method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify({prompt: workflow, client_id: clientId}), signal});
   if (!queued.ok) throw new Error(`ComfyUI 提交失败：HTTP ${queued.status}`);
   const {prompt_id: promptId, error} = await queued.json(); if (!promptId) throw new Error(error ? JSON.stringify(error) : 'ComfyUI 未返回 prompt_id');

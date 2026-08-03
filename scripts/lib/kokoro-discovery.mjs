@@ -15,7 +15,7 @@ const modelCandidates = async (root) => {
     (await fs.readdir(snapshotRoot, {withFileTypes: true}).catch(() => []))
       .filter((entry) => entry.isDirectory()).map((entry) => path.join(snapshotRoot, entry.name))))).flat();
   return unique([
-    process.env.PAPERCUT_KOKORO_MODEL_DIR,
+    process.env.OPENSHORTS_KOKORO_MODEL_DIR,
     path.join(root, 'models', 'Kokoro-82M-v1.1-zh'),
     path.join(root, 'models', 'Kokoro-82M'),
     path.join(userDir, '.cache', 'huggingface', 'opentone_modelscope', 'hexgrad', 'Kokoro-82M-v1.1-zh'),
@@ -27,7 +27,7 @@ const modelCandidates = async (root) => {
 };
 
 export const discoverKokoro = async (root = process.cwd()) => {
-  const discoveredPython = await discoverPython({root, explicit: process.env.PAPERCUT_KOKORO_PYTHON, imports: ['kokoro', 'numpy', 'soundfile']});
+  const discoveredPython = await discoverPython({root, explicit: process.env.OPENSHORTS_KOKORO_PYTHON, imports: ['kokoro', 'numpy', 'soundfile']});
   const {python} = discoveredPython;
 
   const candidates = await modelCandidates(root);

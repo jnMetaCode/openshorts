@@ -14,5 +14,5 @@ test('转写结果可转换为帧级字幕', () => {
 
 test('本地 ASR 适配器使用无 shell 命令参数', async () => {
   const runner = async (command,args) => {assert.equal(command,'mock-asr');assert.equal(args.at(-1),'/tmp/voice.wav');return {stdout:JSON.stringify({segments:[{text:'完成',start:0,end:1}]})};};
-  const result = await runAsr({audioPath:'/tmp/voice.wav',env:{PAPERCUT_ASR_COMMAND:'mock-asr',PAPERCUT_ASR_ARGS_JSON:'["--json"]'},runner}); assert.equal(result.segments[0].text,'完成');
+  const result = await runAsr({audioPath:'/tmp/voice.wav',env:{OPENSHORTS_ASR_COMMAND:'mock-asr',OPENSHORTS_ASR_ARGS_JSON:'["--json"]'},runner}); assert.equal(result.segments[0].text,'完成');
 });

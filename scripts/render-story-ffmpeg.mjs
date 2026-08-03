@@ -9,15 +9,15 @@ import {rotatedTopLeft} from './lib/layout.mjs';
 
 const run=promisify(execFile);const root=process.cwd();
 const projectPath=path.resolve(process.argv[2]??'projects/lychee-road.json');
-const project=JSON.parse(await fs.readFile(projectPath,'utf8'));const temp=await fs.mkdtemp(path.join(os.tmpdir(),'papercut-story-'));const clips=[];let absoluteFrame=0;const subtitles=[];let subIndex=1;
+const project=JSON.parse(await fs.readFile(projectPath,'utf8'));const temp=await fs.mkdtemp(path.join(os.tmpdir(),'openshorts-story-'));const clips=[];let absoluteFrame=0;const subtitles=[];let subIndex=1;
 const publicFile=(src)=>path.join(root,'public',src.replace(/^\//,''));
 const stamp=(frame)=>{const sec=frame/project.fps;const h=Math.floor(sec/3600),m=Math.floor(sec%3600/60),s=Math.floor(sec%60),ms=Math.round((sec-Math.floor(sec))*1000);return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')},${String(ms).padStart(3,'0')}`;};
 
 // 字幕字体按平台探测：macOS 用 PingFang，Docker/Linux 用 fonts-noto-cjk，其余可用环境变量覆盖。
-const FONT_CANDIDATES=[process.env.PAPERCUT_SUBTITLE_FONT,'/System/Library/Fonts/PingFang.ttc','/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc','/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc','/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc','/usr/share/fonts/opentype/noto/NotoSerifCJK-Regular.ttc','C:/Windows/Fonts/msyh.ttc'].filter(Boolean);
-const font=await (async()=>{for(const file of FONT_CANDIDATES){if(await fs.access(file).then(()=>true).catch(()=>false))return file;}throw new Error(`找不到中文字体，请用 PAPERCUT_SUBTITLE_FONT 指向一个 CJK 字体文件。已尝试：${FONT_CANDIDATES.join('、')}`);})();
+const FONT_CANDIDATES=[process.env.OPENSHORTS_SUBTITLE_FONT,'/System/Library/Fonts/PingFang.ttc','/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc','/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc','/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc','/usr/share/fonts/opentype/noto/NotoSerifCJK-Regular.ttc','C:/Windows/Fonts/msyh.ttc'].filter(Boolean);
+const font=await (async()=>{for(const file of FONT_CANDIDATES){if(await fs.access(file).then(()=>true).catch(()=>false))return file;}throw new Error(`找不到中文字体，请用 OPENSHORTS_SUBTITLE_FONT 指向一个 CJK 字体文件。已尝试：${FONT_CANDIDATES.join('、')}`);})();
 // 字幕排版与 Remotion 渲染器共用同一套尺寸与安全区规则，避免两条渲染路径不一致。
-const MONO_CANDIDATES=[process.env.PAPERCUT_MONO_FONT,'/System/Library/Fonts/SFNSMono.ttf','/System/Library/Fonts/Menlo.ttc','/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf','/usr/share/fonts/opentype/noto/NotoSansMonoCJKsc-Regular.otf'].filter(Boolean);
+const MONO_CANDIDATES=[process.env.OPENSHORTS_MONO_FONT,'/System/Library/Fonts/SFNSMono.ttf','/System/Library/Fonts/Menlo.ttc','/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf','/usr/share/fonts/opentype/noto/NotoSansMonoCJKsc-Regular.otf'].filter(Boolean);
 const monoFont=await (async()=>{for(const f of MONO_CANDIDATES){if(await fs.access(f).then(()=>true).catch(()=>false))return f;}return font;})();
 const fontSize=subtitleFontSize(project.width,project.height);
 const captionWidth=Math.round(project.width*.86);

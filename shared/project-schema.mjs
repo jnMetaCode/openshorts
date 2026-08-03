@@ -1,4 +1,4 @@
-// PaperCut v1 项目协议的唯一定义。
+// OpenShorts v1 项目协议的唯一定义。
 // 浏览器编辑器、Remotion 渲染器、Express 服务端和 CLI 校验全部从这里读同一份 schema——
 // 以前 TS 里的 Zod、服务端的两行手检和 CLI 的手写规则是三套各说各话的标准。
 import {z} from 'zod';

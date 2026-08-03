@@ -27,7 +27,7 @@ const minimalProject = () => ({
 });
 
 const newStore = async (label) => {
-  const root = await fs.mkdtemp(path.join(os.tmpdir(), `papercut-${label}-`));
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), `openshorts-${label}-`));
   const projectsDir = path.join(root, 'projects'); const templatesDir = path.join(root, 'templates');
   await fs.mkdir(templatesDir, {recursive: true});
   return {projectsDir, templatesDir};
@@ -66,7 +66,7 @@ test('写入时补齐默认值，存下去的一定是渲染器能读的', async
 });
 
 test('任务队列持久化并恢复中断任务', async () => {
-  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'papercut-queue-')); const file = path.join(root, 'jobs.json');
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'openshorts-queue-')); const file = path.join(root, 'jobs.json');
   const first = new PersistentJobQueue(file); await first.init(); const job = await first.add('render', {projectId: 'demo'}); await first.update(job.id, {status: 'running'});
   const recovered = new PersistentJobQueue(file); await recovered.init();
   assert.equal(recovered.get(job.id).status, 'interrupted');
@@ -74,7 +74,7 @@ test('任务队列持久化并恢复中断任务', async () => {
 });
 
 test('排队任务可以取消且不会再次被消费', async () => {
-  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'papercut-cancel-')); const queue = new PersistentJobQueue(path.join(root, 'jobs.json')); await queue.init();
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'openshorts-cancel-')); const queue = new PersistentJobQueue(path.join(root, 'jobs.json')); await queue.init();
   const job = await queue.add('render', {}); await queue.cancel(job.id);
   assert.equal(queue.get(job.id).status, 'cancelled'); assert.equal(queue.next(), null);
 });

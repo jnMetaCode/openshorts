@@ -1,8 +1,8 @@
-# PaperCut Studio
+# OpenShorts
 
-![PaperCut Studio 纸片分层动画演示](docs/assets/papercut-hero.jpg)
+![OpenShorts 纸片分层动画演示](docs/assets/openshorts-hero.jpg)
 
-<p align="center"><img src="docs/assets/papercut-demo.gif" width="800" alt="PaperCut Studio 逐字字幕与分层动画演示"></p>
+<p align="center"><img src="docs/assets/openshorts-demo.gif" width="800" alt="OpenShorts 逐字字幕与分层动画演示"></p>
 
 一个本地优先、可视化、可扩展的分层纸片动画生产工具。它把“背景、后排、主体、前景分别运动”的方法固化为开放的 JSON 项目协议，并使用 Remotion 预览和渲染。
 
@@ -32,9 +32,9 @@ npm run open
 如需启用 LLM 分镜，可连接任意支持 Chat Completions JSON 输出的兼容服务：
 
 ```bash
-export PAPERCUT_PLANNER_URL="http://127.0.0.1:1234/v1/chat/completions"
-export PAPERCUT_PLANNER_MODEL="your-model"
-# 仅远端服务需要鉴权时设置：PAPERCUT_PLANNER_API_KEY
+export OPENSHORTS_PLANNER_URL="http://127.0.0.1:1234/v1/chat/completions"
+export OPENSHORTS_PLANNER_MODEL="your-model"
+# 仅远端服务需要鉴权时设置：OPENSHORTS_PLANNER_API_KEY
 ```
 
 批量审核并记录生成来源：
@@ -47,8 +47,8 @@ npm run review -- --project=projects/my-video.json --assets=all \
 本地 ASR 程序需要接收最后一个参数中的音频路径，并向 stdout 输出 `{"language":"zh","segments":[{"text":"...","start":0,"end":1.2,"words":[]}]}`：
 
 ```bash
-export PAPERCUT_ASR_COMMAND="/absolute/path/to/asr-adapter"
-export PAPERCUT_ASR_ARGS_JSON='["--model","large-v3","--json"]'
+export OPENSHORTS_ASR_COMMAND="/absolute/path/to/asr-adapter"
+export OPENSHORTS_ASR_ARGS_JSON='["--model","large-v3","--json"]'
 npm run dev
 ```
 
@@ -90,7 +90,7 @@ npm run dev
 - `⌘/Ctrl + Z` 撤销，`⇧ + ⌘/Ctrl + Z` 重做，最多保留 40 步。
 - 复制或删除镜头；新镜头从当前镜头复制，便于保持统一视觉模板。
 - 复制、删除、上移或下移图层。
-- 导入 PaperCut v1 JSON；导入后先在浏览器检查，再点击保存。
+- 导入 OpenShorts v1 JSON；导入后先在浏览器检查，再点击保存。
 - 拖拽非背景图层，并显示字幕安全区。
 - 上传 WAV、MP3、M4A、AAC、FLAC 或 OGG 旁白，通过 ffprobe 自动匹配镜头帧数。
 - 可视化调整每句字幕的入场帧和出场帧。
@@ -101,7 +101,7 @@ npm run dev
 - 管理多个本地项目，并从模板创建互相独立的新工程。
 - 使用 `{{变量名}}` 批量替换标题、字幕及其他字符串字段。
 - 渲染任务持久化到磁盘，失败或进程中断后可以重试。
-- 将项目 JSON 和全部本地素材导出为可迁移 `.papercut.zip`。
+- 将项目 JSON 和全部本地素材导出为可迁移 `.openshorts.zip`。
 - 安全导入项目包，拦截路径穿越、符号链接和超大解压内容。
 - 取消等待中或运行中的渲染/ComfyUI 任务。
 - 从中文文案自动规划全景、中景和特写镜头。
@@ -378,7 +378,7 @@ npm run assets -- split sheet-alpha.png public/uploads/six 1 6 character
 单个视频的帧渲染并发默认为 1，可根据机器内存调整：
 
 ```bash
-PAPERCUT_RENDER_CONCURRENCY=2 npm start
+OPENSHORTS_RENDER_CONCURRENCY=2 npm start
 ```
 
 ## 项目包导入导出
@@ -386,8 +386,8 @@ PAPERCUT_RENDER_CONCURRENCY=2 npm start
 网页顶部可以直接“打包项目”或“导入项目包”。CLI 用法：
 
 ```bash
-npm run bundle -- export projects/sample.json out/my-project.papercut.zip
-npm run bundle -- import out/my-project.papercut.zip projects/imported.json
+npm run bundle -- export projects/sample.json out/my-project.openshorts.zip
+npm run bundle -- import out/my-project.openshorts.zip projects/imported.json
 ```
 
 项目包包含 `project.json`、`manifest.json` 和 `public/` 下被引用的本地素材。导入时素材会迁移到独立命名空间并重写项目路径，避免覆盖已有素材。
@@ -486,7 +486,7 @@ npm run draft -- \
 
 ```json
 {
-  "error": "项目不符合 PaperCut v1 协议：\n- scenes.0.layers.0.src：Invalid input: expected string, received undefined",
+  "error": "项目不符合 OpenShorts v1 协议：\n- scenes.0.layers.0.src：Invalid input: expected string, received undefined",
   "issues": ["scenes.0.layers.0.src：Invalid input: expected string, received undefined"]
 }
 ```
@@ -511,7 +511,7 @@ npm run draft -- \
 - 成片响度对齐平台归一化目标 -14 LUFS，真峰值不超过 -1.5 dBFS。
 - 配乐按旁白自动闪避约 10 dB，并在短于成片时循环补齐。
 
-`npm run quality` 会校验以上各项；FFmpeg 渲染器自动探测中文字体，也可用 `PAPERCUT_SUBTITLE_FONT` 指定。
+`npm run quality` 会校验以上各项；FFmpeg 渲染器自动探测中文字体，也可用 `OPENSHORTS_SUBTITLE_FONT` 指定。
 
 ## 架构
 
@@ -533,7 +533,7 @@ public/uploads/ ──┘
 
 核心没有把 Imagegen、F5-TTS 或任何云服务写死。生成图、抠图、TTS 都应该是可插拔的“素材供应器”，而 JSON 协议、编排、预览和渲染才是稳定内核。这样用户可以选 OpenAI、ComfyUI、本地模型、真人录音或其他 TTS。
 
-Remotion 本身使用独立许可条款。个人和小团队、自动化产品等场景的许可可能不同；公开部署或商业化前请阅读 [Remotion 官方许可说明](https://www.remotion.dev/)。PaperCut Studio 自有代码采用 MIT License，不会改变第三方依赖的许可。
+Remotion 本身使用独立许可条款。个人和小团队、自动化产品等场景的许可可能不同；公开部署或商业化前请阅读 [Remotion 官方许可说明](https://www.remotion.dev/)。OpenShorts 自有代码采用 MIT License，不会改变第三方依赖的许可。
 
 ## 路线图
 

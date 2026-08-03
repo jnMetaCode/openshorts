@@ -6,7 +6,7 @@ public/uploads/
 .env
 .DS_Store
 *.log
-*.papercut.zip
+*.openshorts.zip
 coverage/
 models/
 __pycache__/

@@ -39,5 +39,5 @@ while !finished && Date() < deadline {
 if let error = writeError { throw error }
 audioFile = nil
 guard finished, FileManager.default.fileExists(atPath: output.path) else {
-    throw NSError(domain: "PaperCutTTS", code: 1, userInfo: [NSLocalizedDescriptionKey: "语音合成未生成文件"])
+    throw NSError(domain: "OpenShortsTTS", code: 1, userInfo: [NSLocalizedDescriptionKey: "语音合成未生成文件"])
 }

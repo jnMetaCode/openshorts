@@ -12,7 +12,7 @@ const workflow = {
   '5': {class_type: 'EmptyLatentImage', inputs: {width: 1024, height: 1536, batch_size: 1}},
   '6': {class_type: 'CLIPTextEncode', inputs: {text: '剪纸风格弓箭手，纯绿背景，全身', clip: ['4', 1]}},
   '7': {class_type: 'CLIPTextEncode', inputs: {text: '文字，水印，裁切', clip: ['4', 1]}},
-  '9': {class_type: 'SaveImage', inputs: {filename_prefix: 'papercut', images: ['8', 0]}},
+  '9': {class_type: 'SaveImage', inputs: {filename_prefix: 'openshorts', images: ['8', 0]}},
 };
 
 test('从工作流解析出模型、种子和正向提示词', () => {

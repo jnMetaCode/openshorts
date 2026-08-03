@@ -24,7 +24,10 @@ if (media.audioCodec) {
   const values = [...String(measured.stderr ?? '').matchAll(/I:\s*(-?\d+(?:\.\d+)?)\s+LUFS/g)].map((match) => Number(match[1]));
   const peaks = [...String(measured.stderr ?? '').matchAll(/Peak:\s*(-?\d+(?:\.\d+)?)\s+dBFS/g)].map((match) => Number(match[1]));
   if (values.length) audioLoudness = {integratedLufs:values.at(-1),truePeakDbfs:peaks.at(-1) ?? null};
+  // 工程里一个音源都没有（纯排版演示）时，静音是预期而非事故——降级为警告。
+  const hasAudioSources = Boolean(project.soundtrackSrc) || project.scenes.some((scene) => scene.narrationSrc || (scene.audioCues ?? []).length);
   if (!audioLoudness) analysis.errors.push('音轨存在，但无法测得有效响度');
+  else if (audioLoudness.integratedLufs < -30 && !hasAudioSources) analysis.warnings.push(`工程无音源，成片为静音（${audioLoudness.integratedLufs.toFixed(1)} LUFS）`);
   else if (audioLoudness.integratedLufs < -30) analysis.errors.push(`音轨过小：${audioLoudness.integratedLufs.toFixed(1)} LUFS`);
   // 抖音/B站/YouTube 的播放归一化目标是 -14 LUFS，偏离 2 LU 以上在信息流里就能听出音量差。
   else if (Math.abs(audioLoudness.integratedLufs - PLATFORM_TARGET_LUFS) > 2) analysis.warnings.push(`音频响度 ${audioLoudness.integratedLufs.toFixed(1)} LUFS，偏离短视频平台 ${PLATFORM_TARGET_LUFS} LUFS 目标超过 2 LU`);

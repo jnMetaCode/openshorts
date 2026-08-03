@@ -2,13 +2,17 @@
 
 ## 未发布
 
+- **项目改名 OpenShorts**（原 OpenShorts Studio 时期名为 PaperCut Studio）：与 Papercut Software™（商标号 79231969，同类计算机软件）冲突，且 open- 前缀更贴开源短视频生产线定位。波及包名、协议名（OpenShorts v1）、Remotion 组合 ID、打包格式 .openshorts.zip、环境变量前缀 OPENSHORTS_*（无兼容层）
+- 修 Remotion 入口：inputProps 不会自动过 schema，手写工程缺可选字段时组件崩溃；calculateMetadata 统一 parse 补默认值
+- 验收区分「工程无音源的静音」（警告）与「有音源却无声」（错误）
+
 - 字幕改为在标点处断句，不再出现「河干／了」这类词中断行
 - 竖屏字幕上移到底部 20% 安全区之上，避开抖音/快手/视频号的账号名与进度条
 - 字幕字号改按画面短边计算，横竖屏每行字数一致；单行上限 16 字
 - 成片响度对齐短视频平台的 -14 LUFS，真峰值限制在 -1.5 dBFS
 - 配乐加入旁白闪避（sidechain ducking），说话时自动压低约 10 dB
 - 配乐短于成片时自动循环补齐，片尾不再突然没有音乐
-- FFmpeg 渲染器改为自动探测中文字体，Docker/Linux 可用；可用 `PAPERCUT_SUBTITLE_FONT` 覆盖
+- FFmpeg 渲染器改为自动探测中文字体，Docker/Linux 可用；可用 `OPENSHORTS_SUBTITLE_FONT` 覆盖
 - 质检新增字幕阅读速度、单条字数、断句位置和平台响度目标检查
 - 音频母带抽成 `scripts/lib/audio-master.mjs`，Remotion 与 FFmpeg 两条渲染路径共用同一套音轨逻辑
 - 新增 `npm run master`，可对任意成片单独重建音轨
@@ -20,7 +24,7 @@
 - 存盘时自动补齐默认值，磁盘上的工程一定是渲染器能直接读的
 - 修正《三天荔枝道》背景关键帧写死第 360 帧的问题，短镜头的背景缓推现在能走完
 - 验收新增关键帧超出镜头时长的警告
-- 收紧本地服务的跨站访问：只放行本机与 Vite 开发端口，跨站写请求返回 403，可用 `PAPERCUT_ALLOWED_ORIGINS` 覆盖
+- 收紧本地服务的跨站访问：只放行本机与 Vite 开发端口，跨站写请求返回 403，可用 `OPENSHORTS_ALLOWED_ORIGINS` 覆盖
 - 共享音效移到 `public/audio/common/`，不再按故事复制；仓库音频从 39MB 降到 25MB
 - 新增统一入口 `npm run story -- <故事名> [audio|audio:local|build|render|release]`，替代按故事硬编码的 12 条脚本
 - 《三天荔枝道》改为数据驱动（`content/lychee-road/storyboard.json`），删除专用构建脚本 `build-lychee-story.mjs`

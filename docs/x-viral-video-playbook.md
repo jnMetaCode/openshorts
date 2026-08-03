@@ -1,8 +1,8 @@
-# X 爆款讲解视频手法（papercut 制作规范）
+# X 爆款讲解视频手法（openshorts 制作规范）
 
 > 来源：对 X 上 84 条高浏览视频帖的量化蒸馏 + 8 支头部视频（33万-1099万浏览）逐帧拆解。
 > 原始数据与看片笔记在 mediahub `storage/distill-corpus/x-video/`（playbook.md / watch-notes.md）。
-> 本文是把那份结论翻译成 papercut 项目文件（project.json / storyboard）的可执行规范。
+> 本文是把那份结论翻译成 openshorts 项目文件（project.json / storyboard）的可执行规范。
 
 ## 〇、开工前先回答：这片靠什么被转发？
 
@@ -46,7 +46,9 @@
 - [ ] 每 scene 内静止画面 ≤3 秒（用 delayFrames 分批入场核对）
 - [ ] 引用素材走 `assets/quoted/` + 屏显署名 + assets.json 记 license/时间点（合规红线）
 - [ ] 观点句有高亮字幕层；演示段无冗余字幕
-- [ ] 结尾定格，无总结口播
+- [ ] 结尾定格，无总结口播。**末镜必须设 `holdSeconds`**（旁白结束后多停 2-4 秒），
+      否则署名/品牌卡的 `delayFrames` 会超出镜头长度，直接渲染不出来（实测踩过）
+- [ ] 底部文字层避开字幕带（约 y=1400-1550 区间），署名/品牌卡放 y≥1580
 - [ ] 口播文案里无"大家好/今天我们来聊/总结一下"等铺垫与收场套话
 - [ ] caption 已按分工写好，标签 ≤2 个
 - [ ] 渲染后抽帧自检：第 1 帧、每 20% 处、末帧（`ffmpeg -ss N -frames:v 1`）

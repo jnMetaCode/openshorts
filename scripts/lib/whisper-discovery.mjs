@@ -30,9 +30,9 @@ export const whisperModelRank = (modelPath) => {
 export const discoverWhisper = async (root = process.cwd()) => {
   const userDir = os.homedir();
   const [pythonResult, scannedModels] = await Promise.all([
-    discoverPython({root, explicit: process.env.PAPERCUT_WHISPER_PYTHON, imports: ['faster_whisper']}),
+    discoverPython({root, explicit: process.env.OPENSHORTS_WHISPER_PYTHON, imports: ['faster_whisper']}),
     Promise.all([
-      process.env.PAPERCUT_WHISPER_MODEL,
+      process.env.OPENSHORTS_WHISPER_MODEL,
       path.join(root, 'models'),
       path.join(userDir, '.cache', 'huggingface', 'hub'),
       path.join(userDir, 'work'),

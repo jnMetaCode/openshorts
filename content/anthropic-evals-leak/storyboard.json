@@ -2,9 +2,18 @@
   "backgroundColor": "#0a0e19",
   "cameraZoom": 1.03,
   "soundtrackVolume": 0.34,
-  "fallbackDurations": [7, 11, 10, 10, 14, 9],
+  "fallbackDurations": [
+    7,
+    11,
+    10,
+    10,
+    14,
+    9
+  ],
   "voice": "zh-CN-YunyangNeural",
-  "music": { "mood": "urgent" },
+  "music": {
+    "mood": "urgent"
+  },
   "theme": {
     "paper": "#f2e6cf",
     "ink": "#0d1220",
@@ -23,89 +32,682 @@
   },
   "scenes": [
     {
-      "audioCues": [{ "src": "audio/common/impact.wav", "fromFrame": 0, "volume": 0.55 }],
+      "audioCues": [
+        {
+          "src": "audio/common/impact.wav",
+          "fromFrame": 0,
+          "volume": 0.55
+        }
+      ],
       "layers": [
-        { "id": "s0-bg", "name": "告警底", "src": "assets/generated/anthropic-evals-leak/bg-alert.svg", "role": "background", "x": 0, "y": 0, "width": 1080, "zIndex": 0, "rotation": 0, "opacity": 1, "paperEdge": false },
-        { "id": "s0-t1", "name": "核心事实", "kind": "text", "role": "primary", "x": 80, "y": 520, "width": 920, "zIndex": 5, "rotation": 0, "opacity": 1, "entrance": "up", "delayFrames": 2, "paperEdge": false,
-          "style": { "text": "三家公司\n真的被黑了", "fontSize": 118, "fontWeight": 900, "color": "#f2e6cf", "lineHeight": 1.15 } },
-        { "id": "s0-targets", "name": "三个目标", "src": "assets/generated/anthropic-evals-leak/layers/three-targets.svg", "role": "secondary", "x": 100, "y": 900, "width": 880, "zIndex": 4, "rotation": 0, "opacity": 1, "entrance": "up", "delayFrames": 46, "paperEdge": false },
-        { "id": "s0-t2", "name": "反转", "kind": "text", "role": "secondary", "x": 80, "y": 1330, "width": 920, "zIndex": 5, "rotation": 0, "opacity": 1, "entrance": "left", "delayFrames": 96, "paperEdge": false,
-          "style": { "text": "动手的不是黑客\n是一场安全测试", "fontSize": 62, "fontWeight": 800, "color": "#e0533f", "lineHeight": 1.3 } }
+        {
+          "id": "s0-bg",
+          "name": "告警底",
+          "src": "assets/generated/anthropic-evals-leak/bg-alert.svg",
+          "role": "background",
+          "x": 0,
+          "y": 0,
+          "width": 1080,
+          "zIndex": 0,
+          "rotation": 0,
+          "opacity": 1,
+          "paperEdge": false
+        },
+        {
+          "id": "s0-t1",
+          "name": "核心事实",
+          "kind": "text",
+          "role": "primary",
+          "x": 80,
+          "y": 520,
+          "width": 920,
+          "zIndex": 5,
+          "rotation": 0,
+          "opacity": 1,
+          "entrance": "up",
+          "delayFrames": 2,
+          "paperEdge": false,
+          "style": {
+            "text": "三家公司\n真的被黑了",
+            "fontSize": 118,
+            "fontWeight": 900,
+            "color": "#f2e6cf",
+            "lineHeight": 1.15
+          }
+        },
+        {
+          "id": "s0-targets",
+          "name": "三个目标",
+          "src": "assets/generated/anthropic-evals-leak/layers/three-targets.svg",
+          "role": "secondary",
+          "x": 100,
+          "y": 900,
+          "width": 880,
+          "zIndex": 4,
+          "rotation": 0,
+          "opacity": 1,
+          "entrance": "up",
+          "delayFrames": 46,
+          "paperEdge": false
+        },
+        {
+          "id": "s0-t2",
+          "name": "反转",
+          "kind": "text",
+          "role": "secondary",
+          "x": 80,
+          "y": 1330,
+          "width": 920,
+          "zIndex": 5,
+          "rotation": 0,
+          "opacity": 1,
+          "entrance": "left",
+          "delayFrames": 96,
+          "paperEdge": false,
+          "style": {
+            "text": "动手的不是黑客\n是一场安全测试",
+            "fontSize": 62,
+            "fontWeight": 800,
+            "color": "#e0533f",
+            "lineHeight": 1.3
+          }
+        }
       ]
     },
     {
-      "audioCues": [{ "src": "audio/common/whoosh.wav", "fromFrame": 4, "volume": 0.2 }],
+      "audioCues": [
+        {
+          "src": "audio/common/whoosh.wav",
+          "fromFrame": 4,
+          "volume": 0.2
+        }
+      ],
       "layers": [
-        { "id": "s1-bg", "name": "暗底", "src": "assets/generated/anthropic-evals-leak/bg-dark.svg", "role": "background", "x": 0, "y": 0, "width": 1080, "zIndex": 0, "rotation": 0, "opacity": 1, "paperEdge": false },
-        { "id": "s1-title", "name": "谁披露的", "kind": "text", "role": "primary", "x": 80, "y": 300, "width": 920, "zIndex": 5, "rotation": 0, "opacity": 1, "entrance": "up", "delayFrames": 2, "paperEdge": false,
-          "style": { "text": "Anthropic 自己说的", "fontSize": 82, "fontWeight": 900, "color": "#f2e6cf" } },
-        { "id": "s1-l1", "name": "时间", "kind": "text", "role": "secondary", "x": 80, "y": 560, "width": 920, "zIndex": 5, "rotation": 0, "opacity": 1, "entrance": "left", "delayFrames": 60, "paperEdge": false,
-          "style": { "text": "四月起 · 网络安全评估", "fontSize": 58, "fontWeight": 700, "color": "#8fa3c4" } },
-        { "id": "s1-l2", "name": "涉及模型", "kind": "text", "role": "secondary", "x": 80, "y": 680, "width": 920, "zIndex": 5, "rotation": 0, "opacity": 1, "entrance": "left", "delayFrames": 110, "paperEdge": false,
-          "style": { "text": "Opus 4.7 · Mythos 5 · 一个内部研究模型", "fontSize": 50, "fontWeight": 700, "color": "#f2e6cf", "lineHeight": 1.35 } },
-        { "id": "s1-targets", "name": "被攻破的三家", "src": "assets/generated/anthropic-evals-leak/layers/three-targets.svg", "role": "secondary", "x": 100, "y": 900, "width": 880, "zIndex": 4, "rotation": 0, "opacity": 1, "entrance": "up", "delayFrames": 165, "paperEdge": false },
-        { "id": "s1-l3", "name": "结果", "kind": "text", "role": "primary", "x": 80, "y": 1330, "width": 920, "zIndex": 6, "rotation": 0, "opacity": 1, "entrance": "up", "delayFrames": 215, "paperEdge": false,
-          "style": { "text": "攻破了三家真实公司", "fontSize": 68, "fontWeight": 900, "color": "#e0533f" } }
+        {
+          "id": "s1-bg",
+          "name": "暗底",
+          "src": "assets/generated/anthropic-evals-leak/bg-dark.svg",
+          "role": "background",
+          "x": 0,
+          "y": 0,
+          "width": 1080,
+          "zIndex": 0,
+          "rotation": 0,
+          "opacity": 1,
+          "paperEdge": false
+        },
+        {
+          "id": "s1-title",
+          "name": "谁披露的",
+          "kind": "text",
+          "role": "primary",
+          "x": 80,
+          "y": 300,
+          "width": 920,
+          "zIndex": 5,
+          "rotation": 0,
+          "opacity": 1,
+          "entrance": "up",
+          "delayFrames": 2,
+          "paperEdge": false,
+          "style": {
+            "text": "Anthropic 自己说的",
+            "fontSize": 82,
+            "fontWeight": 900,
+            "color": "#f2e6cf"
+          }
+        },
+        {
+          "id": "s1-l1",
+          "name": "时间",
+          "kind": "text",
+          "role": "secondary",
+          "x": 80,
+          "y": 560,
+          "width": 920,
+          "zIndex": 5,
+          "rotation": 0,
+          "opacity": 1,
+          "entrance": "left",
+          "delayFrames": 60,
+          "paperEdge": false,
+          "style": {
+            "text": "四月起 · 网络安全评估",
+            "fontSize": 58,
+            "fontWeight": 700,
+            "color": "#8fa3c4"
+          }
+        },
+        {
+          "id": "s1-l2",
+          "name": "涉及模型",
+          "kind": "text",
+          "role": "secondary",
+          "x": 80,
+          "y": 680,
+          "width": 920,
+          "zIndex": 5,
+          "rotation": 0,
+          "opacity": 1,
+          "entrance": "left",
+          "delayFrames": 110,
+          "paperEdge": false,
+          "style": {
+            "text": "Opus 4.7 · Mythos 5 · 一个内部研究模型",
+            "fontSize": 50,
+            "fontWeight": 700,
+            "color": "#f2e6cf",
+            "lineHeight": 1.35
+          }
+        },
+        {
+          "id": "s1-targets",
+          "name": "被攻破的三家",
+          "src": "assets/generated/anthropic-evals-leak/layers/three-targets.svg",
+          "role": "secondary",
+          "x": 100,
+          "y": 900,
+          "width": 880,
+          "zIndex": 4,
+          "rotation": 0,
+          "opacity": 1,
+          "entrance": "up",
+          "delayFrames": 165,
+          "paperEdge": false
+        },
+        {
+          "id": "s1-l3",
+          "name": "结果",
+          "kind": "text",
+          "role": "primary",
+          "x": 80,
+          "y": 1330,
+          "width": 920,
+          "zIndex": 6,
+          "rotation": 0,
+          "opacity": 1,
+          "entrance": "up",
+          "delayFrames": 215,
+          "paperEdge": false,
+          "style": {
+            "text": "攻破了三家真实公司",
+            "fontSize": 68,
+            "fontWeight": 900,
+            "color": "#e0533f"
+          }
+        }
       ]
     },
     {
       "audioCues": [],
       "layers": [
-        { "id": "s2-bg", "name": "暗底", "src": "assets/generated/anthropic-evals-leak/bg-dark.svg", "role": "background", "x": 0, "y": 0, "width": 1080, "zIndex": 0, "rotation": 0, "opacity": 1, "paperEdge": false },
-        { "id": "s2-title", "name": "手法", "kind": "text", "role": "primary", "x": 80, "y": 280, "width": 920, "zIndex": 5, "rotation": 0, "opacity": 1, "entrance": "up", "delayFrames": 2, "paperEdge": false,
-          "style": { "text": "手法一点都不高级", "fontSize": 84, "fontWeight": 900, "color": "#f2e6cf" } },
-        { "id": "s2-lock", "name": "弱密码", "src": "assets/generated/anthropic-evals-leak/layers/weak-lock.svg", "role": "secondary", "x": 300, "y": 520, "width": 480, "zIndex": 4, "rotation": 0, "opacity": 1, "entrance": "up", "delayFrames": 55, "paperEdge": false },
-        { "id": "s2-l1", "name": "弱密码文字", "kind": "text", "role": "secondary", "x": 80, "y": 1120, "width": 920, "zIndex": 5, "rotation": 0, "opacity": 1, "entrance": "left", "delayFrames": 110, "paperEdge": false,
-          "style": { "text": "· 弱密码", "fontSize": 66, "fontWeight": 800, "color": "#e0533f" } },
-        { "id": "s2-l2", "name": "开放接口", "kind": "text", "role": "secondary", "x": 80, "y": 1230, "width": 920, "zIndex": 5, "rotation": 0, "opacity": 1, "entrance": "left", "delayFrames": 150, "paperEdge": false,
-          "style": { "text": "· 没做认证的接口", "fontSize": 66, "fontWeight": 800, "color": "#e0533f" } },
-        { "id": "s2-l3", "name": "扎心", "kind": "text", "role": "primary", "x": 80, "y": 1400, "width": 920, "zIndex": 6, "rotation": 0, "opacity": 1, "entrance": "up", "delayFrames": 205, "paperEdge": false,
-          "style": { "text": "就是平时叫我们\n别犯的那些错", "fontSize": 62, "fontWeight": 900, "color": "#f2e6cf", "lineHeight": 1.3 } }
+        {
+          "id": "s2-bg",
+          "name": "暗底",
+          "src": "assets/generated/anthropic-evals-leak/bg-dark.svg",
+          "role": "background",
+          "x": 0,
+          "y": 0,
+          "width": 1080,
+          "zIndex": 0,
+          "rotation": 0,
+          "opacity": 1,
+          "paperEdge": false
+        },
+        {
+          "id": "s2-title",
+          "name": "手法",
+          "kind": "text",
+          "role": "primary",
+          "x": 80,
+          "y": 280,
+          "width": 920,
+          "zIndex": 5,
+          "rotation": 0,
+          "opacity": 1,
+          "entrance": "up",
+          "delayFrames": 2,
+          "paperEdge": false,
+          "style": {
+            "text": "手法一点都不高级",
+            "fontSize": 84,
+            "fontWeight": 900,
+            "color": "#f2e6cf"
+          }
+        },
+        {
+          "id": "s2-lock",
+          "name": "弱密码",
+          "src": "assets/generated/anthropic-evals-leak/layers/weak-lock.svg",
+          "role": "secondary",
+          "x": 300,
+          "y": 520,
+          "width": 480,
+          "zIndex": 4,
+          "rotation": 0,
+          "opacity": 1,
+          "entrance": "up",
+          "delayFrames": 55,
+          "paperEdge": false
+        },
+        {
+          "id": "s2-l1",
+          "name": "弱密码文字",
+          "kind": "text",
+          "role": "secondary",
+          "x": 80,
+          "y": 1120,
+          "width": 920,
+          "zIndex": 5,
+          "rotation": 0,
+          "opacity": 1,
+          "entrance": "left",
+          "delayFrames": 110,
+          "paperEdge": false,
+          "style": {
+            "text": "· 弱密码",
+            "fontSize": 66,
+            "fontWeight": 800,
+            "color": "#e0533f"
+          }
+        },
+        {
+          "id": "s2-l2",
+          "name": "开放接口",
+          "kind": "text",
+          "role": "secondary",
+          "x": 80,
+          "y": 1230,
+          "width": 920,
+          "zIndex": 5,
+          "rotation": 0,
+          "opacity": 1,
+          "entrance": "left",
+          "delayFrames": 150,
+          "paperEdge": false,
+          "style": {
+            "text": "· 没做认证的接口",
+            "fontSize": 66,
+            "fontWeight": 800,
+            "color": "#e0533f"
+          }
+        },
+        {
+          "id": "s2-l3",
+          "name": "扎心",
+          "kind": "text",
+          "role": "primary",
+          "x": 80,
+          "y": 1400,
+          "width": 920,
+          "zIndex": 6,
+          "rotation": 0,
+          "opacity": 1,
+          "entrance": "up",
+          "delayFrames": 205,
+          "paperEdge": false,
+          "style": {
+            "text": "就是平时叫我们\n别犯的那些错",
+            "fontSize": 62,
+            "fontWeight": 900,
+            "color": "#f2e6cf",
+            "lineHeight": 1.3
+          }
+        }
       ]
     },
     {
-      "audioCues": [{ "src": "audio/common/impact.wav", "fromFrame": 50, "volume": 0.4 }],
+      "audioCues": [
+        {
+          "src": "audio/common/impact.wav",
+          "fromFrame": 50,
+          "volume": 0.4
+        }
+      ],
       "layers": [
-        { "id": "s3-bg", "name": "告警底", "src": "assets/generated/anthropic-evals-leak/bg-alert.svg", "role": "background", "x": 0, "y": 0, "width": 1080, "zIndex": 0, "rotation": 0, "opacity": 1, "paperEdge": false },
-        { "id": "s3-title", "name": "根因", "kind": "text", "role": "primary", "x": 80, "y": 280, "width": 920, "zIndex": 5, "rotation": 0, "opacity": 1, "entrance": "up", "delayFrames": 2, "paperEdge": false,
-          "style": { "text": "问题出在笼子上", "fontSize": 88, "fontWeight": 900, "color": "#f2e6cf" } },
-        { "id": "s3-cage", "name": "破笼", "src": "assets/generated/anthropic-evals-leak/layers/cage-broken.svg", "role": "secondary", "x": 250, "y": 520, "width": 580, "zIndex": 4, "rotation": 0, "opacity": 1, "entrance": "up", "delayFrames": 50, "paperEdge": false },
-        { "id": "s3-l1", "name": "外部公司", "kind": "text", "role": "secondary", "x": 80, "y": 1200, "width": 920, "zIndex": 5, "rotation": 0, "opacity": 1, "entrance": "left", "delayFrames": 125, "paperEdge": false,
-          "style": { "text": "沙箱由外部公司搭建", "fontSize": 58, "fontWeight": 700, "color": "#8fa3c4" } },
-        { "id": "s3-l2", "name": "配置错误", "kind": "text", "role": "primary", "x": 80, "y": 1320, "width": 920, "zIndex": 6, "rotation": 0, "opacity": 1, "entrance": "up", "delayFrames": 185, "paperEdge": false,
-          "style": { "text": "配置弄错了\n互联网权限漏了进去", "fontSize": 66, "fontWeight": 900, "color": "#e0533f", "lineHeight": 1.3 } }
+        {
+          "id": "s3-bg",
+          "name": "告警底",
+          "src": "assets/generated/anthropic-evals-leak/bg-alert.svg",
+          "role": "background",
+          "x": 0,
+          "y": 0,
+          "width": 1080,
+          "zIndex": 0,
+          "rotation": 0,
+          "opacity": 1,
+          "paperEdge": false
+        },
+        {
+          "id": "s3-title",
+          "name": "根因",
+          "kind": "text",
+          "role": "primary",
+          "x": 80,
+          "y": 280,
+          "width": 920,
+          "zIndex": 5,
+          "rotation": 0,
+          "opacity": 1,
+          "entrance": "up",
+          "delayFrames": 2,
+          "paperEdge": false,
+          "style": {
+            "text": "问题出在笼子上",
+            "fontSize": 88,
+            "fontWeight": 900,
+            "color": "#f2e6cf"
+          }
+        },
+        {
+          "id": "s3-cage",
+          "name": "破笼",
+          "src": "assets/generated/anthropic-evals-leak/layers/cage-broken.svg",
+          "role": "secondary",
+          "x": 250,
+          "y": 520,
+          "width": 580,
+          "zIndex": 4,
+          "rotation": 0,
+          "opacity": 1,
+          "entrance": "up",
+          "delayFrames": 50,
+          "paperEdge": false
+        },
+        {
+          "id": "s3-l1",
+          "name": "外部公司",
+          "kind": "text",
+          "role": "secondary",
+          "x": 80,
+          "y": 1200,
+          "width": 920,
+          "zIndex": 5,
+          "rotation": 0,
+          "opacity": 1,
+          "entrance": "left",
+          "delayFrames": 125,
+          "paperEdge": false,
+          "style": {
+            "text": "沙箱由外部公司搭建",
+            "fontSize": 58,
+            "fontWeight": 700,
+            "color": "#8fa3c4"
+          }
+        },
+        {
+          "id": "s3-l2",
+          "name": "配置错误",
+          "kind": "text",
+          "role": "primary",
+          "x": 80,
+          "y": 1320,
+          "width": 920,
+          "zIndex": 6,
+          "rotation": 0,
+          "opacity": 1,
+          "entrance": "up",
+          "delayFrames": 185,
+          "paperEdge": false,
+          "style": {
+            "text": "配置弄错了\n互联网权限漏了进去",
+            "fontSize": 66,
+            "fontWeight": 900,
+            "color": "#e0533f",
+            "lineHeight": 1.3
+          }
+        }
       ]
     },
     {
-      "audioCues": [{ "src": "audio/common/impact.wav", "fromFrame": 120, "volume": 0.5 }],
+      "audioCues": [
+        {
+          "src": "audio/common/impact.wav",
+          "fromFrame": 120,
+          "volume": 0.5
+        }
+      ],
       "layers": [
-        { "id": "s4-bg", "name": "暗底", "src": "assets/generated/anthropic-evals-leak/bg-dark.svg", "role": "background", "x": 0, "y": 0, "width": 1080, "zIndex": 0, "rotation": 0, "opacity": 1, "paperEdge": false },
-        { "id": "s4-title", "name": "时间线", "kind": "text", "role": "primary", "x": 80, "y": 250, "width": 920, "zIndex": 5, "rotation": 0, "opacity": 1, "entrance": "up", "delayFrames": 2, "paperEdge": false,
-          "style": { "text": "最扎心的是时间", "fontSize": 84, "fontWeight": 900, "color": "#f2e6cf" } },
-        { "id": "s4-t1", "name": "四月", "kind": "text", "role": "secondary", "x": 80, "y": 480, "width": 920, "zIndex": 5, "rotation": 0, "opacity": 1, "entrance": "left", "delayFrames": 45, "paperEdge": false,
-          "style": { "text": "四月 —— 事情已经发生", "fontSize": 56, "fontWeight": 700, "color": "#8fa3c4" } },
-        { "id": "s4-eye", "name": "看不见", "src": "assets/generated/anthropic-evals-leak/layers/blind-eye.svg", "role": "secondary", "x": 240, "y": 620, "width": 600, "zIndex": 4, "rotation": 0, "opacity": 1, "entrance": "up", "delayFrames": 90, "paperEdge": false },
-        { "id": "s4-big", "name": "99天", "kind": "text", "role": "primary", "x": 80, "y": 1000, "width": 920, "zIndex": 6, "rotation": 0, "opacity": 1, "entrance": "up", "delayFrames": 120, "paperEdge": false,
-          "style": { "text": "99 天没人发现", "fontSize": 104, "fontWeight": 900, "color": "#e0533f" } },
-        { "id": "s4-t2", "name": "七月", "kind": "text", "role": "secondary", "x": 80, "y": 1220, "width": 920, "zIndex": 5, "rotation": 0, "opacity": 1, "entrance": "left", "delayFrames": 210, "paperEdge": false,
-          "style": { "text": "7月23日查日志 —— 当天停掉全部评估", "fontSize": 50, "fontWeight": 700, "color": "#f2e6cf" } },
-        { "id": "s4-t3", "name": "两家不知情", "kind": "text", "role": "primary", "x": 80, "y": 1330, "width": 920, "zIndex": 6, "rotation": 0, "opacity": 1, "entrance": "up", "delayFrames": 275, "paperEdge": false,
-          "style": { "text": "其中两家\n在被通知前毫不知情", "fontSize": 62, "fontWeight": 900, "color": "#e0533f", "lineHeight": 1.3 } }
+        {
+          "id": "s4-bg",
+          "name": "暗底",
+          "src": "assets/generated/anthropic-evals-leak/bg-dark.svg",
+          "role": "background",
+          "x": 0,
+          "y": 0,
+          "width": 1080,
+          "zIndex": 0,
+          "rotation": 0,
+          "opacity": 1,
+          "paperEdge": false
+        },
+        {
+          "id": "s4-title",
+          "name": "时间线",
+          "kind": "text",
+          "role": "primary",
+          "x": 80,
+          "y": 250,
+          "width": 920,
+          "zIndex": 5,
+          "rotation": 0,
+          "opacity": 1,
+          "entrance": "up",
+          "delayFrames": 2,
+          "paperEdge": false,
+          "style": {
+            "text": "最扎心的是时间",
+            "fontSize": 84,
+            "fontWeight": 900,
+            "color": "#f2e6cf"
+          }
+        },
+        {
+          "id": "s4-t1",
+          "name": "四月",
+          "kind": "text",
+          "role": "secondary",
+          "x": 80,
+          "y": 480,
+          "width": 920,
+          "zIndex": 5,
+          "rotation": 0,
+          "opacity": 1,
+          "entrance": "left",
+          "delayFrames": 45,
+          "paperEdge": false,
+          "style": {
+            "text": "四月 —— 事情已经发生",
+            "fontSize": 56,
+            "fontWeight": 700,
+            "color": "#8fa3c4"
+          }
+        },
+        {
+          "id": "s4-eye",
+          "name": "看不见",
+          "src": "assets/generated/anthropic-evals-leak/layers/blind-eye.svg",
+          "role": "secondary",
+          "x": 240,
+          "y": 620,
+          "width": 600,
+          "zIndex": 4,
+          "rotation": 0,
+          "opacity": 1,
+          "entrance": "up",
+          "delayFrames": 90,
+          "paperEdge": false
+        },
+        {
+          "id": "s4-big",
+          "name": "99天",
+          "kind": "text",
+          "role": "primary",
+          "x": 80,
+          "y": 1000,
+          "width": 920,
+          "zIndex": 6,
+          "rotation": 0,
+          "opacity": 1,
+          "entrance": "up",
+          "delayFrames": 120,
+          "paperEdge": false,
+          "style": {
+            "text": "99 天没人发现",
+            "fontSize": 104,
+            "fontWeight": 900,
+            "color": "#e0533f"
+          }
+        },
+        {
+          "id": "s4-t2",
+          "name": "七月",
+          "kind": "text",
+          "role": "secondary",
+          "x": 80,
+          "y": 1220,
+          "width": 920,
+          "zIndex": 5,
+          "rotation": 0,
+          "opacity": 1,
+          "entrance": "left",
+          "delayFrames": 210,
+          "paperEdge": false,
+          "style": {
+            "text": "7月23日查日志 —— 当天停掉全部评估",
+            "fontSize": 50,
+            "fontWeight": 700,
+            "color": "#f2e6cf"
+          }
+        },
+        {
+          "id": "s4-t3",
+          "name": "两家不知情",
+          "kind": "text",
+          "role": "primary",
+          "x": 80,
+          "y": 1330,
+          "width": 920,
+          "zIndex": 6,
+          "rotation": 0,
+          "opacity": 1,
+          "entrance": "up",
+          "delayFrames": 275,
+          "paperEdge": false,
+          "style": {
+            "text": "其中两家\n在被通知前毫不知情",
+            "fontSize": 62,
+            "fontWeight": 900,
+            "color": "#e0533f",
+            "lineHeight": 1.3
+          }
+        }
       ]
     },
     {
       "audioCues": [],
       "layers": [
-        { "id": "s5-bg", "name": "告警底", "src": "assets/generated/anthropic-evals-leak/bg-alert.svg", "role": "background", "x": 0, "y": 0, "width": 1080, "zIndex": 0, "rotation": 0, "opacity": 1, "paperEdge": false },
-        { "id": "s5-l1", "name": "不是", "kind": "text", "role": "secondary", "x": 80, "y": 560, "width": 920, "zIndex": 5, "rotation": 0, "opacity": 1, "entrance": "up", "delayFrames": 2, "paperEdge": false,
-          "style": { "text": "风险从来不是\n模型有多强", "fontSize": 72, "fontWeight": 800, "color": "#8fa3c4", "lineHeight": 1.3 } },
-        { "id": "s5-l2", "name": "而是", "kind": "text", "role": "primary", "x": 80, "y": 880, "width": 920, "zIndex": 6, "rotation": 0, "opacity": 1, "entrance": "up", "delayFrames": 105, "paperEdge": false,
-          "style": { "text": "是我们以为\n它被关住了", "fontSize": 100, "fontWeight": 900, "color": "#e0533f", "lineHeight": 1.25 } },
-        { "id": "s5-src", "name": "来源署名", "kind": "text", "role": "tertiary", "x": 80, "y": 1500, "width": 920, "zIndex": 5, "rotation": 0, "opacity": 1, "entrance": "fade", "delayFrames": 190, "paperEdge": false,
-          "style": { "text": "事实来源：Anthropic 官方披露 · 解读为本片所加", "fontSize": 34, "fontWeight": 600, "color": "#6b7d99" } },
-        { "id": "s5-brand", "name": "品牌卡", "kind": "text", "role": "tertiary", "x": 80, "y": 1580, "width": 920, "zIndex": 5, "rotation": 0, "opacity": 1, "entrance": "fade", "delayFrames": 215, "paperEdge": false,
-          "style": { "text": "@jnMetaCode · 每天 6+ 条 AI 快讯", "fontSize": 40, "fontWeight": 700, "color": "#8fa3c4" } }
-      ]
+        {
+          "id": "s5-bg",
+          "name": "告警底",
+          "src": "assets/generated/anthropic-evals-leak/bg-alert.svg",
+          "role": "background",
+          "x": 0,
+          "y": 0,
+          "width": 1080,
+          "zIndex": 0,
+          "rotation": 0,
+          "opacity": 1,
+          "paperEdge": false
+        },
+        {
+          "id": "s5-l1",
+          "name": "不是",
+          "kind": "text",
+          "role": "secondary",
+          "x": 80,
+          "y": 560,
+          "width": 920,
+          "zIndex": 5,
+          "rotation": 0,
+          "opacity": 1,
+          "entrance": "up",
+          "delayFrames": 2,
+          "paperEdge": false,
+          "style": {
+            "text": "风险从来不是\n模型有多强",
+            "fontSize": 72,
+            "fontWeight": 800,
+            "color": "#8fa3c4",
+            "lineHeight": 1.3
+          }
+        },
+        {
+          "id": "s5-l2",
+          "name": "而是",
+          "kind": "text",
+          "role": "primary",
+          "x": 80,
+          "y": 880,
+          "width": 920,
+          "zIndex": 6,
+          "rotation": 0,
+          "opacity": 1,
+          "entrance": "up",
+          "delayFrames": 105,
+          "paperEdge": false,
+          "style": {
+            "text": "是我们以为\n它被关住了",
+            "fontSize": 100,
+            "fontWeight": 900,
+            "color": "#e0533f",
+            "lineHeight": 1.25
+          }
+        },
+        {
+          "id": "s5-src",
+          "name": "来源署名",
+          "kind": "text",
+          "role": "tertiary",
+          "x": 80,
+          "y": 1660,
+          "width": 920,
+          "zIndex": 5,
+          "rotation": 0,
+          "opacity": 1,
+          "entrance": "fade",
+          "delayFrames": 150,
+          "paperEdge": false,
+          "style": {
+            "text": "事实来源：Anthropic 官方披露 · 解读为本片所加",
+            "fontSize": 34,
+            "fontWeight": 600,
+            "color": "#6b7d99"
+          }
+        },
+        {
+          "id": "s5-brand",
+          "name": "品牌卡",
+          "kind": "text",
+          "role": "tertiary",
+          "x": 80,
+          "y": 1580,
+          "width": 920,
+          "zIndex": 5,
+          "rotation": 0,
+          "opacity": 1,
+          "entrance": "fade",
+          "delayFrames": 180,
+          "paperEdge": false,
+          "style": {
+            "text": "@jnMetaCode · 每天 6+ 条 AI 快讯",
+            "fontSize": 40,
+            "fontWeight": 700,
+            "color": "#8fa3c4"
+          }
+        }
+      ],
+      "holdSeconds": 3.2
     }
   ]
 }

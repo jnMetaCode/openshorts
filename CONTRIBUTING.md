@@ -1,4 +1,4 @@
-# 参与 PaperCut Studio
+# 参与 OpenShorts
 
 感谢参与。提交改动前请确保 Node.js 20+、FFmpeg 和 ImageMagick 可用。
 

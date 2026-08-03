@@ -13,7 +13,7 @@ test('OpenAI 兼容规划器使用结构化镜头结果', async () => {
     const request = JSON.parse(options.body); assert.equal(request.response_format.type, 'json_object');
     return new Response(JSON.stringify({choices:[{message:{content:JSON.stringify({scenes:[{narration:'宫门开启。',shotType:'close',purpose:'突出开启瞬间'}]})}}]}), {status:200,headers:{'content-type':'application/json'}});
   };
-  const board = await planStoryboard({planner:'openai-compatible',text:'宫门开启。'}, {env:{PAPERCUT_PLANNER_URL:'http://planner.test'},fetchImpl});
+  const board = await planStoryboard({planner:'openai-compatible',text:'宫门开启。'}, {env:{OPENSHORTS_PLANNER_URL:'http://planner.test'},fetchImpl});
   assert.equal(board.scenes[0].shotType, 'close');
   assert.equal(board.scenes[0].purpose, '突出开启瞬间');
 });

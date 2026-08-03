@@ -46,7 +46,10 @@ const layerDefaults = (layer, durationFrames) => ({
   paperEdge: layer.role !== 'background', keyframes: [], ...layer,
   ...(layer.keyframes?.length ? {keyframes: layer.keyframes.map((item) => ({...item, frame: resolveFrame(item.frame, durationFrames)}))} : {}),
 });
-const durationFor = (i) => timings?.segments?.[i]?.duration ? timings.segments[i].duration + 0.55 : board.fallbackDurations[i];
+// holdSeconds：镜头在旁白结束后多停留几秒。片尾定格（署名/品牌卡要看得清）靠它，
+// 否则最后一层往往刚入场就黑屏——旁白多长，镜头就多长，留不出定格时间。
+const durationFor = (i) => (timings?.segments?.[i]?.duration ? timings.segments[i].duration + 0.55 : board.fallbackDurations[i])
+  + (board.scenes[i]?.holdSeconds ?? 0);
 const narrationFor = (i) => timings?.segments?.[i]?.file?.replace(/^public\//, '');
 
 const scenes = story.segments.map((segment, i) => {

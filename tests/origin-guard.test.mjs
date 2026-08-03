@@ -38,7 +38,7 @@ test('恶意网页的跨站写请求被服务端拒绝', () => {
     const {passed, res} = run(guard, request({origin}));
     assert.equal(passed, false, `${origin} 不应通过`);
     assert.equal(res.statusCode, 403);
-    assert.ok(res.body.error.includes('PAPERCUT_ALLOWED_ORIGINS'), '错误信息应告诉用户怎么放行');
+    assert.ok(res.body.error.includes('OPENSHORTS_ALLOWED_ORIGINS'), '错误信息应告诉用户怎么放行');
   }
 });
 

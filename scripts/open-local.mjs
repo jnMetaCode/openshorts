@@ -13,11 +13,11 @@ const openBrowser=()=>{
   spawn(command,args,{stdio:'ignore',detached:true}).unref();
 };
 
-if(await ready()){console.log(`✓ PaperCut Studio 已在运行：${url}`);openBrowser();process.exit(0);}
+if(await ready()){console.log(`✓ OpenShorts 已在运行：${url}`);openBrowser();process.exit(0);}
 if(!await fs.access(path.join(root,'dist','index.html')).then(()=>true).catch(()=>false)){
   console.log('首次启动：正在构建网页…');const built=spawnSync('npm',['run','build'],{cwd:root,stdio:'inherit'});if(built.status!==0) process.exit(built.status ?? 1);
 }
-console.log(`正在启动 PaperCut Studio：${url}`);
+console.log(`正在启动 OpenShorts：${url}`);
 const child=spawn(process.execPath,['server/index.mjs'],{cwd:root,stdio:'inherit',env:{...process.env,HOST:host,PORT:String(port)}});
 let stopped=false;child.once('exit',(code)=>{stopped=true;if(code && code!==0) console.error(`服务启动失败，退出码 ${code}`);});
 for(let attempt=0;attempt<40&&!stopped;attempt++){if(await ready()){console.log(`\n✓ 已打开：${url}\n保持本窗口运行，按 Ctrl+C 停止服务。`);openBrowser();break;}await new Promise((resolve)=>setTimeout(resolve,250));}

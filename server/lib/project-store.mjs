@@ -4,7 +4,7 @@ import {parseProject} from '../../shared/project-schema.mjs';
 
 export class ProjectValidationError extends Error {
   constructor(errors) {
-    super(`项目不符合 PaperCut v1 协议：\n- ${errors.join('\n- ')}`);
+    super(`项目不符合 OpenShorts v1 协议：\n- ${errors.join('\n- ')}`);
     this.name = 'ProjectValidationError';
     this.errors = errors;
     this.status = 400;

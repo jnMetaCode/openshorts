@@ -38,7 +38,7 @@ let activeProjectId = (await projectStore.list())[0]?.id ?? 'tang-paper-demo';
 let lastJobId = jobQueue.list()[0]?.id ?? null;
 let queueProcessing = false;
 const activeCancels = new Map();
-const renderConcurrency = Math.max(1, Math.min(8, Number(process.env.PAPERCUT_RENDER_CONCURRENCY ?? 1)));
+const renderConcurrency = Math.max(1, Math.min(8, Number(process.env.OPENSHORTS_RENDER_CONCURRENCY ?? 1)));
 
 await fs.mkdir(uploadsDir, {recursive: true});
 await fs.mkdir(outDir, {recursive: true});
@@ -54,14 +54,14 @@ const imageUpload = multer({storage, limits: {fileSize: 20 * 1024 * 1024}, fileF
 const audioUpload = multer({storage, limits: {fileSize: 200 * 1024 * 1024}, fileFilter: (_req, file, callback) => callback(null, ['audio/wav', 'audio/x-wav', 'audio/mpeg', 'audio/mp4', 'audio/aac', 'audio/flac', 'audio/ogg'].includes(file.mimetype))});
 const bundleUpload = multer({dest: path.join(dataDir, 'imports'), limits: {fileSize: 500 * 1024 * 1024}, fileFilter: (_req, file, callback) => callback(null, file.originalname.endsWith('.zip') || file.mimetype.includes('zip'))});
 
-const allowedOrigins = resolveAllowedOrigins({port: Number(process.env.PORT ?? 4174), configured: process.env.PAPERCUT_ALLOWED_ORIGINS});
+const allowedOrigins = resolveAllowedOrigins({port: Number(process.env.PORT ?? 4174), configured: process.env.OPENSHORTS_ALLOWED_ORIGINS});
 app.use(cors(corsOptions(allowedOrigins)));
 app.use(createOriginGuard(allowedOrigins));
 app.use(express.json({limit: '5mb'}));
 app.use('/out', express.static(outDir));
 app.use('/uploads', express.static(uploadsDir));
 
-app.get('/api/health', (_req, res) => res.json({ok: true, product: 'PaperCut Studio', renderConcurrency}));
+app.get('/api/health', (_req, res) => res.json({ok: true, product: 'OpenShorts', renderConcurrency}));
 app.get('/api/project', async (_req, res, next) => {
   try { res.json(await projectStore.get(activeProjectId)); } catch (error) { next(error); }
 });
@@ -85,7 +85,7 @@ app.post('/api/projects', async (req, res, next) => {
 });
 app.post('/api/projects/:id/export', async (req, res, next) => {
   try {
-    const project = await projectStore.get(req.params.id); const filename = `${project.id}.papercut.zip`;
+    const project = await projectStore.get(req.params.id); const filename = `${project.id}.openshorts.zip`;
     const result = await exportProjectBundle({project, publicDir, output: path.join(outDir, 'exports', filename)});
     res.json({download: `/out/exports/${filename}`, assets: result.assets});
   } catch (error) { next(error); }
@@ -179,7 +179,7 @@ app.post('/api/assets/split', async (req, res, next) => {
   } catch (error) { next(error); }
 });
 app.post('/api/audio/waveform', async (req,res,next) => {try {res.json({path:await createWaveform(req.body?.src)});} catch(error){next(error);}});
-app.get('/api/asr', (_req,res) => res.json({configured:Boolean(process.env.PAPERCUT_ASR_COMMAND),command:process.env.PAPERCUT_ASR_COMMAND ? path.basename(process.env.PAPERCUT_ASR_COMMAND) : null}));
+app.get('/api/asr', (_req,res) => res.json({configured:Boolean(process.env.OPENSHORTS_ASR_COMMAND),command:process.env.OPENSHORTS_ASR_COMMAND ? path.basename(process.env.OPENSHORTS_ASR_COMMAND) : null}));
 app.post('/api/projects/:id/scenes/:sceneId/transcribe', async (req,res,next) => {
   try {
     const project = await projectStore.get(req.params.id); const index = project.scenes.findIndex((item) => item.id === req.params.sceneId); if (index < 0) return res.status(404).json({error:'镜头不存在'});
@@ -241,7 +241,7 @@ const runRender = async (job) => {
     const chromeCandidates = [process.env.CHROME_PATH,'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome','/usr/bin/chromium','/usr/bin/google-chrome'].filter(Boolean);
     let browserExecutable = null; for (const candidate of chromeCandidates) {if (await fs.access(candidate).then(() => true).catch(() => false)) {browserExecutable=candidate;break;}}
     const bundled = await bundle({entryPoint: path.join(root, 'src', 'remotion', 'index.ts'), webpackOverride: (config) => config});
-    const composition = await selectComposition({serveUrl: bundled, id: 'PaperCutVideo', inputProps: {project}, browserExecutable});
+    const composition = await selectComposition({serveUrl: bundled, id: 'OpenShortsVideo', inputProps: {project}, browserExecutable});
     const filename = `${project.id}-${job.id.slice(0, 8)}.mp4`;
     let persistedProgress = 0;
     const cancellation = makeCancelSignal(); activeCancels.set(job.id, cancellation.cancel);
@@ -334,6 +334,6 @@ app.use((error, _req, res, _next) => res.status(error?.status ?? 500).json({
 }));
 
 const port = Number(process.env.PORT ?? 4174); const host = process.env.HOST ?? '127.0.0.1';
-const httpServer = app.listen(port, host, () => console.log(`PaperCut API: http://${host}:${port}`));
-httpServer.on('error',(error)=>{console.error(`PaperCut 无法监听 ${host}:${port}：${error instanceof Error ? error.message : error}`);process.exitCode=1;});
+const httpServer = app.listen(port, host, () => console.log(`OpenShorts API: http://${host}:${port}`));
+httpServer.on('error',(error)=>{console.error(`OpenShorts 无法监听 ${host}:${port}：${error instanceof Error ? error.message : error}`);process.exitCode=1;});
 void processQueue();

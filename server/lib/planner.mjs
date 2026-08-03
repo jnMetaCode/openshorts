@@ -2,7 +2,7 @@ import {buildStoryboard} from '../../shared/storyboard.mjs';
 
 export const listPlanners = (env = process.env) => [
   {id: 'rules', name: '本地规则规划器', configured: true, description: '无需联网，可重复生成'},
-  {id: 'openai-compatible', name: 'OpenAI 兼容规划器', configured: Boolean(env.PAPERCUT_PLANNER_URL), description: '接入支持 Chat Completions JSON 输出的模型服务'},
+  {id: 'openai-compatible', name: 'OpenAI 兼容规划器', configured: Boolean(env.OPENSHORTS_PLANNER_URL), description: '接入支持 Chat Completions JSON 输出的模型服务'},
 ];
 
 // 分镜规则源自 docs/x-viral-video-playbook.md（84 条 X 高浏览视频蒸馏）：
@@ -22,11 +22,11 @@ export const planStoryboard = async (input, {env = process.env, fetchImpl = fetc
   const planner = input.planner ?? 'rules';
   if (planner === 'rules') return buildStoryboard(input);
   if (planner !== 'openai-compatible') throw new Error(`未知分镜规划器：${planner}`);
-  if (!env.PAPERCUT_PLANNER_URL) throw new Error('未设置 PAPERCUT_PLANNER_URL');
-  const response = await fetchImpl(env.PAPERCUT_PLANNER_URL, {
+  if (!env.OPENSHORTS_PLANNER_URL) throw new Error('未设置 OPENSHORTS_PLANNER_URL');
+  const response = await fetchImpl(env.OPENSHORTS_PLANNER_URL, {
     method: 'POST',
-    headers: {'content-type': 'application/json', ...(env.PAPERCUT_PLANNER_API_KEY ? {authorization: `Bearer ${env.PAPERCUT_PLANNER_API_KEY}`} : {})},
-    body: JSON.stringify({model: env.PAPERCUT_PLANNER_MODEL ?? 'default', response_format: {type: 'json_object'}, messages: [{role: 'system', content: '你是视频分镜导演，只输出有效 JSON。'}, {role: 'user', content: planningPrompt(input)}]}),
+    headers: {'content-type': 'application/json', ...(env.OPENSHORTS_PLANNER_API_KEY ? {authorization: `Bearer ${env.OPENSHORTS_PLANNER_API_KEY}`} : {})},
+    body: JSON.stringify({model: env.OPENSHORTS_PLANNER_MODEL ?? 'default', response_format: {type: 'json_object'}, messages: [{role: 'system', content: '你是视频分镜导演，只输出有效 JSON。'}, {role: 'user', content: planningPrompt(input)}]}),
   });
   if (!response.ok) throw new Error(`规划器请求失败：HTTP ${response.status}`);
   const planned = parseModelJson(contentOf(await response.json()));

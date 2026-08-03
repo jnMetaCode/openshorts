@@ -1,4 +1,4 @@
-# papercut-studio 开发协作说明
+# openshorts 开发协作说明
 
 ## 做 X 平台视频（最常见任务）
 

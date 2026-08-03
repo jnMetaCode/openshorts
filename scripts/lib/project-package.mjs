@@ -35,7 +35,7 @@ const resolveInside = (root, relative) => {
 };
 
 export const exportProjectBundle = async ({project, publicDir, output}) => {
-  const temp = await fs.mkdtemp(path.join(os.tmpdir(), 'papercut-export-'));
+  const temp = await fs.mkdtemp(path.join(os.tmpdir(), 'openshorts-export-'));
   try {
     await fs.writeFile(path.join(temp, 'project.json'), `${JSON.stringify(project, null, 2)}\n`);
     const assets = collectAssetPaths(project);
@@ -43,7 +43,7 @@ export const exportProjectBundle = async ({project, publicDir, output}) => {
       const source = resolveInside(publicDir, src); const target = resolveInside(path.join(temp, 'public'), src);
       await fs.mkdir(path.dirname(target), {recursive: true}); await fs.copyFile(source, target);
     }
-    await fs.writeFile(path.join(temp, 'manifest.json'), `${JSON.stringify({format: 'papercut-project', version: 1, projectId: project.id, assets, exportedAt: new Date().toISOString()}, null, 2)}\n`);
+    await fs.writeFile(path.join(temp, 'manifest.json'), `${JSON.stringify({format: 'openshorts-project', version: 1, projectId: project.id, assets, exportedAt: new Date().toISOString()}, null, 2)}\n`);
     await fs.mkdir(path.dirname(output), {recursive: true});
     await fs.rm(output, {force: true});
     await run('zip', ['-q', '-r', output, '.'], {cwd: temp});
@@ -71,7 +71,7 @@ export const importProjectBundle = async ({archive, publicDir, namespace}) => {
   const uncompressed = Number(totals.match(/(\d+) bytes uncompressed/)?.[1] ?? 0);
   if (uncompressed > 1024 * 1024 * 1024) throw new Error('项目包解压后超过 1GB');
   if (!entries.includes('project.json')) throw new Error('压缩包缺少 project.json');
-  const temp = await fs.mkdtemp(path.join(os.tmpdir(), 'papercut-import-'));
+  const temp = await fs.mkdtemp(path.join(os.tmpdir(), 'openshorts-import-'));
   try {
     await run('unzip', ['-q', archive, '-d', temp]);
     const project = JSON.parse(await fs.readFile(path.join(temp, 'project.json'), 'utf8'));

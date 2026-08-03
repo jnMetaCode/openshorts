@@ -2,7 +2,7 @@
 
 ## 默认方案：Edge TTS
 
-PaperCut Studio 的故事案例复用 `youtube-doodle/make-doodle.js` 已验证的工作方式：逐镜调用 `edge-tts`、缓存结果、用 ffprobe 验证真实时长，再重建镜头节奏。
+OpenShorts 的故事案例复用 `youtube-doodle/make-doodle.js` 已验证的工作方式：逐镜调用 `edge-tts`、缓存结果、用 ffprobe 验证真实时长，再重建镜头节奏。
 
 ```bash
 pipx install edge-tts
@@ -70,7 +70,7 @@ v1.1-zh 默认音色 `zf_001`，语速按官方建议自适应：短句原速、
 npm run story:asr:local
 ```
 
-报告写入 `out/quality/asr-report.json` 和 `asr-report.md`。默认只要求识别为中文、语言概率不低于 0.9 且有有效分段；不将小模型的同音错字当作 TTS 失败。自动发现失败时可设置 `PAPERCUT_WHISPER_PYTHON` 和 `PAPERCUT_WHISPER_MODEL`。
+报告写入 `out/quality/asr-report.json` 和 `asr-report.md`。默认只要求识别为中文、语言概率不低于 0.9 且有有效分段；不将小模型的同音错字当作 TTS 失败。自动发现失败时可设置 `OPENSHORTS_WHISPER_PYTHON` 和 `OPENSHORTS_WHISPER_MODEL`。
 
 完整的本地发布链路可一次完成渲染、原子更新正式成片、双验收和 SHA-256 清单：
 
@@ -81,7 +81,7 @@ npm run story:release:local
 自动发现失败时可显式指定：
 
 ```bash
-PAPERCUT_KOKORO_PYTHON=/path/to/venv/bin/python \
-PAPERCUT_KOKORO_MODEL_DIR=/path/to/Kokoro-82M \
+OPENSHORTS_KOKORO_PYTHON=/path/to/venv/bin/python \
+OPENSHORTS_KOKORO_MODEL_DIR=/path/to/Kokoro-82M \
 npm run story -- lychee-road audio:local
 ```

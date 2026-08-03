@@ -34,7 +34,7 @@ export const createOriginGuard = (allowlist) => (req, res, next) => {
   const origin = req.get('origin');
   if (isAllowedOrigin(origin, allowlist)) return next();
   return res.status(403).json({
-    error: `拒绝来自 ${origin} 的跨站写请求。若确实需要从该地址访问，请设置 PAPERCUT_ALLOWED_ORIGINS。`,
+    error: `拒绝来自 ${origin} 的跨站写请求。若确实需要从该地址访问，请设置 OPENSHORTS_ALLOWED_ORIGINS。`,
     allowed: allowlist,
   });
 };

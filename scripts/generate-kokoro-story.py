@@ -78,7 +78,7 @@ def main() -> None:
     pending = []
     cursor = 0.0
     segments = story["segments"][: args.limit or None]
-    staging_context = tempfile.TemporaryDirectory(prefix="papercut-kokoro-")
+    staging_context = tempfile.TemporaryDirectory(prefix="openshorts-kokoro-")
     staging = Path(staging_context.name)
     for index, segment in enumerate(segments):
         basename = f"{index + 1:02d}-{segment['id']}"

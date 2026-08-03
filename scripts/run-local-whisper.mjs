@@ -10,7 +10,7 @@ await fs.access(input).catch(() => { throw new Error(`待验收视频不存在�
 const discovered = await discoverWhisper();
 if (!discovered.python || !discovered.modelDir) {
   const missing = [!discovered.python && '可导入 faster_whisper 的 Python 环境', !discovered.modelDir && '本地 Faster-Whisper 模型'].filter(Boolean).join('、');
-  throw new Error(`未找到${missing}。可设置 PAPERCUT_WHISPER_PYTHON 与 PAPERCUT_WHISPER_MODEL 后重试。`);
+  throw new Error(`未找到${missing}。可设置 OPENSHORTS_WHISPER_PYTHON 与 OPENSHORTS_WHISPER_MODEL 后重试。`);
 }
 console.log(`✓ Whisper Python：${discovered.python}`);
 console.log(`✓ Whisper 模型：${discovered.modelDir}`);

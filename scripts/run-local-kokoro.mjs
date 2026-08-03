@@ -4,7 +4,7 @@ import {discoverKokoro} from './lib/kokoro-discovery.mjs';
 const discovered = await discoverKokoro();
 if (!discovered.python || !discovered.modelDir) {
   const missing = [!discovered.python && '可导入 kokoro/numpy/soundfile 的 Python 环境', !discovered.modelDir && '完整的 Kokoro-82M 模型缓存'].filter(Boolean).join('、');
-  throw new Error(`未找到${missing}。可设置 PAPERCUT_KOKORO_PYTHON 与 PAPERCUT_KOKORO_MODEL_DIR 后重试。`);
+  throw new Error(`未找到${missing}。可设置 OPENSHORTS_KOKORO_PYTHON 与 OPENSHORTS_KOKORO_MODEL_DIR 后重试。`);
 }
 console.log(`✓ Kokoro Python：${discovered.python}`);
 console.log(`✓ Kokoro 模型：${discovered.modelDir}`);

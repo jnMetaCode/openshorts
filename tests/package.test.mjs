@@ -17,7 +17,7 @@ test('压缩包路径穿越会被拒绝', () => {
 });
 
 test('项目和素材可完整打包并安全导入', async () => {
-  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'papercut-package-test-'));
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'openshorts-package-test-'));
   const sourcePublic = path.join(root, 'source-public'); const targetPublic = path.join(root, 'target-public');
   for (const asset of collectAssetPaths(project)) {const file = path.join(sourcePublic, asset); await fs.mkdir(path.dirname(file), {recursive: true}); await fs.writeFile(file, asset);}
   const archive = path.join(root, 'demo.zip'); await exportProjectBundle({project, publicDir: sourcePublic, output: archive});

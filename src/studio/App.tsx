@@ -472,7 +472,7 @@ export const App: React.FC = () => {
 
   return <div className="app-shell">
     <header className="topbar">
-      <div className="brand"><div className="brand-mark">纸</div><div><strong>PaperCut Studio</strong><small>分层纸片动画工作台 · 本地优先</small></div></div>
+      <div className="brand"><div className="brand-mark">纸</div><div><strong>OpenShorts</strong><small>分层纸片动画工作台 · 本地优先</small></div></div>
       <div className="actions">
         <button className="icon-action" disabled={!past.length} onClick={undo} title="撤销 (⌘Z)">↶</button><button className="icon-action" disabled={!future.length} onClick={redo} title="重做 (⇧⌘Z)">↷</button>
         <span className={`save-state ${saveState}`}>{saveState === 'saved' ? '已保存' : saveState === 'saving' ? '保存中…' : saveState === 'error' ? '保存失败' : '有未保存改动'}</span>

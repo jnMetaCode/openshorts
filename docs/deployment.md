@@ -15,14 +15,14 @@ npm start
 ```bash
 cp .env.example .env
 docker compose up --build -d
-docker compose logs -f papercut-studio
+docker compose logs -f openshorts
 ```
 
 项目、输出、任务数据和上传素材分别挂载到 `projects`、`out`、`data` 和 `public/uploads`。升级容器前应备份这些目录。
 
 ## ASR 与生成服务
 
-容器内的 `PAPERCUT_ASR_COMMAND` 必须指向容器能够执行的程序。如需调用宿主机 ASR，建议单独封装 HTTP/命令适配器并挂载只读模型目录。ComfyUI 使用 `COMFYUI_URL`，不要将未认证的 ComfyUI 端口暴露到公网。
+容器内的 `OPENSHORTS_ASR_COMMAND` 必须指向容器能够执行的程序。如需调用宿主机 ASR，建议单独封装 HTTP/命令适配器并挂载只读模型目录。ComfyUI 使用 `COMFYUI_URL`，不要将未认证的 ComfyUI 端口暴露到公网。
 
 ## 网络安全
 
@@ -41,7 +41,7 @@ docker compose logs -f papercut-studio
 从局域网地址或反向代理域名访问时需要显式放行：
 
 ```bash
-PAPERCUT_ALLOWED_ORIGINS="http://192.168.1.5:4174,https://studio.example.com" npm start
+OPENSHORTS_ALLOWED_ORIGINS="http://192.168.1.5:4174,https://studio.example.com" npm start
 ```
 
 设为 `*` 可退回旧的全开行为，但只应在完全可信的网络里使用。

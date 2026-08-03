@@ -1,5 +1,5 @@
 services:
-  papercut-studio:
+  openshorts:
     build: .
     ports:
       - "4174:4174"

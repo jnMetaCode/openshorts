@@ -4,7 +4,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 
 const run = promisify(execFile);
-const magick = process.env.PAPERCUT_MAGICK_BIN || 'magick';
+const magick = process.env.OPENSHORTS_MAGICK_BIN || 'magick';
 
 export const buildGridRegions = (width, height, rows, columns) => {
   if (![width, height, rows, columns].every(Number.isInteger) || width <= 0 || height <= 0 || rows <= 0 || columns <= 0) throw new Error('网格参数必须是正整数');

@@ -947,7 +947,7 @@
     {
       "id": "stake",
       "name": "6. 立场句，转发动机",
-      "durationFrames": 194,
+      "durationFrames": 290,
       "backgroundColor": "#0a0e19",
       "cameraZoom": 1.03,
       "layers": [
@@ -1018,7 +1018,7 @@
         },
         {
           "entrance": "fade",
-          "delayFrames": 190,
+          "delayFrames": 150,
           "rotation": 0,
           "opacity": 1,
           "flipX": false,
@@ -1029,7 +1029,7 @@
           "kind": "text",
           "role": "tertiary",
           "x": 80,
-          "y": 1500,
+          "y": 1660,
           "width": 920,
           "zIndex": 5,
           "style": {
@@ -1041,7 +1041,7 @@
         },
         {
           "entrance": "fade",
-          "delayFrames": 215,
+          "delayFrames": 180,
           "rotation": 0,
           "opacity": 1,
           "flipX": false,
@@ -1067,13 +1067,13 @@
         {
           "text": "所以真正的风险从来不是模型有多强，",
           "fromFrame": 4,
-          "toFrame": 118,
+          "toFrame": 176,
           "words": []
         },
         {
           "text": "是我们以为它被关住了。",
-          "fromFrame": 118,
-          "toFrame": 192,
+          "fromFrame": 176,
+          "toFrame": 288,
           "words": []
         }
       ],
