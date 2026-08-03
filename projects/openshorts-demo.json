@@ -1,0 +1,820 @@
+{
+  "schemaVersion": 1,
+  "id": "openshorts-demo",
+  "title": "这条视频是它自己生成的",
+  "width": 1080,
+  "height": 1920,
+  "fps": 30,
+  "theme": {
+    "paper": "#f6eedb",
+    "ink": "#12151f",
+    "accent": "#e8a33d",
+    "subtitleBackground": "rgba(12,15,25,.9)"
+  },
+  "soundtrackSrc": "audio/openshorts-demo/underscore.wav",
+  "soundtrackVolume": 0.34,
+  "production": {
+    "plannerVersion": 1,
+    "sourceText": "这条视频，不是人剪的，是它自己生成的。\nOpenShorts，一条开源的竖屏视频生产线。你给它一份文案和分镜，它给你成片。\n它有两条产线：故事片，分层纸片动画；技术解读，信息板加真实画面引用。你现在看到的画面，都是它渲染的。\n每条成片要过七道检查：字幕安全区、断句、响度、真峰值、素材来源、旁白反查，和带哈希的发布清单。\n每一个素材都有来源记录，连引用别人的画面，都写清了出处、作者和时间点。\n代码全部开源，MIT 协议。GitHub 搜 OpenShorts。",
+    "style": {
+      "format": "9:16",
+      "mode": "technical",
+      "look": "产品演示片：自举证明，引用自家渲染产物",
+      "disclaimer": "本片由 OpenShorts 流水线全自动渲染，即片中介绍的工具本身"
+    },
+    "characters": [],
+    "assetPlan": [
+      {
+        "id": "asset-01",
+        "role": "background",
+        "name": "终端底",
+        "prompt": "",
+        "requirements": [],
+        "status": "approved",
+        "src": "assets/generated/karpathy-worlds/terminal-night.svg",
+        "promptVersions": [],
+        "reviewHistory": [],
+        "generation": {
+          "provider": "handwritten-svg",
+          "model": "-",
+          "parameters": {
+            "usedIn": 2,
+            "license": "本仓库原创（MIT）",
+            "note": "复用 karpathy-worlds 的手写背景"
+          },
+          "createdAt": "2026-08-02"
+        }
+      },
+      {
+        "id": "asset-02",
+        "role": "background",
+        "name": "纸面",
+        "prompt": "",
+        "requirements": [],
+        "status": "approved",
+        "src": "assets/generated/karpathy-worlds/paper-desk.svg",
+        "promptVersions": [],
+        "reviewHistory": [],
+        "generation": {
+          "provider": "handwritten-svg",
+          "model": "-",
+          "parameters": {
+            "usedIn": 2,
+            "license": "本仓库原创（MIT）",
+            "note": "复用 karpathy-worlds 的手写背景"
+          },
+          "createdAt": "2026-08-02"
+        }
+      },
+      {
+        "id": "asset-03",
+        "role": "secondary",
+        "name": "故事片示例",
+        "prompt": "",
+        "requirements": [],
+        "status": "approved",
+        "src": "assets/generated/openshorts-demo/clip-story.mp4",
+        "promptVersions": [],
+        "reviewHistory": [],
+        "generation": {
+          "provider": "repo-render",
+          "model": "-",
+          "parameters": {
+            "usedIn": 1,
+            "license": "本仓库原创（MIT）",
+            "note": "out/nine-suns.mp4 的 24s-29s 片段，本仓库流水线渲染产物"
+          },
+          "createdAt": "2026-08-03"
+        }
+      },
+      {
+        "id": "asset-04",
+        "role": "secondary",
+        "name": "技术片示例",
+        "prompt": "",
+        "requirements": [],
+        "status": "approved",
+        "src": "assets/generated/openshorts-demo/clip-tech.mp4",
+        "promptVersions": [],
+        "reviewHistory": [],
+        "generation": {
+          "provider": "repo-render",
+          "model": "-",
+          "parameters": {
+            "usedIn": 1,
+            "license": "本仓库原创（MIT）",
+            "note": "out/karpathy-worlds.mp4 的 7.5s-12.5s 片段，本仓库流水线渲染产物；其内引用画面的原始出处见 karpathy-worlds/assets.json"
+          },
+          "createdAt": "2026-08-03"
+        }
+      }
+    ],
+    "music": {
+      "mood": "pulse"
+    }
+  },
+  "scenes": [
+    {
+      "id": "cover",
+      "name": "1. 自举钩子",
+      "durationFrames": 134,
+      "backgroundColor": "#12151f",
+      "cameraZoom": 1.02,
+      "layers": [
+        {
+          "entrance": "fade",
+          "delayFrames": 2,
+          "rotation": 0,
+          "opacity": 1,
+          "flipX": false,
+          "paperEdge": false,
+          "keyframes": [],
+          "id": "cv-kicker",
+          "name": "小标",
+          "kind": "text",
+          "role": "tertiary",
+          "x": 96,
+          "y": 470,
+          "width": 920,
+          "zIndex": 5,
+          "style": {
+            "text": "开源竖屏视频生产线",
+            "fontSize": 46,
+            "fontWeight": 600,
+            "color": "#7d8798",
+            "align": "center",
+            "letterSpacing": 6
+          }
+        },
+        {
+          "entrance": "scale",
+          "delayFrames": 4,
+          "rotation": 0,
+          "opacity": 1,
+          "flipX": false,
+          "paperEdge": true,
+          "keyframes": [],
+          "id": "cv-hero",
+          "name": "品牌",
+          "kind": "text",
+          "role": "primary",
+          "x": 96,
+          "y": 560,
+          "width": 920,
+          "zIndex": 6,
+          "style": {
+            "text": "OpenShorts",
+            "fontSize": 150,
+            "fontWeight": 900,
+            "color": "#e8a33d",
+            "align": "center"
+          }
+        },
+        {
+          "entrance": "up",
+          "delayFrames": 18,
+          "rotation": 0,
+          "opacity": 1,
+          "flipX": false,
+          "paperEdge": true,
+          "keyframes": [],
+          "id": "cv-sub",
+          "name": "钩子",
+          "kind": "text",
+          "role": "primary",
+          "x": 96,
+          "y": 800,
+          "width": 920,
+          "zIndex": 6,
+          "style": {
+            "text": "这条视频，由它自己生成",
+            "fontSize": 64,
+            "fontWeight": 800,
+            "align": "center"
+          }
+        }
+      ],
+      "captions": [
+        {
+          "text": "这条视频，不是人剪的，",
+          "fromFrame": 4,
+          "toFrame": 78,
+          "words": []
+        },
+        {
+          "text": "是它自己生成的。",
+          "fromFrame": 78,
+          "toFrame": 132,
+          "words": []
+        }
+      ],
+      "narrationSrc": "audio/openshorts-demo/01-cover.wav",
+      "audioCues": [
+        {
+          "src": "audio/common/impact.wav",
+          "fromFrame": 0,
+          "volume": 0.5
+        }
+      ]
+    },
+    {
+      "id": "what",
+      "name": "2. 一句话定义",
+      "durationFrames": 228,
+      "backgroundColor": "#12151f",
+      "cameraZoom": 1.02,
+      "layers": [
+        {
+          "entrance": "none",
+          "delayFrames": 0,
+          "rotation": 0,
+          "opacity": 1,
+          "flipX": false,
+          "paperEdge": false,
+          "keyframes": [],
+          "id": "w-bg",
+          "name": "终端底",
+          "src": "assets/generated/karpathy-worlds/terminal-night.svg",
+          "role": "background",
+          "x": -110,
+          "y": -40,
+          "width": 1300,
+          "zIndex": 0
+        },
+        {
+          "entrance": "up",
+          "delayFrames": 4,
+          "rotation": 0,
+          "opacity": 1,
+          "flipX": false,
+          "paperEdge": true,
+          "keyframes": [],
+          "id": "w-title",
+          "name": "定义",
+          "kind": "text",
+          "role": "primary",
+          "x": 96,
+          "y": 300,
+          "width": 920,
+          "zIndex": 6,
+          "style": {
+            "text": "文案进，成片出",
+            "fontSize": 96,
+            "fontWeight": 900
+          }
+        },
+        {
+          "entrance": "fade",
+          "delayFrames": 40,
+          "rotation": 0,
+          "opacity": 1,
+          "flipX": false,
+          "paperEdge": false,
+          "keyframes": [],
+          "id": "w-term",
+          "name": "命令",
+          "kind": "text",
+          "role": "secondary",
+          "x": 96,
+          "y": 520,
+          "width": 920,
+          "zIndex": 5,
+          "style": {
+            "text": "content/story.json\ncontent/storyboard.json\n\n$ npm run story -- 我的故事 render\n\n→ out/我的故事.mp4  ✓ passed",
+            "fontSize": 46,
+            "fontWeight": 600,
+            "mono": true,
+            "lineHeight": 1.55,
+            "color": "#b9c3d6",
+            "background": "rgba(20,25,38,.85)",
+            "padding": 28,
+            "revealFrames": 14
+          }
+        }
+      ],
+      "captions": [
+        {
+          "text": "OpenShorts，",
+          "fromFrame": 4,
+          "toFrame": 64,
+          "words": []
+        },
+        {
+          "text": "一条开源的竖屏视频生产线。",
+          "fromFrame": 64,
+          "toFrame": 134,
+          "words": []
+        },
+        {
+          "text": "你给它一份文案和分镜，",
+          "fromFrame": 134,
+          "toFrame": 194,
+          "words": []
+        },
+        {
+          "text": "它给你成片。",
+          "fromFrame": 194,
+          "toFrame": 226,
+          "words": []
+        }
+      ],
+      "narrationSrc": "audio/openshorts-demo/02-what.wav",
+      "audioCues": [
+        {
+          "src": "audio/common/whoosh.wav",
+          "fromFrame": 40,
+          "volume": 0.2
+        }
+      ]
+    },
+    {
+      "id": "routes",
+      "name": "3. 两条产线与实证",
+      "durationFrames": 318,
+      "backgroundColor": "#12151f",
+      "cameraZoom": 1.02,
+      "layers": [
+        {
+          "entrance": "none",
+          "delayFrames": 0,
+          "rotation": 0,
+          "opacity": 1,
+          "flipX": false,
+          "paperEdge": false,
+          "keyframes": [],
+          "id": "r-bg",
+          "name": "纸面",
+          "src": "assets/generated/karpathy-worlds/paper-desk.svg",
+          "role": "background",
+          "x": -110,
+          "y": -40,
+          "width": 1300,
+          "zIndex": 0
+        },
+        {
+          "entrance": "up",
+          "delayFrames": 4,
+          "rotation": 0,
+          "opacity": 1,
+          "flipX": false,
+          "paperEdge": false,
+          "keyframes": [],
+          "id": "r-title",
+          "name": "两条产线",
+          "kind": "text",
+          "role": "primary",
+          "x": 96,
+          "y": 250,
+          "width": 920,
+          "zIndex": 6,
+          "style": {
+            "text": "两条产线",
+            "fontSize": 92,
+            "fontWeight": 900,
+            "color": "#2a2418"
+          }
+        },
+        {
+          "entrance": "fade",
+          "delayFrames": 34,
+          "rotation": 0,
+          "opacity": 1,
+          "flipX": false,
+          "paperEdge": false,
+          "keyframes": [],
+          "id": "r-l1",
+          "name": "标签一",
+          "kind": "text",
+          "role": "tertiary",
+          "x": 70,
+          "y": 430,
+          "width": 440,
+          "zIndex": 5,
+          "style": {
+            "text": "故事片 · 纸片动画",
+            "fontSize": 44,
+            "fontWeight": 700,
+            "color": "#8a4a12",
+            "align": "center"
+          }
+        },
+        {
+          "entrance": "left",
+          "delayFrames": 34,
+          "rotation": 0,
+          "opacity": 1,
+          "flipX": false,
+          "paperEdge": true,
+          "keyframes": [],
+          "id": "r-v1",
+          "name": "故事片示例",
+          "kind": "video",
+          "src": "assets/generated/openshorts-demo/clip-story.mp4",
+          "startFrom": 0,
+          "role": "secondary",
+          "x": 70,
+          "y": 505,
+          "width": 440,
+          "zIndex": 4
+        },
+        {
+          "entrance": "fade",
+          "delayFrames": 92,
+          "rotation": 0,
+          "opacity": 1,
+          "flipX": false,
+          "paperEdge": false,
+          "keyframes": [],
+          "id": "r-l2",
+          "name": "标签二",
+          "kind": "text",
+          "role": "tertiary",
+          "x": 570,
+          "y": 430,
+          "width": 440,
+          "zIndex": 5,
+          "style": {
+            "text": "技术解读 · 信息板",
+            "fontSize": 44,
+            "fontWeight": 700,
+            "color": "#8a4a12",
+            "align": "center"
+          }
+        },
+        {
+          "entrance": "right",
+          "delayFrames": 92,
+          "rotation": 0,
+          "opacity": 1,
+          "flipX": false,
+          "paperEdge": true,
+          "keyframes": [],
+          "id": "r-v2",
+          "name": "技术片示例",
+          "kind": "video",
+          "src": "assets/generated/openshorts-demo/clip-tech.mp4",
+          "startFrom": 0,
+          "role": "secondary",
+          "x": 570,
+          "y": 505,
+          "width": 440,
+          "zIndex": 4
+        }
+      ],
+      "captions": [
+        {
+          "text": "它有两条产线：故事片，",
+          "fromFrame": 4,
+          "toFrame": 73,
+          "words": []
+        },
+        {
+          "text": "分层纸片动画；",
+          "fromFrame": 73,
+          "toFrame": 117,
+          "words": []
+        },
+        {
+          "text": "技术解读，信息板加真实画面引用。",
+          "fromFrame": 117,
+          "toFrame": 217,
+          "words": []
+        },
+        {
+          "text": "你现在看到的画面，都是它渲染的。",
+          "fromFrame": 217,
+          "toFrame": 316,
+          "words": []
+        }
+      ],
+      "narrationSrc": "audio/openshorts-demo/03-routes.wav",
+      "audioCues": [
+        {
+          "src": "audio/common/whoosh.wav",
+          "fromFrame": 34,
+          "volume": 0.2
+        }
+      ]
+    },
+    {
+      "id": "quality",
+      "name": "4. 质量门禁",
+      "durationFrames": 324,
+      "backgroundColor": "#12151f",
+      "cameraZoom": 1.02,
+      "layers": [
+        {
+          "entrance": "none",
+          "delayFrames": 0,
+          "rotation": 0,
+          "opacity": 1,
+          "flipX": false,
+          "paperEdge": false,
+          "keyframes": [],
+          "id": "q-bg",
+          "name": "终端底",
+          "src": "assets/generated/karpathy-worlds/terminal-night.svg",
+          "role": "background",
+          "x": -110,
+          "y": -40,
+          "width": 1300,
+          "zIndex": 0
+        },
+        {
+          "entrance": "up",
+          "delayFrames": 4,
+          "rotation": 0,
+          "opacity": 1,
+          "flipX": false,
+          "paperEdge": true,
+          "keyframes": [],
+          "id": "q-title",
+          "name": "七道检查",
+          "kind": "text",
+          "role": "primary",
+          "x": 96,
+          "y": 260,
+          "width": 920,
+          "zIndex": 6,
+          "style": {
+            "text": "每条成片过七道检查",
+            "fontSize": 82,
+            "fontWeight": 900
+          }
+        },
+        {
+          "entrance": "fade",
+          "delayFrames": 30,
+          "rotation": 0,
+          "opacity": 1,
+          "flipX": false,
+          "paperEdge": false,
+          "keyframes": [],
+          "id": "q-list",
+          "name": "检查清单",
+          "kind": "text",
+          "role": "secondary",
+          "x": 96,
+          "y": 430,
+          "width": 920,
+          "zIndex": 5,
+          "style": {
+            "text": "✓ 字幕安全区 20%\n✓ 标点断句 ≤16 字\n✓ 响度 -14 LUFS\n✓ 真峰值 ≤ -1.5 dB\n✓ 素材来源可查\n✓ Whisper 内容反查\n✓ SHA-256 发布清单",
+            "fontSize": 50,
+            "fontWeight": 700,
+            "mono": true,
+            "lineHeight": 1.55,
+            "color": "#9fd8a8",
+            "background": "rgba(20,25,38,.85)",
+            "padding": 28,
+            "revealFrames": 13
+          }
+        }
+      ],
+      "captions": [
+        {
+          "text": "每条成片要过七道检查：",
+          "fromFrame": 4,
+          "toFrame": 78,
+          "words": []
+        },
+        {
+          "text": "字幕安全区、断句、响度、真峰值、",
+          "fromFrame": 78,
+          "toFrame": 186,
+          "words": []
+        },
+        {
+          "text": "素材来源、旁白反查，",
+          "fromFrame": 186,
+          "toFrame": 254,
+          "words": []
+        },
+        {
+          "text": "和带哈希的发布清单。",
+          "fromFrame": 254,
+          "toFrame": 322,
+          "words": []
+        }
+      ],
+      "narrationSrc": "audio/openshorts-demo/04-quality.wav",
+      "audioCues": [
+        {
+          "src": "audio/common/impact.wav",
+          "fromFrame": 30,
+          "volume": 0.3
+        }
+      ]
+    },
+    {
+      "id": "trust",
+      "name": "5. 溯源与合规",
+      "durationFrames": 221,
+      "backgroundColor": "#12151f",
+      "cameraZoom": 1.02,
+      "layers": [
+        {
+          "entrance": "none",
+          "delayFrames": 0,
+          "rotation": 0,
+          "opacity": 1,
+          "flipX": false,
+          "paperEdge": false,
+          "keyframes": [],
+          "id": "t-bg",
+          "name": "纸面",
+          "src": "assets/generated/karpathy-worlds/paper-desk.svg",
+          "role": "background",
+          "x": -110,
+          "y": -40,
+          "width": 1300,
+          "zIndex": 0
+        },
+        {
+          "entrance": "up",
+          "delayFrames": 4,
+          "rotation": 0,
+          "opacity": 1,
+          "flipX": false,
+          "paperEdge": false,
+          "keyframes": [],
+          "id": "t-title",
+          "name": "溯源",
+          "kind": "text",
+          "role": "primary",
+          "x": 96,
+          "y": 280,
+          "width": 920,
+          "zIndex": 6,
+          "style": {
+            "text": "素材来源全程可查",
+            "fontSize": 84,
+            "fontWeight": 900,
+            "color": "#2a2418"
+          }
+        },
+        {
+          "entrance": "fade",
+          "delayFrames": 36,
+          "rotation": 0,
+          "opacity": 1,
+          "flipX": false,
+          "paperEdge": false,
+          "keyframes": [],
+          "id": "t-json",
+          "name": "溯源示例",
+          "kind": "text",
+          "role": "secondary",
+          "x": 96,
+          "y": 470,
+          "width": 920,
+          "zIndex": 5,
+          "style": {
+            "text": "\"provider\": \"quotation\",\n\"credit\": \"Andrej Karpathy\",\n\"license\": \"评论用途引用\",\n\"note\": \"片段时间点：50s-56s\"",
+            "fontSize": 44,
+            "fontWeight": 600,
+            "mono": true,
+            "lineHeight": 1.6,
+            "color": "#4a3f2e",
+            "background": "rgba(255,252,242,.9)",
+            "padding": 26,
+            "revealFrames": 12
+          }
+        }
+      ],
+      "captions": [
+        {
+          "text": "每一个素材都有来源记录，",
+          "fromFrame": 4,
+          "toFrame": 78,
+          "words": []
+        },
+        {
+          "text": "连引用别人的画面，都写清了出处、",
+          "fromFrame": 78,
+          "toFrame": 176,
+          "words": []
+        },
+        {
+          "text": "作者和时间点。",
+          "fromFrame": 176,
+          "toFrame": 219,
+          "words": []
+        }
+      ],
+      "narrationSrc": "audio/openshorts-demo/05-trust.wav",
+      "audioCues": [
+        {
+          "src": "audio/common/whoosh.wav",
+          "fromFrame": 36,
+          "volume": 0.18
+        }
+      ]
+    },
+    {
+      "id": "ending",
+      "name": "6. 行动号召与定格",
+      "durationFrames": 207,
+      "backgroundColor": "#12151f",
+      "cameraZoom": 1.02,
+      "layers": [
+        {
+          "entrance": "fade",
+          "delayFrames": 4,
+          "rotation": 0,
+          "opacity": 1,
+          "flipX": false,
+          "paperEdge": false,
+          "keyframes": [],
+          "id": "e-open",
+          "name": "开源",
+          "kind": "text",
+          "role": "tertiary",
+          "x": 96,
+          "y": 560,
+          "width": 920,
+          "zIndex": 5,
+          "style": {
+            "text": "MIT 开源",
+            "fontSize": 52,
+            "fontWeight": 600,
+            "color": "#7d8798",
+            "align": "center",
+            "letterSpacing": 6
+          }
+        },
+        {
+          "entrance": "scale",
+          "delayFrames": 14,
+          "rotation": 0,
+          "opacity": 1,
+          "flipX": false,
+          "paperEdge": true,
+          "keyframes": [],
+          "id": "e-gh",
+          "name": "地址",
+          "kind": "text",
+          "role": "primary",
+          "x": 96,
+          "y": 660,
+          "width": 920,
+          "zIndex": 6,
+          "style": {
+            "text": "GitHub 搜\nOpenShorts",
+            "fontSize": 110,
+            "fontWeight": 900,
+            "color": "#e8a33d",
+            "align": "center",
+            "lineHeight": 1.25
+          }
+        },
+        {
+          "entrance": "fade",
+          "delayFrames": 40,
+          "rotation": 0,
+          "opacity": 1,
+          "flipX": false,
+          "paperEdge": false,
+          "keyframes": [],
+          "id": "e-sub",
+          "name": "尾注",
+          "kind": "text",
+          "role": "tertiary",
+          "x": 96,
+          "y": 1080,
+          "width": 920,
+          "zIndex": 5,
+          "style": {
+            "text": "本片由 OpenShorts 流水线全自动渲染",
+            "fontSize": 40,
+            "fontWeight": 500,
+            "color": "#8d99ad",
+            "align": "center"
+          }
+        }
+      ],
+      "captions": [
+        {
+          "text": "代码全部开源，MIT 协议。",
+          "fromFrame": 4,
+          "toFrame": 87,
+          "words": []
+        },
+        {
+          "text": "GitHub 搜 OpenShorts。",
+          "fromFrame": 87,
+          "toFrame": 205,
+          "words": []
+        }
+      ],
+      "narrationSrc": "audio/openshorts-demo/06-ending.wav",
+      "audioCues": [
+        {
+          "src": "audio/common/impact.wav",
+          "fromFrame": 14,
+          "volume": 0.42
+        }
+      ]
+    }
+  ]
+}

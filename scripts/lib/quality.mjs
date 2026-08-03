@@ -56,7 +56,9 @@ export const analyzeProject = ({project, media, publicDir}) => {
 
   for (const scene of project.scenes) {
     const roles = new Set(scene.layers.map((layer) => layer.role));
-    if (!roles.has('background')) warnings.push(`${scene.name} 缺少 background 图层`);
+    // 纯文字排版镜头（无图片/视频图层）以纯色为底是正当设计，只对含视觉素材的镜头查背景
+    const hasVisualAssets = scene.layers.some((layer) => layer.kind !== 'text');
+    if (!roles.has('background') && hasVisualAssets) warnings.push(`${scene.name} 缺少 background 图层`);
     if (!roles.has('primary')) warnings.push(`${scene.name} 缺少 primary 主体图层`);
     const sortedCaptions = [...(scene.captions ?? [])].sort((a, b) => a.fromFrame - b.fromFrame);
     for (let index = 0; index < sortedCaptions.length; index += 1) {

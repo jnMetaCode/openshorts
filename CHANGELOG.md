@@ -2,6 +2,10 @@
 
 ## 未发布
 
+- 新增第三条内容路线「产品演示片」及首个样片《这条视频是它自己生成的》（47.7s）：
+  自举证明，引用自家渲染产物做画中画；溯源新增 repo-render 类型
+- 验收精化：纯文字排版镜头以纯色为底不再误报「缺少 background 图层」
+
 - **项目改名 OpenShorts**（原 OpenShorts Studio 时期名为 PaperCut Studio）：与 Papercut Software™（商标号 79231969，同类计算机软件）冲突，且 open- 前缀更贴开源短视频生产线定位。波及包名、协议名（OpenShorts v1）、Remotion 组合 ID、打包格式 .openshorts.zip、环境变量前缀 OPENSHORTS_*（无兼容层）
 - 修 Remotion 入口：inputProps 不会自动过 schema，手写工程缺可选字段时组件崩溃；calculateMetadata 统一 parse 补默认值
 - 验收区分「工程无音源的静音」（警告）与「有音源却无声」（错误）

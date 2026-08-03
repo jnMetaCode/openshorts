@@ -1,0 +1,26 @@
+{
+  "assets/generated/karpathy-worlds/terminal-night.svg": {
+    "provider": "handwritten-svg",
+    "createdAt": "2026-08-02",
+    "license": "本仓库原创（MIT）",
+    "note": "复用 karpathy-worlds 的手写背景"
+  },
+  "assets/generated/karpathy-worlds/paper-desk.svg": {
+    "provider": "handwritten-svg",
+    "createdAt": "2026-08-02",
+    "license": "本仓库原创（MIT）",
+    "note": "复用 karpathy-worlds 的手写背景"
+  },
+  "assets/generated/openshorts-demo/clip-story.mp4": {
+    "provider": "repo-render",
+    "createdAt": "2026-08-03",
+    "license": "本仓库原创（MIT）",
+    "note": "out/nine-suns.mp4 的 24s-29s 片段，本仓库流水线渲染产物"
+  },
+  "assets/generated/openshorts-demo/clip-tech.mp4": {
+    "provider": "repo-render",
+    "createdAt": "2026-08-03",
+    "license": "本仓库原创（MIT）",
+    "note": "out/karpathy-worlds.mp4 的 7.5s-12.5s 片段，本仓库流水线渲染产物；其内引用画面的原始出处见 karpathy-worlds/assets.json"
+  }
+}

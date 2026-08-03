@@ -1,0 +1,75 @@
+{
+  "storyId": "openshorts-demo",
+  "voice": "zh-CN-YunyangNeural",
+  "rate": "+0%",
+  "pitch": "+0Hz",
+  "totalDuration": 42.936,
+  "segments": [
+    {
+      "id": "cover",
+      "text": "这条视频，不是人剪的，是它自己生成的。",
+      "purpose": "自举钩子",
+      "index": 0,
+      "file": "public/audio/openshorts-demo/01-cover.wav",
+      "provider": "edge",
+      "start": 0,
+      "end": 3.912,
+      "duration": 3.912
+    },
+    {
+      "id": "what",
+      "text": "OpenShorts，一条开源的竖屏视频生产线。你给它一份文案和分镜，它给你成片。",
+      "purpose": "一句话定义",
+      "index": 1,
+      "file": "public/audio/openshorts-demo/02-what.wav",
+      "provider": "edge",
+      "start": 3.912,
+      "end": 10.943999999999999,
+      "duration": 7.032
+    },
+    {
+      "id": "routes",
+      "text": "它有两条产线：故事片，分层纸片动画；技术解读，信息板加真实画面引用。你现在看到的画面，都是它渲染的。",
+      "purpose": "两条产线与实证",
+      "index": 2,
+      "file": "public/audio/openshorts-demo/03-routes.wav",
+      "provider": "edge",
+      "start": 10.943999999999999,
+      "end": 20.976,
+      "duration": 10.032
+    },
+    {
+      "id": "quality",
+      "text": "每条成片要过七道检查：字幕安全区、断句、响度、真峰值、素材来源、旁白反查，和带哈希的发布清单。",
+      "purpose": "质量门禁",
+      "index": 3,
+      "file": "public/audio/openshorts-demo/04-quality.wav",
+      "provider": "edge",
+      "start": 20.976,
+      "end": 31.223999999999997,
+      "duration": 10.248
+    },
+    {
+      "id": "trust",
+      "text": "每一个素材都有来源记录，连引用别人的画面，都写清了出处、作者和时间点。",
+      "purpose": "溯源与合规",
+      "index": 4,
+      "file": "public/audio/openshorts-demo/05-trust.wav",
+      "provider": "edge",
+      "start": 31.223999999999997,
+      "end": 38.016,
+      "duration": 6.792
+    },
+    {
+      "id": "ending",
+      "text": "代码全部开源，MIT 协议。GitHub 搜 OpenShorts。",
+      "purpose": "行动号召与定格",
+      "index": 5,
+      "file": "public/audio/openshorts-demo/06-ending.wav",
+      "provider": "edge",
+      "start": 38.016,
+      "end": 42.936,
+      "duration": 4.92
+    }
+  ]
+}
