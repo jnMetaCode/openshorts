@@ -24,6 +24,8 @@ function runAO(args, opts = {}) {
   process.exit(r.status ?? 1);
 }
 
+function parseOpts(a) { const o = {}; for (let i = 0; i < a.length; i++) if (a[i].startsWith('--')) { const k = a[i].slice(2); const v = a[i + 1] && !a[i + 1].startsWith('--') ? a[++i] : 'true'; o[k] = v; } return o; }
+
 switch (cmd) {
   case 'open': case 'web': case 'studio-web':
     spawnSync(process.execPath, [path.join(root, 'scripts', 'open-local.mjs')], { stdio: 'inherit' }); break;
@@ -45,6 +47,45 @@ switch (cmd) {
     runAO(['run', wf, ...rest]);
     break;
   }
+  case 'new': {
+    // openshorts new koubo-kepu --topic "…" [--duration 60秒] [--tone 科普讲解] [--voice zh-CN-YunxiNeural] [--local-dir ./素材]
+    const tpl = rest[0] && !rest[0].startsWith('--') ? rest[0] : 'koubo-kepu';
+    if (tpl !== 'koubo-kepu') { console.error(`M1 只支持 koubo-kepu（AI 短剧请用 openshorts drama）`); process.exit(1); }
+    const opt = parseOpts(rest.slice(1));
+    if (!opt.topic) { console.error('缺 --topic "话题或文案"'); process.exit(1); }
+    const { run } = await import('agency-orchestrator');
+    const { buildKouboProject } = await import('../src/project/koubo.mjs');
+    const { readConfig } = await import('../src/config.mjs');
+    const cfg = readConfig();
+    const wf = path.join(root, 'templates', 'koubo-kepu.yaml');
+    const inputs = { topic: opt.topic, duration: opt.duration || '60秒', tone: opt.tone || '科普讲解' };
+    console.log(`✍️  正在写脚本（${inputs.duration} · ${inputs.tone}）…`);
+    const res = await run(wf, inputs, { quiet: true, outputDir: path.join(cfg.outputDir, '.ao-runs'), ...(opt.provider ? { llmOverride: { provider: opt.provider, model: opt.model } } : {}) });
+    if (!res.success) { console.error('脚本步骤失败：', res.steps.filter((s) => s.status === 'failed').map((s) => `${s.id}: ${s.error}`).join('; ')); process.exit(1); }
+    const project = buildKouboProject(res, { topic: opt.topic, inputs, defaults: { voice: opt.voice || cfg.tts?.voice, captionPreset: opt.captions || 'douyin', localDirs: opt['local-dir'] ? [path.resolve(opt['local-dir'])] : [], bgm: opt.bgm ? path.resolve(opt.bgm) : null } });
+    const dir = path.join(cfg.outputDir, project.id); fs.mkdirSync(dir, { recursive: true });
+    const pf = path.join(dir, 'project.json'); fs.writeFileSync(pf, JSON.stringify(project, null, 2));
+    console.log(`✓ 项目已建：${pf}\n  ${project.shots.length} 个镜头 · 标题候选：${project.publish.titles[0] ?? '（无）'}\n  下一步：openshorts run "${pf}"`);
+    break;
+  }
+  case 'run': {
+    const pf = rest[0]; if (!pf) { console.error('用法：openshorts run <project.json>'); process.exit(1); }
+    const project = JSON.parse(fs.readFileSync(pf, 'utf-8'));
+    if (project.line !== 'koubo') { console.error('M1 的 run 只支持口播线项目（AI 短剧请用 openshorts drama）'); process.exit(1); }
+    const { runKoubo } = await import('../src/pipeline/koubo-run.mjs');
+    const t0 = Date.now();
+    const p = await runKoubo(project, { outDir: path.dirname(path.resolve(pf)), log: (m) => console.log('  ' + m) });
+    console.log(`\n✓ 成片：${p.final.file}（${p.final.durationSec.toFixed(1)}s，${((Date.now() - t0) / 1000).toFixed(0)}s 出片）\n  字幕：${p.final.srt}\n  封面：${p.final.cover ?? '无'}\n  发布文案：${p.final.publish}`);
+    for (const n of p.final.notes) console.log(`  ⚠️ ${n}`);
+    break;
+  }
+  case 'estimate': {
+    const pf = rest[0]; const project = JSON.parse(fs.readFileSync(pf, 'utf-8'));
+    const free = project.shots.filter((s) => !s.visual?.cost || s.visual.cost.kind === 'free').length;
+    console.log(`镜头 ${project.shots.length} 个：素材库/本地/纯色 ${free} 个（不花钱）· 配音 Edge TTS（免费）· 合成本机 ffmpeg（免费）`);
+    if (free < project.shots.length) console.log(`  其余 ${project.shots.length - free} 个走 AI 出图/出片，按各家计费（数量级见 ao plan）`);
+    break;
+  }
   case 'doctor': runAO(['doctor', ...rest]); break;
   case 'version': case '-v': case '--version': {
     const me = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf-8'));
@@ -57,5 +98,7 @@ switch (cmd) {
   sources   看这台机器能用哪些画面来源（素材库 / AI 配图 / 本地生成 / 云端出片）
   drama     AI 短剧：跑 AO 短剧流水线（参数透传给 ao run；--validate / --plan 只检查）
   doctor    环境体检（转 ao doctor）
-M1 将加入：new / estimate / run / render`);
+  new       口播科普：openshorts new koubo-kepu --topic "…" [--duration 60秒] [--tone 科普讲解] [--voice …] [--local-dir 素材夹] [--bgm x.mp3]
+  run       出片：openshorts run <project.json>（配音 → 素材 → 字幕 → 合成）
+  estimate  看这个项目要不要花钱`);
 }

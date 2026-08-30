@@ -1,0 +1,41 @@
+/**
+ * 口播线项目 JSON（架构 §2）：由 AO 跑完「口播科普」模板的结果（segments_json / meta_json）构建。
+ * 镜头 = 钩子 + 各段 + 收尾；每镜先只带文案与画面意图，画面/配音/字幕由 run 阶段填。纯函数。
+ */
+export function parseJsonLoose(text) {
+  if (!text) throw new Error('空输出');
+  const m = String(text).match(/\{[\s\S]*\}/);
+  if (!m) throw new Error('输出里没有 JSON 对象');
+  return JSON.parse(m[0]);
+}
+
+export function buildKouboProject(aoResult, { id, topic, inputs = {}, output = { w: 1080, h: 1920, fps: 30, platform: 'douyin' }, defaults = {} } = {}) {
+  const step = (sid) => aoResult.steps?.find((s) => s.id === sid);
+  const script = parseJsonLoose(step('script')?.output);
+  let meta = {}; try { meta = parseJsonLoose(step('meta')?.output); } catch { meta = {}; }
+  const segs = Array.isArray(script.segments) ? script.segments : [];
+  if (!segs.length) throw new Error('脚本没有 segments');
+  const shots = [];
+  if (script.hook) shots.push(shot('hook', script.hook, segs[0]?.visualIntent ?? '', segs[0]?.query ?? '', segs[0]?.emphasis ?? []));
+  for (const s of segs) shots.push(shot(s.id || `s${shots.length + 1}`, s.text, s.visualIntent, s.query, s.emphasis ?? []));
+  if (script.outro) shots.push(shot('outro', script.outro, segs[segs.length - 1]?.visualIntent ?? '', segs[segs.length - 1]?.query ?? '', []));
+  return {
+    schemaVersion: 2,
+    id: id ?? slug(topic ?? aoResult.name ?? 'koubo'),
+    template: 'koubo-kepu', line: 'koubo',
+    title: (meta.titles ?? [])[0] ?? topic ?? '',
+    topic: topic ?? inputs.topic ?? '',
+    inputs,
+    output,
+    voice: { provider: 'edge-tts', voice: defaults.voice ?? 'zh-CN-XiaoxiaoNeural', rate: 1.0 },
+    captions: { preset: defaults.captionPreset ?? 'douyin', maxChars: 16 },
+    defaults: { visualSource: defaults.visualSource ?? 'stock', cutEverySec: defaults.cutEverySec ?? 4, localDirs: defaults.localDirs ?? [] },
+    bgm: defaults.bgm ? { file: defaults.bgm, volume: 0.2 } : null,
+    shots,
+    publish: { titles: meta.titles ?? [], tags: meta.tags ?? [], note: meta.publishNote ?? '', aiLabel: true, aiLabelText: meta.aiLabel ?? '本视频含 AI 生成内容' },
+    provenance: [],
+    ao: { file: aoResult.file ?? null, success: !!aoResult.success, totalTokens: aoResult.totalTokens ?? null },
+  };
+}
+const shot = (id, text, visualIntent, query, emphasis) => ({ id, text: String(text ?? '').trim(), visualIntent: visualIntent ?? '', query: query ?? '', emphasis: Array.isArray(emphasis) ? emphasis : [], visual: { source: null, provider: null, file: null, candidateId: null, cost: { kind: 'free' } }, audio: null, durationSec: null, status: 'planned' });
+const slug = (s) => String(s).toLowerCase().replace(/[^a-z0-9一-鿿]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'koubo';

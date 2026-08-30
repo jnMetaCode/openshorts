@@ -1,6 +1,6 @@
 {
   "name": "openshorts",
-  "version": "2.0.0-alpha.0",
+  "version": "2.0.0-alpha.1",
   "private": true,
   "type": "module",
   "description": "Local-first layered paper collage video editor powered by Remotion",
@@ -64,6 +64,7 @@
     "agency-orchestrator": "^0.19.1",
     "cors": "2.8.5",
     "express": "5.1.0",
+    "msedge-tts": "^2.0.7",
     "multer": "2.0.2",
     "react": "19.1.1",
     "react-dom": "19.1.1",

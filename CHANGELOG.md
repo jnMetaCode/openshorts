@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.0.0-alpha.1] - 2026-08-30 · M1 口播科普（免费路径跑通）
+- `templates/koubo-kepu.yaml`：话题 → 分段口播脚本 JSON（钩子/要点/收尾，每段画面意图 + 英文检索词 + 高亮词，assert 校验 + 验收）→ 标题×3 / 标签×5 / 发布说明 / AI 标识。
+- `openshorts new koubo-kepu --topic …`：库调用 AO `run` 跑模板 → 项目 JSON（`~/OpenShorts/<项目>/project.json`）。
+- `openshorts run <project.json>`：Edge TTS 配音（msedge-tts，纯 Node，词级时间戳；标点回贴）→ 素材（本地素材夹 → 缓存 → Pexels → Pixabay，去重、候选不够时复用而非纯色）→ 分段渲染（裁 9:16、循环补足）→ 拼接 → 字幕（3 套 ASS 预设，单条 ≤ 4.5 秒；无 libass 时挂软字幕轨）→ BGM ducking → AI 标识（drawtext 或元数据）→ 1080×1920 mp4 + SRT + 封面 + 发布文案（含素材署名）。
+- 真机：「猫为什么总爱钻纸箱」6 镜 36.5 秒，脚本 deepseek 约 20 秒，出片 10–13 秒，全程 0 元（本地素材夹）。
+- 测试：captions 5 / stock 3 / koubo-project 2（node --test）。
+
 ## [2.0.0-alpha.0] - 2026-08-30 · M0 骨架
 - v2 方向定案与六份文档（`docs/v2/`）；个人内容拆到私有 papercut-studio，公开仓转 public。
 - 依赖 `agency-orchestrator@^0.19.1`；新增 `bin/openshorts.mjs`：`npx openshorts`（open / sources / drama / doctor / version）。

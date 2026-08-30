@@ -1,70 +1,43 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {captionReadingRate, splitCaptionText, splitCaptions, subtitleBottomRatio, subtitleFontSize} from '../shared/captions.mjs';
+import { buildCues, estimateWords, toSRT, toASS, STYLE_PRESETS, alignPunctuation } from '../src/captions/build.mjs';
 
-const endsWithPunctuation = (text) => /[。，、；：？！,.;:?!…—]$/.test(text);
+const words = [['你',100,200],['有没有',213,625],['发现，',638,1125],['猫',1438,1588],['为什么',1600,2000],['总爱',2010,2300],['钻',2310,2400],['纸箱？',2410,2900],['这',3200,3300],['不是',3310,3500],['任性，',3510,3900],['是',4000,4100],['刻在',4110,4400],['基因',4410,4700],['里的',4710,4900],['安全感。',4910,5600]].map(([text,startMs,endMs])=>({text,startMs,endMs}));
 
-test('长句在标点处断行，不会把词切开', () => {
-  const parts = splitCaptionText('如果天上同时挂着十个太阳，河干了，地裂了，庄稼一晒就冒烟。', 20);
-  assert.ok(parts.length > 1, '超长句应该被拆开');
-  assert.equal(parts.join(''), '如果天上同时挂着十个太阳，河干了，地裂了，庄稼一晒就冒烟。');
-  for (const part of parts.slice(0, -1)) assert.ok(endsWithPunctuation(part), `“${part}”没有停在标点上`);
-  assert.ok(!parts.some((part) => part.startsWith('了，')), '不应出现「河干／了」这类词中断行');
+test('按标点与字数切条：每条 ≤ 32 字，句末标点处断开，空隙 < 300ms 时无缝衔接', () => {
+  const cues = buildCues(words, { maxChars: 16 });
+  assert.ok(cues.length >= 2);
+  for (const c of cues) assert.ok([...c.text].length <= 32, c.text);
+  assert.equal(cues[0].text.endsWith('？') || cues[0].text.endsWith('，'), true);
+  for (let i = 0; i + 1 < cues.length; i++) assert.ok(cues[i].endMs <= cues[i + 1].startMs);
 });
 
-test('只有一个逗号的长句在逗号处断开', () => {
-  assert.deepEqual(
-    splitCaptionText('后来人们记住了那九箭，也记住了那支没有射出去的箭。', 20),
-    ['后来人们记住了那九箭，', '也记住了那支没有射出去的箭。'],
-  );
+test('SRT 时间格式与序号', () => {
+  const srt = toSRT(buildCues(words));
+  assert.match(srt, /^1\n00:00:00,100 --> /);
 });
 
-test('短句保持完整，不做无谓拆分', () => {
-  assert.deepEqual(splitCaptionText('你会怎么办？', 20), ['你会怎么办？']);
-});
-
-test('无标点的超长句才走硬切兜底', () => {
-  const parts = splitCaptionText('一'.repeat(64), 20);
-  assert.ok(parts.length >= 3);
-  assert.equal(parts.join(''), '一'.repeat(64));
-  for (const part of parts) assert.ok(part.length <= 22, `硬切片段过长：${part.length}`);
-});
-
-test('结尾的孤儿碎片并回上一行', () => {
-  const parts = splitCaptionText('草木枯焦，江河见底，老百姓连一片躲太阳的影子都找不到，唉。', 20);
-  assert.ok(parts.at(-1).length > 5, `结尾不应留下孤儿碎片：${parts.at(-1)}`);
-});
-
-test('时间轴铺满镜头且永不越界', () => {
-  const frames = 399;
-  const cues = splitCaptions('传说里，十只金乌本该轮流值班，一天只出一个。可它们偏要一起上天。', frames);
-  assert.ok(cues.length > 1);
-  assert.equal(cues[0].fromFrame, 4);
-  assert.ok(cues.at(-1).toFrame <= frames - 2);
-  for (const [index, cue] of cues.entries()) {
-    assert.ok(cue.toFrame > cue.fromFrame, '结束帧必须大于开始帧');
-    if (index > 0) assert.equal(cue.fromFrame, cues[index - 1].toFrame, '字幕之间不应有空档或重叠');
+test('ASS：三套预设都能生成，关键词高亮插入颜色标签', () => {
+  for (const k of Object.keys(STYLE_PRESETS)) {
+    const ass = toASS(buildCues(words), { preset: k, emphasis: ['安全感'] });
+    assert.match(ass, /PlayResX: 1080/);
+    assert.match(ass, /Dialogue: 0,0:00:00\.10/);
+    assert.ok(ass.includes('{\\c') && ass.includes('安全感'));
   }
 });
 
-test('镜头极短时依然产出合法区间', () => {
-  const cues = splitCaptions('一句。两句。三句。四句。', 8);
-  for (const [index, cue] of cues.entries()) {
-    assert.ok(cue.toFrame > cue.fromFrame, `第 ${index + 1} 条区间非法`);
-    assert.ok(cue.fromFrame >= 0);
-  }
+test('无词级时间戳时按字数摊时长（标 estimated）', () => {
+  const ws = estimateWords('猫为什么爱钻纸箱', 4000);
+  assert.equal(ws.length, 8); assert.equal(ws[7].endMs, 4000); assert.equal(ws[0].estimated, true);
 });
 
-test('阅读速度按字数与停留时长计算', () => {
-  assert.equal(captionReadingRate({text: '十个字十个字', fromFrame: 0, toFrame: 30}, 30), 6);
-});
-
-test('竖屏字幕避开平台 UI，横屏不受此约束', () => {
-  assert.equal(subtitleBottomRatio(1080, 1920), 0.2);
-  assert.equal(subtitleBottomRatio(1920, 1080), 0.08);
-});
-
-test('字号按短边计算，横竖屏得到一致的每行字数', () => {
-  assert.equal(subtitleFontSize(1080, 1920), subtitleFontSize(1920, 1080));
-  assert.equal(subtitleFontSize(1080, 1920), 49);
+test('alignPunctuation：把原文标点贴回词尾，句号处必断条；单条 ≤ 4.5 秒', () => {
+  const raw = [['为什么',0,500],['猫',510,700],['放着',710,1000],['豪华',1010,1400],['猫窝',1410,1800],['不睡',1810,2200],['非要',2300,2600],['钻进',2610,2900],['破',2910,3000],['纸箱',3010,3400],['科学',4000,4400],['解释',4410,4800],['来了',4810,5200]].map(([text,startMs,endMs])=>({text,startMs,endMs}));
+  const aligned = alignPunctuation(raw, '为什么猫放着豪华猫窝不睡，非要钻进破纸箱？科学解释来了，');
+  assert.equal(aligned[5].text, '不睡，'); assert.equal(aligned[9].text, '纸箱？');
+  const cues = buildCues(aligned, { maxChars: 16 });
+  assert.ok(cues[0].text.endsWith('？') || cues[1].text.endsWith('？'));
+  for (const c of cues) assert.ok(c.endMs - c.startMs <= 4600, `${c.text} ${c.endMs - c.startMs}`);
+  const long = Array.from({ length: 30 }, (_, i) => ({ text: '字', startMs: i * 400, endMs: i * 400 + 380 }));
+  for (const c of buildCues(long)) assert.ok(c.endMs - c.startMs <= 4600);
 });

@@ -1,0 +1,65 @@
+name: "口播科普"
+description: "话题或文案 → 分段口播脚本（钩子 / 要点 / 收尾，每段一个画面意图 + 英文检索词）→ 标题 / 标签 / 发布说明。画面、配音、字幕、合成由 OpenShorts 按项目 JSON 执行。"
+agents_dir: "agency-agents-zh"
+llm:
+  provider: "deepseek"
+  model: "deepseek-chat"
+
+inputs:
+  - name: topic
+    label: "话题或文案"
+    required: true
+  - name: duration
+    label: "目标时长"
+    options: ["45秒", "60秒", "90秒"]
+    default: "60秒"
+  - name: tone
+    label: "语气"
+    options: ["科普讲解", "犀利观点", "轻松口播"]
+    default: "科普讲解"
+
+steps:
+  - id: script
+    role: "marketing/marketing-content-creator"
+    name: "口播脚本"
+    emoji: "✍️"
+    task: |
+      围绕「{{topic}}」写一条 {{duration}} 的竖版口播短视频脚本，语气：{{tone}}。
+      只输出一个 JSON 对象，不要任何解释、不要代码块标记：
+      {"hook": "开场钩子（≤ 3 秒能念完，一句反常识或提问）",
+       "segments": [
+         {"id": "s1", "text": "这一段要念的口播原文（口语化，1–2 句，8 秒内念完）",
+          "visualIntent": "这一段画面想给观众看什么（中文，一句）",
+          "query": "english stock footage query, concrete nouns, 3-6 words",
+          "emphasis": ["要在字幕里高亮的 1–2 个关键词"]}
+       ],
+       "outro": "收尾一句（结论 + 关注/行动引导）"}
+      规则：segments 3–5 段（钩子与收尾不算在内，它们各自也会作为一段配画面）；每段一个画面意图；query 必须是能在素材库检索到的具体画面（如 "cat inside cardboard box close up"），不要抽象词（如 "psychology"）；
+      口播总字数按语速 4.5 字/秒控制在目标时长内；全文不含影视 IP、明星姓名、真人肖像描述。
+    assert:
+      contains: ["\"segments\"", "\"hook\"", "\"outro\""]
+      min_bytes: 300
+      max_bytes: 5000
+    acceptance: |
+      1. hook 是一句反常识陈述或提问，不是"大家好"式开场
+      2. 每段 text 口语化、可在 8 秒内念完
+      3. 每段 query 是具体可检索的英文画面描述（有名词主体和场景），不是抽象概念词
+      4. 全文没有影视 IP 名、明星姓名
+    output: segments_json
+
+  - id: meta
+    role: "marketing/marketing-douyin-strategist"
+    name: "标题与发布"
+    emoji: "📣"
+    task: |
+      根据下面的口播脚本，给出发布信息。只输出一个 JSON 对象，不要解释、不要代码块：
+      {"titles": ["标题1", "标题2", "标题3"], "tags": ["话题标签1", "…共 5 个，不带 #"],
+       "publishNote": "一句发布说明（≤ 40 字）", "aiLabel": "本视频画面/配音含 AI 生成内容"}
+      规则：标题 ≤ 20 字、带钩子、不标题党到失实；标签用平台常见热词；publishNote 面向运营者。
+
+      {{segments_json}}
+    assert:
+      contains: ["\"titles\"", "\"tags\""]
+      max_bytes: 2000
+    output: meta_json
+    depends_on: [script]
