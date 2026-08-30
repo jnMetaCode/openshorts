@@ -76,10 +76,24 @@ export async function searchWikimedia(query, { limit = 3, fetchImpl = fetch } = 
   if (!r.ok) throw new Error(`Wikimedia ${r.status}`);
   const j = await r.json();
   const pages = Object.values(j.query?.pages ?? {});
-  return pages.filter((p) => /^video\//.test(p.imageinfo?.[0]?.mime ?? '')).slice(0, limit).map((p) => {
+  // Wikimedia 的全文检索会命中描述里的任意词（"cardboard spectrometer"），要求标题里至少含一个查询实词，否则宁可空着让上层换词/降级
+  const words = tokenize(query).filter((w) => w.length > 2);
+  const relevant = (p) => !words.length || words.some((w) => String(p.title).toLowerCase().includes(w));
+  return pages.filter((p) => /^video\//.test(p.imageinfo?.[0]?.mime ?? '') && relevant(p)).slice(0, limit).map((p) => {
     const ii = p.imageinfo[0]; const em = ii.extmetadata ?? {}; const strip = (h) => String(h ?? '').replace(/<[^>]+>/g, '').trim();
     return { id: `wikimedia:${p.pageid}`, source: 'wikimedia', file: null, url: ii.url, width: ii.width, height: ii.height, duration: null, license: strip(em.LicenseShortName?.value) || 'CC（见页面）', licenseUrl: em.LicenseUrl?.value ?? null, author: strip(em.Artist?.value) || null, page: ii.descriptionurl ?? `https://commons.wikimedia.org/?curid=${p.pageid}`, title: p.title };
   });
+}
+
+/** 检索词逐级放宽：全句 → 前 3 词 → 前 2 词 → 最长的 1 个词（Wikimedia 是字面匹配，长句必空；Pexels 也偏爱短词） */
+export function relaxQueries(query) {
+  const stop = new Set(['the', 'a', 'an', 'of', 'in', 'on', 'at', 'to', 'and', 'with', 'from', 'out', 'into', 'inside', 'close', 'up', 'view', 'shot', 'scene', 'cinematic', 'footage', 'video']);
+  const words = String(query).toLowerCase().split(/[^a-z0-9\u4e00-\u9fff]+/).filter((w) => w && !stop.has(w));
+  const out = [String(query).trim()];
+  if (words.length > 3) out.push(words.slice(0, 3).join(' '));
+  if (words.length > 2) out.push(words.slice(0, 2).join(' '));
+  if (words.length > 1) out.push(words[0]);   // 最后退到第一个实词——英文检索词里主体名词通常在最前（"cat …"），比"最长的词"靠谱
+  return [...new Set(out.filter(Boolean))];
 }
 
 /** 统一入口：按顺序找候选，去掉本项目已用过的；全部为空时返回 []（调用方降级到 AI 配图 / 纯色底） */
@@ -96,8 +110,10 @@ export async function findCandidates(query, { localDirs = [], used = new Set(), 
   for (const [fn, extra] of chain) {
     if (out.length >= limit) break;
     if ('key' in extra && !extra.key) continue;
-    try { const r = await fn(query, { ...extra, limit, minDuration, fetchImpl }); push(r); if (r.length) writeCacheIndex(query, r); }
-    catch (e) { errors.push(e.message); if (e instanceof StockRateLimit) continue; }
+    for (const q of relaxQueries(query)) {
+      try { const r = await fn(q, { ...extra, limit, minDuration, fetchImpl }); push(r); if (r.length) { writeCacheIndex(query, r); break; } }
+      catch (e) { errors.push(e.message); if (e instanceof StockRateLimit) break; }
+    }
   }
   if (!out.length && errors.length) throw new Error(`素材库检索失败：${errors.join('；')}`);
   return out.slice(0, limit);

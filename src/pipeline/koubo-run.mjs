@@ -33,6 +33,8 @@ export async function runKoubo(project, { outDir, log = () => {}, fetchImpl = fe
     log(`🎙 ${shot.id} 配音 ${durationSec.toFixed(1)}s${tts.words.length ? '' : '（无词级时间戳，按字数估）'}`);
 
     // 2) 画面
+    // 上次因"没找到素材"退成的纯色底带 fallback 标记：这次重跑要再找一遍；只有用户主动选的 solid 才不找
+    if (shot.visual?.source === 'solid' && shot.visual.fallback) shot.visual = { ...shot.visual, source: null, file: null, fallback: false };
     let clip = shot.visual.file; let chosen = null;
     if (!clip && shot.visual.source !== 'solid') {
       try {
@@ -47,7 +49,7 @@ export async function runKoubo(project, { outDir, log = () => {}, fetchImpl = fe
       // 降级：纯色底（有 lavfi 的 ffmpeg 都能出），字幕成为画面主体
       clip = path.join(work, `${shot.id}-solid.mp4`);
       await run(process.env.OPENSHORTS_FFMPEG || process.env.AO_FFMPEG || 'ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', '-f', 'lavfi', '-i', `color=c=0x1b1b2f:size=${w}x${h}:rate=${fps}:d=${durationSec.toFixed(2)}`, '-pix_fmt', 'yuv420p', clip]);
-      shot.visual = { ...shot.visual, source: 'solid', file: clip, cost: { kind: 'free' } };
+      shot.visual = { ...shot.visual, source: 'solid', file: clip, cost: { kind: 'free' }, fallback: true };
       notes.push(`镜头 ${shot.id} 没找到素材（${shot.query}），用了纯色底`);
       log(`⬛ ${shot.id} 无素材 → 纯色底`);
     } else if (chosen) {
