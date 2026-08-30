@@ -227,3 +227,45 @@ kaipian.get('/projects/:id/drama/redo', (req, res) => {
   });
   req.on('close', () => { try { child.kill('SIGTERM'); } catch { /* noop */ } });
 });
+
+// ───────────── 本地生成：状态 / 安装 sd-cli / 下载模型（SSE 进度；下载前必须确认许可证） ─────────────
+import { downloadWithResume, pickSdcppAsset } from '../src/local/download.mjs';
+import { execFileSync } from 'node:child_process';
+const HF = 'https://huggingface.co/unsloth/MiniMax-H3-GGUF/resolve/main';
+const MODEL_FILES = (m) => [[m.diffusion, `${HF}/${m.diffusion}`], [m.llm, `${HF}/${m.llm}`], ['minimax_h3_video_vae_fp16.safetensors', `${HF}/vae/minimax_h3_video_vae_fp16.safetensors`], ['minimax_h3_audio_vae_fp32.safetensors', `${HF}/vae/minimax_h3_audio_vae_fp32.safetensors`]];
+async function localModule() { const main = fileURLToPath(import.meta.resolve('agency-orchestrator')); return import(path.join(path.dirname(main), 'connectors', 'local-sdcpp.js')); }
+kaipian.get('/local/status', async (_req, res, next) => { try { const m = await localModule(); res.json({ ...m.localSdcppStatus(), catalog: m.LOCAL_MODELS, license: 'MiniMax-H3 Community License（含适用地域与用途限制）：https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/LICENSE' }); } catch (e) { next(e); } });
+kaipian.get('/local/install', async (req, res) => {
+  const q = req.query; const what = String(q.what || ''); const modelId = String(q.model || 'minimax-h3-q2');
+  if (q.agree !== '1') return res.status(400).json({ error: '下载前需确认已阅读 MiniMax-H3 Community License 与 stable-diffusion.cpp 的 MIT 许可' });
+  res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' });
+  const send = (ev, data) => res.write(`event: ${ev}\ndata: ${JSON.stringify(data)}\n\n`);
+  const ac = new AbortController(); req.on('close', () => ac.abort());
+  try {
+    const m = await localModule(); const { cli, modelsDir } = m.sdcppPaths();
+    if (what === 'sdcli' || what === 'all') {
+      const rel = await (await fetch('https://api.github.com/repos/leejet/stable-diffusion.cpp/releases/latest', { headers: { 'User-Agent': 'OpenShorts/2.0' }, signal: ac.signal })).json();
+      const asset = pickSdcppAsset(rel.assets ?? []); if (!asset) throw new Error(`没有找到本平台（${process.platform}/${process.arch}）的 sd-cli 预编译包，请从源码编译（见 doctor 提示）`);
+      send('log', { m: `下载 sd-cli ${rel.tag_name} · ${asset.name}（${(asset.size / 1048576).toFixed(0)} MB）` });
+      const zip = path.join(path.dirname(cli), asset.name);
+      await downloadWithResume(asset.browser_download_url, zip, { signal: ac.signal, onProgress: (p) => send('progress', { file: asset.name, ...p }) });
+      fs.mkdirSync(path.dirname(cli), { recursive: true });
+      execFileSync(process.platform === 'win32' ? 'tar' : 'unzip', process.platform === 'win32' ? ['-xf', zip, '-C', path.dirname(cli)] : ['-o', '-q', zip, '-d', path.dirname(cli)]);
+      const found = walkFind(path.dirname(cli), /^sd-cli(\.exe)?$/); if (!found) throw new Error('解压后没找到 sd-cli');
+      if (found !== cli) fs.copyFileSync(found, cli); if (process.platform !== 'win32') fs.chmodSync(cli, 0o755);
+      if (process.platform === 'darwin') { try { execFileSync('xattr', ['-cr', path.dirname(cli)]); } catch { /* 无隔离属性 */ } }
+      send('log', { m: `sd-cli 就绪：${cli}` });
+    }
+    if (what === 'model' || what === 'all') {
+      const cat = m.LOCAL_MODELS.find((x) => x.id === modelId); if (!cat) throw new Error(`未知档位 ${modelId}`);
+      for (const [name, url] of MODEL_FILES(cat)) {
+        send('log', { m: `下载 ${name}` });
+        await downloadWithResume(url, path.join(modelsDir, name), { signal: ac.signal, onProgress: (p) => send('progress', { file: name, ...p }) });
+      }
+      send('log', { m: `模型就绪：${modelsDir}` });
+    }
+    send('done', m.localSdcppStatus());
+  } catch (e) { send('error', { m: e.message }); }
+  res.end();
+});
+function walkFind(dir, re) { for (const n of fs.readdirSync(dir)) { const p = path.join(dir, n); const st = fs.statSync(p); if (st.isDirectory()) { const r = walkFind(p, re); if (r) return r; } else if (re.test(n)) return p; } return null; }

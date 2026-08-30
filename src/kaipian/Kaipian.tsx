@@ -22,6 +22,9 @@ export const Kaipian = () => {
   const [dramaOpts, setDramaOpts] = useState<{localReady: boolean; cloudProviders: string[]; doctor: string[]} | null>(null);
   const [cloud, setCloud] = useState({video_provider: 'apimart', video_model: 'veo3.1-fast', video_resolution: '720p', video_duration: '8', image_provider: '', image_model: ''});
   const [preflight, setPreflight] = useState<string[]>([]);
+  const [localSt, setLocalSt] = useState<{ok: boolean; cliFound: boolean; memGB: number; modelsDir: string; cli: string; license: string; models: Array<{id: string; label: string; usable: boolean; present: boolean; missing: string[]; reason?: string}>} | null>(null);
+  const [agree, setAgree] = useState(false);
+  const [dl, setDl] = useState<{file?: string; bytes?: number; total?: number; log: string[]} | null>(null);
   const [providers, setProviders] = useState<{video: Array<{id: string; shape: string; hasKey: boolean; models: Array<{id: string; resolutions: string[]; durations: number[]; ratios: string[]}>}>; image: Array<{id: string; models: string[]}>} | null>(null);
   const [redo, setRedo] = useState<{shot: string; feedback: string; tier: 'same' | 'local' | 'cloud'} | null>(null);
   const [topic, setTopic] = useState('');
@@ -48,6 +51,7 @@ export const Kaipian = () => {
     setSources(s); setVoices(v); setAoStatus(a); setCfg(c); setProjects(ps); if (c?.tts?.voice) setVoice(c.tts.voice);
     api<any>('/api/kaipian/drama/options').then(setDramaOpts).catch(() => {});
     api<any>('/api/kaipian/drama/providers').then(setProviders).catch(() => {});
+    api<any>('/api/kaipian/local/status').then(setLocalSt).catch(() => {});
   };
   useEffect(() => {
     refresh().catch((e) => setError(String(e.message)));
@@ -88,6 +92,14 @@ export const Kaipian = () => {
     es.addEventListener('log', (e: any) => setLog((l) => [...l, JSON.parse(e.data).m]));
     es.addEventListener('done', async () => { es.close(); const p = await api<Project>(`/api/kaipian/projects/${encodeURIComponent(project.id)}`); setProject(p); setBusy(''); });
     es.addEventListener('error', (e: any) => { try { setError(JSON.parse(e.data).m); } catch { setError('重出中断'); } es.close(); setBusy(''); });
+  };
+  const installLocal = (what: 'sdcli' | 'model' | 'all', model = 'minimax-h3-q2') => {
+    setDl({log: []}); setError('');
+    const es = new EventSource(`/api/kaipian/local/install?what=${what}&model=${model}&agree=1`);
+    es.addEventListener('log', (e: any) => setDl((d) => ({...(d ?? {log: []}), log: [...(d?.log ?? []), JSON.parse(e.data).m]})));
+    es.addEventListener('progress', (e: any) => { const p = JSON.parse(e.data); setDl((d) => ({...(d ?? {log: []}), file: p.file, bytes: p.bytes, total: p.total})); });
+    es.addEventListener('done', async (e: any) => { es.close(); setLocalSt((s) => ({...(s as any), ...JSON.parse(e.data)})); setDl((d) => ({...(d ?? {log: []}), log: [...(d?.log ?? []), '完成'], bytes: undefined})); await refresh(); });
+    es.addEventListener('error', (e: any) => { try { setError(JSON.parse(e.data).m); } catch { setError('下载中断（可重试，支持断点续传）'); } es.close(); });
   };
   const openProject = async (id: string) => { const p = await api<Project>(`/api/kaipian/projects/${encodeURIComponent(id)}`); setProject(p); setStep(p.final ? 4 : 3); };
   const copy = (t: string) => navigator.clipboard?.writeText(t);
@@ -135,9 +147,19 @@ export const Kaipian = () => {
     {step === 2 && line === 'drama' && <section className="kp-card">
       <h3>出片档位</h3>
       <div className="kp-lines">
-        <button className={tier === 'local' ? 'active' : ''} disabled={!dramaOpts?.localReady} onClick={() => setTier('local')}><b>本地草稿档 · 不花钱</b><small>{dramaOpts?.localReady ? '本机 sd.cpp 跑 MiniMax-H3 Q2：640×384、2 秒/镜、每镜约 3–4 分钟；画质草稿级，用来验证方向' : '未就绪：需要 sd-cli + 约 27 GB 模型（openshorts doctor 看怎么装）'}</small></button>
+        <button className={tier === 'local' ? 'active' : ''} onClick={() => setTier('local')}><b>本地草稿档 · 不花钱</b><small>{dramaOpts?.localReady ? '本机 sd.cpp 跑 MiniMax-H3 Q2：640×384、2 秒/镜、每镜约 3–4 分钟；画质草稿级，用来验证方向' : '未就绪：需要 sd-cli + 约 27 GB 模型（openshorts doctor 看怎么装）'}</small></button>
         <button className={tier === 'cloud' ? 'active' : ''} onClick={() => setTier('cloud')}><b>云端成片档 · 按秒计费</b><small>{dramaOpts?.cloudProviders.length ? `已配 key：${dramaOpts.cloudProviders.join(' / ')}` : '还没配视频供应商 key（秘塔 / APIMart / Agnes / 火山）'}</small></button>
       </div>
+      {tier !== 'cloud' && localSt && !localSt.ok && <div className="kp-keys" style={{marginTop: 0}}>
+        <b>本地草稿档还差：</b>{!localSt.cliFound && <span> sd-cli</span>}{localSt.models.filter((m) => m.usable && !m.present).length > 0 && <span> 模型文件（约 27 GB，可断点续传）</span>}
+        <p style={{fontSize: 11, color: '#a99b8e'}}>本机 {localSt.memGB} GB 内存，可用档位：{localSt.models.filter((m) => m.usable).map((m) => m.id).join(' / ') || '无（低于 24 GB）'}。装到 <code>{localSt.modelsDir}</code>。</p>
+        <label className="kp-check"><input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)}/> 我已阅读并同意 {localSt.license.split('：')[0]}（<a href={localSt.license.split('：')[1]} target="_blank" rel="noreferrer">条款 ↗</a>）与 stable-diffusion.cpp 的 MIT 许可</label>
+        <div className="kp-actions" style={{justifyContent: 'flex-start'}}>
+          {!localSt.cliFound && <button disabled={!agree || !!dl?.bytes} onClick={() => installLocal('sdcli')}>安装 sd-cli（预编译包）</button>}
+          {localSt.models.filter((m) => m.usable && !m.present).slice(0, 1).map((m) => <button key={m.id} disabled={!agree || !!dl?.bytes} onClick={() => installLocal('model', m.id)}>下载模型 {m.id}</button>)}
+        </div>
+        {dl && <div className="kp-log" style={{maxHeight: 120}}>{dl.log.join('\n')}{dl.bytes ? `\n${dl.file}：${(dl.bytes / 1048576).toFixed(0)} MB${dl.total ? ` / ${(dl.total / 1048576).toFixed(0)} MB（${Math.round(dl.bytes / dl.total * 100)}%）` : ''}` : ''}</div>}
+      </div>}
       {tier === 'cloud' && (() => {
         const vps = (providers?.video ?? []).filter((v) => v.shape !== 'local');
         const vp = vps.find((v) => v.id === cloud.video_provider);
@@ -161,7 +183,7 @@ export const Kaipian = () => {
       })()}
       <div className="kp-warn">下拉只列 AO 供应商表里真机核实过的模型与档位（各家 id 不通用，不猜）；没列出的可手填。本地草稿档的定妆图仍走云端出图。</div>
       {preflight.length > 0 && <div className="kp-cost"><b>本次花费预览</b>{preflight.map((l, i) => <small key={i} style={{display: 'block'}}>{l}</small>)}</div>}
-      <div className="kp-actions"><button onClick={() => setStep(1)}>上一步</button><button onClick={dramaPreflight} disabled={!!busy || !cloud.image_model}>看花费</button><button className="primary" disabled={!!busy || !cloud.image_model || preflight.length === 0} onClick={dramaRun}>确认花费，出片 →</button></div>
+      <div className="kp-actions"><button onClick={() => setStep(1)}>上一步</button><button onClick={dramaPreflight} disabled={!!busy || !cloud.image_model}>看花费</button><button className="primary" disabled={!!busy || !cloud.image_model || preflight.length === 0 || (tier === 'local' && !localSt?.ok)} onClick={dramaRun}>确认花费，出片 →</button></div>
     </section>}
 
     {step === 2 && line === 'koubo' && <section className="kp-card">
