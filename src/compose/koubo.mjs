@@ -49,7 +49,10 @@ export async function finalize({ video, ass, srt, bgm, bgmVolume = 0.2, aiLabel 
   const inputs = ['-i', video]; const fc = [];
   // 直接映射流写 0:v / 0:a；经过 filter_complex 的才用 [label]——`-map [0:a]` 会被 ffmpeg 当非法参数拒掉
   let v = '0:v', a = '0:a';
-  if (bgm && fs.existsSync(bgm)) { inputs.push('-stream_loop', '-1', '-i', bgm); fc.push(`[1:a]volume=${bgmVolume}[bg];[0:a][bg]amix=inputs=2:duration=first:dropout_transition=2[am]`); a = '[am]'; }
+  // 响度归一化到 -16 LUFS（抖音/视频号口播常用；Edge TTS 原始约 -23，质检真机抓到的）。有 BGM 先混再归一。
+  const norm = 'loudnorm=I=-16:TP=-1.5:LRA=11';
+  if (bgm && fs.existsSync(bgm)) { inputs.push('-stream_loop', '-1', '-i', bgm); fc.push(`[1:a]volume=${bgmVolume}[bg];[0:a][bg]amix=inputs=2:duration=first:dropout_transition=2,${norm}[am]`); a = '[am]'; }
+  else { fc.push(`[0:a]${norm}[am]`); a = '[am]'; }
   if (canBurn) { fc.push(`[0:v]subtitles='${ass.replace(/'/g, "\\'").replace(/:/g, '\\:')}'[sv]`); v = '[sv]'; }
   else if (ass) notes.push('这台 ffmpeg 没有 libass（subtitles 滤镜），字幕挂为软字幕轨（播放器可开关）；要烧进画面请装带 libass 的 ffmpeg');
   if (aiLabel && (await hasFilter('drawtext'))) { fc.push(`${v.startsWith('[') ? v : '[0:v]'}drawtext=text='AI 生成':fontsize=28:fontcolor=white@0.7:x=w-tw-36:y=36[lv]`); v = '[lv]'; }

@@ -5,7 +5,7 @@ type Src = {ok: boolean; reason: string; tier?: string};
 type Sources = {stock: Src; image: Src; local: Src; cloud: Src; layered: Src; tools: {ffmpeg: boolean; whisper: boolean; magick: boolean}};
 type Voice = {id: string; label: string};
 type Shot = {id: string; text: string; visualIntent: string; query: string; emphasis: string[]; durationSec: number | null; status: string; visual: {source: string | null; file: string | null; author?: string | null; license?: string}};
-type Project = {id: string; title: string; topic: string; shots: Shot[]; voice: {voice: string; rate: number}; captions: {preset: string}; defaults: {visualSource: string; localDirs: string[]}; publish: {titles: string[]; tags: string[]; note: string; aiLabelText: string}; final?: {file: string; srt: string; cover: string | null; publish: string; durationSec: number; notes: string[]} | null; provenance: Array<{shot: string; source: string; author?: string | null; license?: string; page?: string | null}>};
+type Project = {id: string; title: string; topic: string; shots: Shot[]; voice: {voice: string; rate: number}; captions: {preset: string}; defaults: {visualSource: string; localDirs: string[]}; publish: {titles: string[]; tags: string[]; note: string; aiLabelText: string}; final?: {file: string; srt: string; cover: string | null; publish: string; durationSec: number; notes: string[]; quality?: {pass: boolean; warnings: number; items: Array<{id: string; status: string; msg: string}>}} | null; provenance: Array<{shot: string; source: string; author?: string | null; license?: string; page?: string | null}>};
 
 const api = async <T,>(url: string, init?: RequestInit): Promise<T> => { const r = await fetch(url, {headers: {'Content-Type': 'application/json'}, ...init}); const j = await r.json(); if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`); return j; };
 const fileUrl = (p: Project, abs: string) => `/api/kaipian/projects/${encodeURIComponent(p.id)}/file/${encodeURIComponent(abs.split('/').pop() || '')}`;
@@ -140,6 +140,7 @@ export const Kaipian = () => {
           <h4>话题</h4><p className="kp-tags" onClick={() => copy(project.publish.tags.map((t) => `#${t}`).join(' '))}>{project.publish.tags.map((t) => `#${t}`).join(' ')}</p>
           <h4>发布说明</h4><p>{project.publish.note}<br/><small>AI 标识：{project.publish.aiLabelText}</small></p>
           {project.provenance.length > 0 && <><h4>素材署名</h4><ul className="kp-prov">{project.provenance.map((p) => <li key={p.shot}>{p.shot}: {p.source}{p.author ? ` · ${p.author}` : ''}{p.license ? `（${p.license}）` : ''}</li>)}</ul></>}
+          {project.final.quality && <><h4>质检 {project.final.quality.pass ? '✅ 通过' : '⛔ 有问题'}{project.final.quality.warnings ? ` · ${project.final.quality.warnings} 条提醒` : ''}</h4><ul className="kp-prov">{project.final.quality.items.map((q) => <li key={q.id}>{q.status === 'pass' ? '✅' : q.status === 'warn' ? '⚠️' : '⛔'} {q.msg}</li>)}</ul></>}
           {project.final.notes.length > 0 && <div className="kp-warn"><b>提示</b><ul>{project.final.notes.map((n, i) => <li key={i}>{n}</li>)}</ul></div>}
           <div className="kp-actions"><button onClick={() => setStep(3)}>改文案重出</button><button className="primary" onClick={() => { setProject(null); setTopic(''); setStep(1); }}>再做一条</button></div>
         </div>

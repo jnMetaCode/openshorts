@@ -86,7 +86,11 @@ switch (cmd) {
     if (free < project.shots.length) console.log(`  其余 ${project.shots.length - free} 个走 AI 出图/出片，按各家计费（数量级见 ao plan）`);
     break;
   }
-  case 'doctor': runAO(['doctor', ...rest]); break;
+  case 'doctor': {
+    const { doctor, formatDoctor } = await import('../src/doctor.mjs');
+    console.log('\nOpenShorts 体检'); console.log(formatDoctor(await doctor())); console.log('\nAO 引擎体检（文本/出图/出片供应商）：');
+    runAO(['doctor', ...rest]); break;
+  }
   case 'version': case '-v': case '--version': {
     const me = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf-8'));
     const ao = JSON.parse(fs.readFileSync(aoBin().pkg, 'utf-8'));

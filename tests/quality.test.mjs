@@ -1,64 +1,23 @@
-import assert from 'node:assert/strict';
 import test from 'node:test';
+import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
-import {fileURLToPath} from 'node:url';
-import {analyzeProject, mediaSummaryFromProbe} from '../scripts/lib/quality.mjs';
+import { spawnSync } from 'node:child_process';
+import { checkKoubo } from '../src/quality/check.mjs';
+const hasFfmpeg = spawnSync('ffmpeg', ['-version']).status === 0;
 
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const project = JSON.parse(fs.readFileSync(path.join(root, 'projects', 'sample.json'), 'utf8'));
-
-test('ffprobe 输出可归一化为媒体摘要', () => {
-  const media = mediaSummaryFromProbe({streams: [{codec_type: 'video', codec_name: 'h264', width: 1920, height: 1080, r_frame_rate: '30/1'}, {codec_type: 'audio', codec_name: 'aac', profile: 'LC', sample_rate: '48000', channels: 2, channel_layout: 'stereo', duration: '11.04'}], format: {duration: '11.05', size: '1000'}});
-  assert.deepEqual(media, {duration: 11.05, size: 1000, width: 1920, height: 1080, fps: 30, videoCodec: 'h264', audioCodec: 'aac', audioProfile: 'LC', audioSampleRate: 48000, audioChannels: 2, audioChannelLayout: 'stereo', audioDuration: 11.04});
-});
-
-test('质检会发现音轨规格和尾长异常', () => {
-  const result = analyzeProject({project, publicDir: path.join(root, 'public'), media: {duration: 11.05, size: 1000, width: 1920, height: 1080, fps: 30, videoCodec: 'h264', audioCodec: 'aac', audioProfile: 'HE-AAC', audioSampleRate: 44100, audioChannels: 1, audioDuration: 10}});
-  assert.ok(result.warnings.some((item) => item.includes('profile')));
-  assert.ok(result.warnings.some((item) => item.includes('44100')));
-  assert.ok(result.warnings.some((item) => item.includes('声道')));
-  assert.ok(result.warnings.some((item) => item.includes('尾长')));
-});
-
-test('示例项目通过结构和素材质检', () => {
-  const result = analyzeProject({project, publicDir: path.join(root, 'public'), media: {duration: 11.05, size: 1000, width: 1920, height: 1080, fps: 30, videoCodec: 'h264', audioCodec: 'aac'}});
-  assert.equal(result.errors.length, 0);
-  assert.equal(result.status, 'passed');
-});
-
-test('质检能发现字幕越界和缺失素材', () => {
-  const broken = structuredClone(project);
-  broken.scenes[0].captions[0].toFrame = 999;
-  broken.scenes[0].layers[0].src = 'missing.png';
-  const result = analyzeProject({project: broken, publicDir: path.join(root, 'public'), media: {duration: 11, size: 1, width: 1920, height: 1080, fps: 30, videoCodec: 'h264', audioCodec: null}});
-  assert.ok(result.errors.some((item) => item.includes('超出镜头范围')));
-  assert.ok(result.errors.some((item) => item.includes('素材不存在')));
-});
-
-const okMedia = {duration: 11.05, size: 1000, width: 1920, height: 1080, fps: 30, videoCodec: 'h264', audioCodec: 'aac'};
-
-test('质检能发现词中断行的字幕', () => {
-  const broken = structuredClone(project);
-  broken.scenes[0].captions = [
-    {text: '如果天上同时挂着十个太阳，河干', fromFrame: 0, toFrame: 60, words: []},
-    {text: '了，地裂了。', fromFrame: 60, toFrame: 120, words: []},
-  ];
-  const result = analyzeProject({project: broken, publicDir: path.join(root, 'public'), media: okMedia});
-  assert.ok(result.warnings.some((item) => item.includes('没有停在标点上')));
-});
-
-test('质检能发现读不完和过长的字幕', () => {
-  const broken = structuredClone(project);
-  broken.scenes[0].captions = [{text: '这一条字幕特别长长到在竖屏上一定会折行并且完全没有时间读完它真的很长', fromFrame: 0, toFrame: 30, words: []}];
-  const result = analyzeProject({project: broken, publicDir: path.join(root, 'public'), media: okMedia});
-  assert.ok(result.warnings.some((item) => item.includes('字/秒')));
-  assert.ok(result.warnings.some((item) => item.includes('折行')));
-});
-
-test('竖屏项目的字幕安全区被记为通过项', () => {
-  const portrait = structuredClone(project);
-  portrait.width = 1080; portrait.height = 1920;
-  const result = analyzeProject({project: portrait, publicDir: path.join(root, 'public'), media: {...okMedia, width: 1080, height: 1920}});
-  assert.ok(result.passes.some((item) => item.includes('安全区')));
+test('口播质检：分辨率/时长/音轨/响度/字幕/封面/AI 标识逐项报事实', { skip: !hasFfmpeg && '无 ffmpeg' }, async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'os-q-'));
+  const f = path.join(dir, 'x.mp4');
+  spawnSync('ffmpeg', ['-v', 'error', '-y', '-f', 'lavfi', '-i', 'color=c=black:size=1080x1920:rate=30:d=3', '-f', 'lavfi', '-i', 'sine=frequency=440:duration=3', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-metadata', 'comment=contains AI-generated content', '-shortest', f]);
+  const project = { output: { w: 1080, h: 1920 }, shots: [{ durationSec: 1.5, status: 'ready', visual: { source: 'solid' } }, { durationSec: 1.5, status: 'ready', visual: { source: 'stock' } }], final: { file: f, cover: null } };
+  const q = await checkKoubo(project, { burnedCaptions: false });
+  const by = Object.fromEntries(q.items.map((i) => [i.id, i]));
+  assert.equal(by.resolution.status, 'pass'); assert.equal(by.duration.status, 'pass'); assert.equal(by.audio.status, 'pass');
+  assert.equal(by['ai-label'].status, 'pass'); assert.equal(by.captions.status, 'warn', '软轨/无字幕都只是提醒'); assert.equal(by.cover.status, 'warn'); assert.equal(by.solid.status, 'warn');
+  assert.ok(['pass', 'warn'].includes(by.loudness.status));
+  assert.equal(q.pass, true);
+  const bad = await checkKoubo({ ...project, output: { w: 1920, h: 1080 } });
+  assert.equal(bad.pass, false);
 });

@@ -1,6 +1,7 @@
 # Changelog
 
 ## [2.0.0-alpha.1] - 2026-08-30 · M1 口播科普（免费路径跑通）
+- **出片后自动质检 + `openshorts doctor`**：质检报分辨率/时长偏差/音轨/EBU R128 响度/字幕（软轨只算提醒）/封面/AI 标识/镜头就绪，结果进项目 JSON 与界面第 4 步；真机抓到 Edge TTS 成片 -23 LUFS 偏轻 → 合成加 `loudnorm` 归一到 -16（实测 -17.6）。doctor 体检 ffmpeg 与 libass/drawtext/ebur128、中文字体、`ulimit -n`、输出目录、whisper、四种来源，再转 AO doctor。
 - **四步界面「开片」成为默认入口**（`/`；v1 图层动画编辑器移到 `/editor`）：① 输入（内容线 / 话题 / 时长 / 语气，无文本 key 时指路）② 来源与花费（四种来源可用性卡片、素材库 key 引导、本地素材夹、音色试听、字幕预设、花费 0 元说明）③ 预览与调整（每镜文案 / 画面意图 / 检索词可改，出片日志实时）④ 出片与发布（播放器、下载 mp4/SRT/封面、标题点击复制、话题、发布说明、素材署名、降级提示）。后端 `server/kaipian.mjs`：`/api/kaipian/*`（sources / config / voices / tts/preview / new / projects / run(SSE) / file）。
 - `templates/koubo-kepu.yaml`：话题 → 分段口播脚本 JSON（钩子/要点/收尾，每段画面意图 + 英文检索词 + 高亮词，assert 校验 + 验收）→ 标题×3 / 标签×5 / 发布说明 / AI 标识。
 - `openshorts new koubo-kepu --topic …`：库调用 AO `run` 跑模板 → 项目 JSON（`~/OpenShorts/<项目>/project.json`）。

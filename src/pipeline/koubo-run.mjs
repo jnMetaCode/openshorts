@@ -9,7 +9,8 @@ import { promisify } from 'node:util';
 import { synthesize } from '../voice/edge-tts.mjs';
 import { findCandidates, materialize } from '../sources/stock.mjs';
 import { buildCues, estimateWords, toSRT, toASS, alignPunctuation } from '../captions/build.mjs';
-import { renderSegment, concatSegments, finalize, probeDuration } from '../compose/koubo.mjs';
+import { renderSegment, concatSegments, finalize, probeDuration, hasFilter } from '../compose/koubo.mjs';
+import { checkKoubo } from '../quality/check.mjs';
 const run = promisify(execFile);
 
 export async function runKoubo(project, { outDir, log = () => {}, fetchImpl = fetch, config } = {}) {
@@ -77,6 +78,8 @@ export async function runKoubo(project, { outDir, log = () => {}, fetchImpl = fe
   const publishTxt = path.join(dir, `${project.id}-发布文案.txt`);
   fs.writeFileSync(publishTxt, [`标题候选：`, ...project.publish.titles.map((t, i) => `  ${i + 1}. ${t}`), ``, `话题：${project.publish.tags.map((t) => `#${t}`).join(' ')}`, ``, `发布说明：${project.publish.note}`, `AI 标识：${project.publish.aiLabelText}`, ``, `素材署名：`, ...project.provenance.map((p) => `  ${p.shot}: ${p.source} ${p.author ?? ''} ${p.page ?? ''} (${p.license})`)].join('\n'));
   project.final = { file: out, srt, cover: fs.existsSync(cover) ? cover : null, publish: publishTxt, durationSec: await probeDuration(out), notes };
+  // 6) 自动质检（只报事实）
+  try { project.final.quality = await checkKoubo(project, { burnedCaptions: await hasFilter('subtitles') }); log(`🔍 质检 ${project.final.quality.pass ? '通过' : '有问题'}，${project.final.quality.warnings} 条提醒`); } catch (e) { notes.push(`质检失败：${e.message}`); }
   fs.writeFileSync(path.join(dir, 'project.json'), JSON.stringify(project, null, 2));
   return project;
 }
