@@ -6,6 +6,8 @@
 
 ![License](https://img.shields.io/badge/license-MIT-green) ![Node](https://img.shields.io/badge/node-%E2%89%A520-brightgreen) ![Tests](https://img.shields.io/badge/tests-121%20passing-brightgreen) ![Format](https://img.shields.io/badge/format-9%3A16%20%7C%2016%3A9-blue)
 
+> **v2 方向（2026-08-30 定案）**：OpenShorts · 开片 = **两条内容线（口播短视频 / AI 短剧）× 三种画面来源（素材库 / 本地 AI 生成 / 云端 API）**，编排与出片引擎复用 [agency-orchestrator](https://github.com/jnMetaCode/agency-orchestrator)。默认零成本跑通第一条片，花多少钱在运行前看见。需求 / 架构 / 计划 / 决策见 [`docs/v2/`](docs/v2/00-README.md)。下面的剪纸动画 / 信息板路线作为"图层动画"来源保留。
+
 一条本地优先的开源短视频生产线：**文案进，成片出**。三条内容路线共用同一套 JSON 协议、Remotion 渲染与七道质量门禁——上面这条演示 GIF，就是它自己渲的。
 
 > **English**: OpenShorts is a local-first, open-source short-video production line — script in, finished video out. Three content routes (paper-cut story animation / info-board tech explainer / product demo) share one JSON protocol, a Remotion renderer with an FFmpeg fallback, per-story TTS + synthesized music, platform-safe burned subtitles, and a seven-gate QA pipeline (loudness −14 LUFS, true peak, caption safe-zones, asset provenance, Whisper content verification, SHA-256 release manifest). The demo GIF above was rendered by the pipeline itself.
