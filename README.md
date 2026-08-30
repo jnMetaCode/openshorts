@@ -18,7 +18,6 @@
 | --- | --- | --- | --- |
 | 《后羿射日》 | 故事片 · 纸片动画 | 62s | [content/nine-suns](content/nine-suns) |
 | 《三天荔枝道》 | 故事片 · 纸片动画 | 55s | [content/lychee-road](content/lychee-road) |
-| 《十美元，两小时，五千五百行》 | 技术解读 · 信息板 | 84s | [content/karpathy-worlds](content/karpathy-worlds) |
 | 《这条视频是它自己生成的》 | 产品演示 · 自举 | 48s | [content/openshorts-demo](content/openshorts-demo) |
 
 每条都由 `npm run story -- <名字> render` 一条命令渲出，并通过全部验收门禁。
