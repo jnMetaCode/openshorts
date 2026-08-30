@@ -123,3 +123,6 @@
 | Edge TTS 非官方端点失效 | 抽象 TTS 接口；备选 AO `type: tts`（付费）与本地离线方案（`docs/tts.md`），失效时界面提示切换 |
 | 脚本模型输出非法 JSON | `assert` + 自动修复/返工一轮；仍失败给用户可编辑的分段表 |
 | 平台对 AI 内容限流/要求标识 | 默认加显式+隐式标识；发布规格随平台规则更新 |
+| 模型许可证限制（H3 Community License 的地域/用途条款） | 下载前展示并确认（ADR-014）；界面不替用户判断合规，只把条款摆在眼前 |
+| Windows 用户占比高但本地生成路径只在 Mac 实测 | M2 加 Windows（CUDA/Vulkan 预编译 sd-cli）实测；不实测不写"支持" |
+| 文档与代码 Mac 中心化 | CI 三平台跑免费路径 E2E（Pexels key 放 secrets） |

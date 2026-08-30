@@ -49,3 +49,11 @@
 
 ## ADR-012 · 界面不暴露工作流概念（2026-08-30）
 - 用户是创作者不是开发者；"工作流 / DAG / YAML"留在 AO 与开发者 CLI，界面只有"模板、来源、镜头、成片"。模板 YAML 的存在通过 `openshorts new` 与 `templates/` 目录对开发者可见。
+
+## ADR-013 · 不删除重建 GitHub 仓库（2026-08-30）
+- 疑问：新建仓库"推广权重"是否更高。事实：GitHub 没有按创建时间加权的推荐；Trending 只看**时间窗内新增 star**，搜索排序看 star/活跃度/README 关键词；删除重建只会丢掉历史、已有 topics、外部链接，且同名重建后旧链接 404。
+- 决定：保留仓库；用 v2.0.0 Release、重写 README 第一屏、双语描述、Discussions 与首发节奏来"重新亮相"。
+
+## ADR-014 · 模型许可证要在产品里可见（2026-08-30）
+- MiniMax-H3 是 Community License（非 MIT/Apache，有适用地域与使用限制）；素材库 license 各异。
+- 决定：本地模型下载前展示许可证摘要并要求确认一次；provenance 记录每个资产的 license；README 的成片表标注来源与许可。
