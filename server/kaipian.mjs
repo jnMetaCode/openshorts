@@ -273,3 +273,33 @@ function walkFind(dir, re) { for (const n of fs.readdirSync(dir)) { const p = pa
 // 链接 → 正文（口播线输入）：只抓公开页，超时 20 s，正文 ≤ 6000 字
 import { fetchArticle } from '../src/input/url-text.mjs';
 kaipian.post('/fetch-url', async (req, res, next) => { try { res.json(await fetchArticle(String(req.body?.url ?? '').trim())); } catch (e) { res.status(400).json({ error: e.message }); } });
+
+// 批量（口播线）：SSE，逐版进度；产物在 <项目>/variants/<id>/
+import { planVariants, runBatch } from '../src/pipeline/batch.mjs';
+kaipian.get('/projects/:id/batch', async (req, res) => {
+  const f = path.join(projDir(req.params.id), 'project.json'); if (!fs.existsSync(f)) return res.status(404).json({ error: '项目不存在' });
+  const project = JSON.parse(fs.readFileSync(f, 'utf-8')); if (project.line !== 'koubo') return res.status(400).json({ error: '批量目前只支持口播线' });
+  const split = (x) => (x ? String(x).split(',').map((t) => t.trim()).filter(Boolean) : []);
+  const variants = planVariants({ voices: split(req.query.voices), captions: split(req.query.captions), rates: split(req.query.rates).map(Number) }, project);
+  if (variants.length > 12) return res.status(400).json({ error: '一次最多 12 版' });
+  res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' });
+  const send = (ev, data) => res.write(`event: ${ev}\ndata: ${JSON.stringify(data)}\n\n`);
+  send('plan', { variants });
+  try { const results = await runBatch(project, variants, { baseDir: path.dirname(f), log: (m) => send('log', { m }), onVariant: (r) => send('variant', r) }); send('done', { results }); }
+  catch (e) { send('error', { m: e.message }); }
+  res.end();
+});
+
+// 发布包：/projects/:id/publish-pack?platform=douyin → 目录 + zip（不自动发布）
+import { makePublishPack, PLATFORMS } from '../src/publish/pack.mjs';
+kaipian.get('/platforms', (_req, res) => res.json(PLATFORMS));
+kaipian.post('/projects/:id/publish-pack', (req, res) => {
+  const f = path.join(projDir(req.params.id), 'project.json'); if (!fs.existsSync(f)) return res.status(404).json({ error: '项目不存在' });
+  try { const r = makePublishPack(JSON.parse(fs.readFileSync(f, 'utf-8')), { platform: req.body?.platform || 'douyin' }); res.json({ ...r, zipName: r.zip ? path.basename(r.zip) : null }); } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+kaipian.get('/projects/:id/variant/:vid', (req, res) => {
+  const dir = path.join(projDir(req.params.id), 'variants', safe(req.params.vid)); if (!fs.existsSync(dir)) return res.status(404).end();
+  const mp4 = fs.readdirSync(dir).find((f) => f.endsWith('.mp4')); if (!mp4) return res.status(404).end();
+  res.download(path.join(dir, mp4));
+});

@@ -25,6 +25,11 @@ export const Kaipian = () => {
   const [localSt, setLocalSt] = useState<{ok: boolean; cliFound: boolean; memGB: number; modelsDir: string; cli: string; license: string; models: Array<{id: string; label: string; usable: boolean; present: boolean; missing: string[]; reason?: string}>} | null>(null);
   const [agree, setAgree] = useState(false);
   const [dl, setDl] = useState<{file?: string; bytes?: number; total?: number; log: string[]} | null>(null);
+  const [batchVoices, setBatchVoices] = useState<string[]>([]);
+  const [batchCaptions, setBatchCaptions] = useState<string[]>(['douyin']);
+  const [batchResults, setBatchResults] = useState<Array<{id: string; ok: boolean; file?: string; durationSec?: number; error?: string}>>([]);
+  const [platform, setPlatform] = useState('douyin');
+  const [pack, setPack] = useState<{dir: string; zipName: string | null; files: string[]} | null>(null);
   const [providers, setProviders] = useState<{video: Array<{id: string; shape: string; hasKey: boolean; models: Array<{id: string; resolutions: string[]; durations: number[]; ratios: string[]}>}>; image: Array<{id: string; models: string[]}>} | null>(null);
   const [redo, setRedo] = useState<{shot: string; feedback: string; tier: 'same' | 'local' | 'cloud'} | null>(null);
   const [topic, setTopic] = useState('');
@@ -103,6 +108,15 @@ export const Kaipian = () => {
     es.addEventListener('done', async (e: any) => { es.close(); setLocalSt((s) => ({...(s as any), ...JSON.parse(e.data)})); setDl((d) => ({...(d ?? {log: []}), log: [...(d?.log ?? []), '完成'], bytes: undefined})); await refresh(); });
     es.addEventListener('error', (e: any) => { try { setError(JSON.parse(e.data).m); } catch { setError('下载中断（可重试，支持断点续传）'); } es.close(); });
   };
+  const runBatch = () => {
+    if (!project) return; setBatchResults([]); setLog([]); setBusy('批量出片中…'); setError('');
+    const es = new EventSource(`/api/kaipian/projects/${encodeURIComponent(project.id)}/batch?voices=${encodeURIComponent(batchVoices.join(','))}&captions=${encodeURIComponent(batchCaptions.join(','))}`);
+    es.addEventListener('log', (e: any) => setLog((l) => [...l, JSON.parse(e.data).m]));
+    es.addEventListener('variant', (e: any) => setBatchResults((r) => [...r, JSON.parse(e.data)]));
+    es.addEventListener('done', () => { es.close(); setBusy(''); });
+    es.addEventListener('error', (e: any) => { try { setError(JSON.parse(e.data).m); } catch { setError('批量中断'); } es.close(); setBusy(''); });
+  };
+  const makePack = async () => { if (!project) return; setBusy('打发布包…'); try { setPack(await api(`/api/kaipian/projects/${encodeURIComponent(project.id)}/publish-pack`, {method: 'POST', body: JSON.stringify({platform})})); } catch (e: any) { setError(e.message); } finally { setBusy(''); } };
   const openProject = async (id: string) => { const p = await api<Project>(`/api/kaipian/projects/${encodeURIComponent(id)}`); setProject(p); setStep(p.final ? 4 : 3); };
   const copy = (t: string) => navigator.clipboard?.writeText(t);
 
@@ -270,6 +284,17 @@ export const Kaipian = () => {
           {project.provenance.length > 0 && <><h4>素材署名</h4><ul className="kp-prov">{project.provenance.map((p) => <li key={p.shot}>{p.shot}: {p.source}{p.author ? ` · ${p.author}` : ''}{p.license ? `（${p.license}）` : ''}</li>)}</ul></>}
           {project.final.quality && <><h4>质检 {project.final.quality.pass ? '✅ 通过' : '⛔ 有问题'}{project.final.quality.warnings ? ` · ${project.final.quality.warnings} 条提醒` : ''}</h4><ul className="kp-prov">{project.final.quality.items.map((q) => <li key={q.id}>{q.status === 'pass' ? '✅' : q.status === 'warn' ? '⚠️' : '⛔'} {q.msg}</li>)}</ul></>}
           {project.final.notes.length > 0 && <div className="kp-warn"><b>提示</b><ul>{project.final.notes.map((n, i) => <li key={i}>{n}</li>)}</ul></div>}
+          <h4>发布包</h4>
+          <div className="kp-inline"><select value={platform} onChange={(e) => setPlatform(e.target.value)}><option value="douyin">抖音</option><option value="shipinhao">视频号</option><option value="bilibili">B 站</option><option value="shorts">YouTube Shorts</option></select><button onClick={makePack} disabled={!!busy}>打发布包（mp4 + 封面 + SRT + 文案）</button></div>
+          {pack && <p style={{fontSize: 12}}>已生成：<code>{pack.dir}</code>{pack.zipName ? ` · ${pack.zipName}` : ''}<br/><small>不自动发布——拖进平台后台即可；AI 标识与素材署名都在文案里。</small></p>}
+          <h4>批量出版本（同脚本换音色 / 字幕样式）</h4>
+          <div className="kp-row">
+            <label>音色（多选）<select multiple size={4} value={batchVoices} onChange={(e) => setBatchVoices([...e.target.selectedOptions].map((o) => o.value))}>{voices.map((v) => <option key={v.id} value={v.id}>{v.label}</option>)}</select></label>
+            <label>字幕样式（多选）<select multiple size={3} value={batchCaptions} onChange={(e) => setBatchCaptions([...e.target.selectedOptions].map((o) => o.value))}><option value="douyin">抖音黄字描边</option><option value="clean">简约白</option><option value="boxed">黑底白字</option></select></label>
+          </div>
+          <div className="kp-actions" style={{justifyContent: 'flex-start'}}><button onClick={runBatch} disabled={!!busy || (batchVoices.length || 1) * (batchCaptions.length || 1) > 12}>出 {(batchVoices.length || 1) * (batchCaptions.length || 1)} 版</button></div>
+          {batchResults.length > 0 && <ul className="kp-copy">{batchResults.map((r) => <li key={r.id} style={{cursor: 'default'}}>{r.ok ? '✅' : '⛔'} {r.id}{r.ok ? <> · {r.durationSec?.toFixed(1)}s · <a href={`/api/kaipian/projects/${encodeURIComponent(project.id)}/variant/${encodeURIComponent(r.id)}`} download>下载</a></> : ` ${r.error}`}</li>)}</ul>}
+          {busy && log.length > 0 && <pre className="kp-log">{log.slice(-12).join('\n')}</pre>}
           <div className="kp-actions"><button onClick={() => setStep(3)}>改文案重出</button><button className="primary" onClick={() => { setProject(null); setTopic(''); setStep(1); }}>再做一条</button></div>
         </div>
       </div>

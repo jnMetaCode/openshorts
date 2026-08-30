@@ -86,6 +86,28 @@ switch (cmd) {
     for (const n of p.final.notes) console.log(`  ⚠️ ${n}`);
     break;
   }
+  case 'batch': {
+    // openshorts batch <project.json> --voices a,b --captions douyin,clean --rates 1,1.1
+    const pf = rest[0]; if (!pf) { console.error('用法：openshorts batch <project.json> --voices zh-CN-XiaoxiaoNeural,zh-CN-YunxiNeural [--captions douyin,clean] [--rates 1,1.1]'); process.exit(1); }
+    const o = parseOpts(rest.slice(1)); const split = (x) => (x ? String(x).split(',').map((t) => t.trim()).filter(Boolean) : []);
+    const project = JSON.parse(fs.readFileSync(pf, 'utf-8'));
+    if (project.line !== 'koubo') { console.error('批量目前只支持口播线项目'); process.exit(1); }
+    const { planVariants, runBatch } = await import('../src/pipeline/batch.mjs');
+    const variants = planVariants({ voices: split(o.voices), captions: split(o.captions), rates: split(o.rates).map(Number) }, project);
+    console.log(`共 ${variants.length} 版：${variants.map((v) => v.id).join('、')}`);
+    const t0 = Date.now();
+    const results = await runBatch(project, variants, { baseDir: path.dirname(path.resolve(pf)), log: (m) => console.log('  ' + m) });
+    console.log(`\n✓ ${results.filter((r) => r.ok).length}/${results.length} 版完成，${((Date.now() - t0) / 1000).toFixed(0)}s`);
+    for (const r of results) console.log(`  ${r.ok ? '✅' : '⛔'} ${r.id}${r.ok ? `  ${r.file}（${r.durationSec?.toFixed(1)}s${r.quality ? `，质检${r.quality.pass ? '通过' : '有问题'}`: ''}）` : `  ${r.error}`}`);
+    break;
+  }
+  case 'export': {
+    // openshorts export <project.json> [--platform douyin|shipinhao|bilibili|shorts]
+    const pf = rest[0]; const o = parseOpts(rest.slice(1)); if (!pf) { console.error('用法：openshorts export <project.json> [--platform douyin]'); process.exit(1); }
+    const { makePublishPack } = await import('../src/publish/pack.mjs');
+    const r = makePublishPack(JSON.parse(fs.readFileSync(pf, 'utf-8')), { platform: o.platform || 'douyin' });
+    console.log(`✓ 发布包：${r.dir}${r.zip ? `\n  zip：${r.zip}` : ''}\n  ${r.files.join('、')}`); break;
+  }
   case 'estimate': {
     const pf = rest[0]; const project = JSON.parse(fs.readFileSync(pf, 'utf-8'));
     const free = project.shots.filter((s) => !s.visual?.cost || s.visual.cost.kind === 'free').length;
@@ -111,5 +133,7 @@ switch (cmd) {
   doctor    环境体检（转 ao doctor）
   new       口播科普：openshorts new koubo-kepu --topic "…" [--duration 60秒] [--tone 科普讲解] [--voice …] [--local-dir 素材夹] [--bgm x.mp3]
   run       出片：openshorts run <project.json>（配音 → 素材 → 字幕 → 合成）
-  estimate  看这个项目要不要花钱`);
+  estimate  看这个项目要不要花钱
+  export    发布包：openshorts export <project.json> --platform douyin|shipinhao|bilibili|shorts（mp4+封面+SRT+文案，不自动发布）
+  batch     批量：openshorts batch <project.json> --voices a,b [--captions douyin,clean] [--rates 1,1.1]`);
 }
