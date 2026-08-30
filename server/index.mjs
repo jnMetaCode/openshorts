@@ -19,6 +19,7 @@ import {attachGenerationTrace, retimeProjectFromNarration, retimeScene, reviewAs
 import {runAsr, transcriptToCaptions} from './lib/asr.mjs';
 import {corsOptions, createOriginGuard, resolveAllowedOrigins} from './lib/origin-guard.mjs';
 import {renderWaveform} from '../scripts/lib/audio.mjs';
+import {kaipian} from './kaipian.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const projectsDir = path.join(root, 'projects');
@@ -325,6 +326,7 @@ app.post('/api/quality', async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
+app.use('/api/kaipian', kaipian);
 app.use(express.static(path.join(root, 'dist')));
 app.get(/.*/, (_req, res) => res.sendFile(path.join(root, 'dist', 'index.html')));
 
