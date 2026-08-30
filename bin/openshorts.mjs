@@ -4,18 +4,17 @@
  * new / estimate / run / render 在 M1 接入。
  */
 import path from 'node:path';
-import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const require = createRequire(import.meta.url);
 const [cmd = 'open', ...rest] = process.argv.slice(2);
 
 function aoBin() {
-  // AO 的 exports 只暴露主入口，package.json 不在白名单里——从 dist/index.js 反推包目录
-  const main = require.resolve('agency-orchestrator');
+  // AO 的 exports 只声明了 ESM 的 `import` 条件（CJS require.resolve 会报 NOT_EXPORTED），
+  // 用 import.meta.resolve 拿 dist/index.js，再反推包目录
+  const main = fileURLToPath(import.meta.resolve('agency-orchestrator'));
   const dir = path.resolve(path.dirname(main), '..');
   return { dir, cli: path.join(dir, 'dist', 'cli.js'), pkg: path.join(dir, 'package.json') };
 }
