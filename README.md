@@ -12,6 +12,21 @@
 
 > **English**: OpenShorts is a local-first, open-source short-video production line — script in, finished video out. Three content routes (paper-cut story animation / info-board tech explainer / product demo) share one JSON protocol, a Remotion renderer with an FFmpeg fallback, per-story TTS + synthesized music, platform-safe burned subtitles, and a seven-gate QA pipeline (loudness −14 LUFS, true peak, caption safe-zones, asset provenance, Whisper content verification, SHA-256 release manifest). The demo GIF above was rendered by the pipeline itself.
 
+## 为什么选开片（和 MoneyPrinterTurbo 们的区别）
+
+| 你关心的 | 开片 | 素材拼片类工具（如 MoneyPrinterTurbo） | 平台一键 AI 工具 |
+|---|---|---|---|
+| **第一条片要花多少钱、要配什么** | **0 元、0 个 key**：Wikimedia Commons 免 key 素材 + Edge TTS + 本机 ffmpeg；注册 Pexels 后画质更好 | 要先注册素材库 key | 会员 / 积分 |
+| **画面从哪来** | 素材库 · 本地 AI（sd.cpp，草稿档不花钱）· 云端 AI（秘塔 / 火山 / Agnes …）· 图层动画，**同一条片可混用、一键切** | 只有素材库（近期加了一家云端） | 只有平台自家模型 |
+| **花钱之前知道要花多少** | 运行前按所选供应商 / 档位 / 秒数给数量级，确认后才跑 | 无 | 事后看余额 |
+| **谁来把关** | 看图验收员：审 AI 出的每一镜、给素材候选按"画面意图"打分（把量子图表从猫科普里踢出去）、成片自动质检（响度 / 时长 / 字幕 / AI 标识） | 无 | 人工 |
+| **改一镜要不要全重来** | 单镜重出：按验收意见 / 提意见 / 换来源，其余镜头复用 | 全部重跑 | 重新生成 |
+| **脚本谁写** | 276 位专家角色分工（科普作者写稿、抖音策略师起标题、编剧拆三镜） | 一个通用 prompt | 黑盒 |
+| **数据在哪** | 本地优先：key 只存本机，产物在你硬盘，素材署名与 AI 标识写进发布文案 | 本地 | 云端 |
+| **怎么装** | `npx openshorts` 一行 / 桌面端 / Docker | Python 环境 / 整合包 | App |
+
+一句话：**别人给你一个出片按钮，开片给你一条能看见成本、能被审、能改单镜的生产线。**
+
 ## 成片示例
 
 | 成片 | 路线 | 时长 | 内容源 |

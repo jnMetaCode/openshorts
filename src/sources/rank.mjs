@@ -38,7 +38,11 @@ export async function rankCandidates(candidates, intent, { connector, cfg, thres
     ? [`你是短视频剪辑师。下面是同一段口播要配的画面意图，以及 ${usable.length} 条候选素材各一帧。给每条打分 0–10：画面主体、场景与意图是否匹配（主体对得上给 6 分起，完全无关 0–2 分，图表/文字/标题卡一律 ≤ 2）。`, `画面意图：${intent}`, ...usable.map((x, k) => `候选 ${k}：${x.f}`), '只输出 JSON 数组：[{"i":0,"score":7,"why":"一句话"}, …]']
     : [`You are a video editor. Below is the visual intent for one narration segment and one frame from each of ${usable.length} candidate clips. Score each 0–10 for how well subject/scene match the intent (subject matches → ≥6; unrelated → 0–2; charts/text/title cards ≤ 2).`, `Intent: ${intent}`, ...usable.map((x, k) => `Candidate ${k}: ${x.f}`), 'Output only a JSON array: [{"i":0,"score":7,"why":"…"}, …]']).join('\n');
   let scores = null;
-  try { const r = await connector.chat(zh ? '只输出 JSON。' : 'Output JSON only.', prompt, { ...cfg, max_tokens: 400, temperature: 0 }); scores = parseScores(r.content, usable.length); } catch (e) { log(`素材排序不可用：${e.message.split('\n')[0]}`); }
+  // 推理模型（Agnes 2.0-flash）会先吐几百字思考再给 JSON：预算给足；网络抖一次就再试一次
+  for (let attempt = 0; attempt < 2 && !scores; attempt++) {
+    try { const r = await connector.chat(zh ? '只输出一行 JSON 数组，不要解释。' : 'Output one line of JSON only.', prompt, { ...cfg, max_tokens: 1500, temperature: 0 }); scores = parseScores(r.content, usable.length); }
+    catch (e) { if (attempt === 1) log(`素材排序不可用：${e.message.split('\n')[0].slice(0, 120)}`); }
+  }
   if (!scores) return candidates.map((c) => ({ ...c, score: null }));
   const ranked = usable.map((x, k) => ({ ...x.c, score: scores[k].score, why: scores[k].why })).sort((a, b) => b.score - a.score);
   const rest = candidates.filter((c) => !usable.some((x) => x.c.id === c.id)).map((c) => ({ ...c, score: null }));
