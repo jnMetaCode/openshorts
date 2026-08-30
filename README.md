@@ -33,107 +33,32 @@
 3. **图层协议优先**：编辑器、播放器、CLI 和渲染器读取同一份 JSON，避免“预览和成片不是一个逻辑”。
 4. **人工验收是流水线节点**：生成模型、抠图和 TTS 可以替换，静态排版与成片检查不能省略。
 
-## 快速开始
+## 快速开始（v2 · 开片）
 
-需要 Node.js 20+、FFmpeg 和 ImageMagick。FFmpeg 用于媒体验收，ImageMagick 用于抠图、拆分和透明通道检查。
-
-macOS 可以直接双击项目根目录的 `启动本地.command`。也可以在终端运行，命令会自动启动服务并打开浏览器：
+需要 Node.js 20+ 和 FFmpeg。一行起本地服务并打开浏览器（默认 http://127.0.0.1:4174）：
 
 ```bash
-npm run open
+npx openshorts
 ```
 
-窗口必须保持运行；关闭终端或按 `Ctrl+C` 会停止本地服务。若 `4174` 被占用，可执行 `PORT=4175 npm run open`。
+界面四步：**输入**（话题 / 文案 / 故事）→ **来源与花费**（素材库 · AI 配图 · 本地生成 · 云端出片，花多少钱运行前看见）→ **预览与调整**（每镜文案与画面可改）→ **出片与发布**（mp4 + SRT + 封面 + 标题 / 标签 / 发布说明 + 质检报告）。
 
-如需启用 LLM 分镜，可连接任意支持 Chat Completions JSON 输出的兼容服务：
+命令行同一套能力：
 
 ```bash
-export OPENSHORTS_PLANNER_URL="http://127.0.0.1:1234/v1/chat/completions"
-export OPENSHORTS_PLANNER_MODEL="your-model"
-# 仅远端服务需要鉴权时设置：OPENSHORTS_PLANNER_API_KEY
+openshorts doctor                                   # 体检：ffmpeg / libass / 中文字体 / ulimit / 各画面来源
+openshorts new koubo-kepu --topic "猫为什么总爱钻纸箱" --voice zh-CN-YunxiNeural --local-dir ./素材
+openshorts run ~/OpenShorts/猫为什么总爱钻纸箱/project.json   # 0 元：Edge TTS + 素材库/本地素材 + 本机 ffmpeg
+openshorts drama --plan -i story="…" -i video_provider=local-sdcpp -i video_model=minimax-h3-q2   # AI 短剧：先看花费
 ```
 
-批量审核并记录生成来源：
+- 写脚本用你自己的文本模型 key（复用 [AO](https://github.com/jnMetaCode/agency-orchestrator) 的 `~/.ao` 配置或环境变量如 `DEEPSEEK_API_KEY`）；素材库要一把免费的 Pexels / Pixabay key（界面一分钟引导）；配音默认 Edge TTS（免费）。产品不内置任何共享 key。
+- 本地 AI 出片：`openshorts doctor` 会告诉你这台机器能跑哪一档（24 GB 内存起，草稿画质），以及 sd-cli 与模型怎么装。
+- 产物落在 `~/OpenShorts/<项目>/`；成片默认带 AI 生成标识；素材署名写进发布文案。
 
-```bash
-npm run review -- --project=projects/my-video.json --assets=all \
-  --status=approved --provider=comfyui --model=flux --seed=42
-```
+v1 的图层动画编辑器仍在 `/editor`，用法见下文。
 
-本地 ASR 程序需要接收最后一个参数中的音频路径，并向 stdout 输出 `{"language":"zh","segments":[{"text":"...","start":0,"end":1.2,"words":[]}]}`：
-
-```bash
-export OPENSHORTS_ASR_COMMAND="/absolute/path/to/asr-adapter"
-export OPENSHORTS_ASR_ARGS_JSON='["--model","large-v3","--json"]'
-npm run dev
-```
-
-也可以导入已有 Whisper/FunASR JSON：
-
-```bash
-npm run captions -- --project=projects/my-video.json \
-  --transcript=examples/transcript.json --scene=scene-01
-```
-
-容器启动：
-
-```bash
-docker compose up --build
-# http://localhost:4174
-```
-
-完整部署说明见 [docs/deployment.md](docs/deployment.md)。发布前可运行：
-
-```bash
-npm run release:check
-npm run release:bundle
-```
-
-```bash
-# macOS
-brew install ffmpeg imagemagick
-```
-
-```bash
-npm install
-npm run dev
-```
-
-打开 `http://127.0.0.1:4173`。左侧管理镜头，中间可在“动画预览”和“拖拽排版”间切换，右侧可修改人物位置、宽度、层级、角色类型、入场方向与延迟，也可上传透明 PNG / WebP / SVG 替换图层。
-
-编辑器支持：
-
-- `⌘/Ctrl + Z` 撤销，`⇧ + ⌘/Ctrl + Z` 重做，最多保留 40 步。
-- 复制或删除镜头；新镜头从当前镜头复制，便于保持统一视觉模板。
-- 复制、删除、上移或下移图层。
-- 导入 OpenShorts v1 JSON；导入后先在浏览器检查，再点击保存。
-- 拖拽非背景图层，并显示字幕安全区。
-- 上传 WAV、MP3、M4A、AAC、FLAC 或 OGG 旁白，通过 ffprobe 自动匹配镜头帧数。
-- 可视化调整每句字幕的入场帧和出场帧。
-- 渲染完成后从网页生成验收报告和逐镜头抽帧。
-- 检查素材尺寸、透明通道和内容贴边风险。
-- 选择任意纯色背景和容差进行本地抠图。
-- 按行列拆分角色素材表，并点击缩略图替换当前图层。
-- 管理多个本地项目，并从模板创建互相独立的新工程。
-- 使用 `{{变量名}}` 批量替换标题、字幕及其他字符串字段。
-- 渲染任务持久化到磁盘，失败或进程中断后可以重试。
-- 将项目 JSON 和全部本地素材导出为可迁移 `.openshorts.zip`。
-- 安全导入项目包，拦截路径穿越、符号链接和超大解压内容。
-- 取消等待中或运行中的渲染/ComfyUI 任务。
-- 从中文文案自动规划全景、中景和特写镜头。
-- 生成背景、主体、配角和前景的独立素材提示词与验收要求。
-- 将角色年龄、发型、服饰和配色锚点注入跨镜头提示词。
-- 一键组装横屏或竖屏可编辑草稿。
-
-生产模式：
-
-```bash
-npm run build
-npm start
-```
-
-打开 `http://127.0.0.1:4174`。
-
+## 快速开始（v1 · 图层动画）
 ## 渲染与校验
 
 ```bash
