@@ -19,8 +19,10 @@
 | 《后羿射日》 | 故事片 · 纸片动画 | 62s | [content/nine-suns](content/nine-suns) |
 | 《三天荔枝道》 | 故事片 · 纸片动画 | 55s | [content/lychee-road](content/lychee-road) |
 | 《这条视频是它自己生成的》 | 产品演示 · 自举 | 48s | [content/openshorts-demo](content/openshorts-demo) |
+| 《深夜便利店》本地草稿档 | AI 短剧 · 本地 sd.cpp · MiniMax-H3 Q2 · **0 元** | 7s | [docs/cases/drama-convenience-store](docs/cases/drama-convenience-store/) |
+| 《深夜便利店》云端成片档 | AI 短剧 · Agnes agnes-video-2.5-flash | 13s | 同上（同一故事的草稿 vs 成片对照） |
 
-每条都由 `npm run story -- <名字> render` 一条命令渲出，并通过全部验收门禁。
+前四条由 v1 `npm run story -- <名字> render` 渲出；AI 短剧两条由 v2「开片」界面生成，标注了出片方与模型（示例均由 OpenShorts 实际生成）。
 
 > 当前为 v1.0：覆盖文案分镜、分层素材、审核溯源、关键帧、旁白波形、本地 ASR 逐字字幕、Remotion 渲染和 FFmpeg 验收，并提供 Docker 与 CI。
 
