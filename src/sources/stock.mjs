@@ -102,7 +102,8 @@ export async function findCandidates(query, { localDirs = [], used = new Set(), 
   const push = (arr) => { for (const c of arr) if (!used.has(c.id) && !out.some((o) => o.id === c.id)) out.push(c); };
   push(searchLocal(query, { dirs: localDirs, limit }));
   if (out.length >= limit) return out.slice(0, limit);
-  const cached = readCacheIndex(query); if (cached) push(cached);
+  const tier = cacheTier(config);
+  const cached = readCacheIndex(query, tier); if (cached) push(cached);
   if (out.length >= limit) return out.slice(0, limit);
   const errors = [];
   // 有 key 的先用（画质/时长更可控），没 key 时 Wikimedia 兜底——所以"没注册任何 key"也能出第一条片
@@ -111,7 +112,7 @@ export async function findCandidates(query, { localDirs = [], used = new Set(), 
     if (out.length >= limit) break;
     if ('key' in extra && !extra.key) continue;
     for (const q of relaxQueries(query)) {
-      try { const r = await fn(q, { ...extra, limit, minDuration, fetchImpl }); push(r); if (r.length) { writeCacheIndex(query, r); break; } }
+      try { const r = await fn(q, { ...extra, limit, minDuration, fetchImpl }); push(r); if (r.length) { writeCacheIndex(query, r, tier); break; } }
       catch (e) { errors.push(e.message); if (e instanceof StockRateLimit) break; }
     }
   }
@@ -119,26 +120,65 @@ export async function findCandidates(query, { localDirs = [], used = new Set(), 
   return out.slice(0, limit);
 }
 
-/** 下载候选到缓存（本地文件直接返回路径） */
-export async function materialize(candidate, { fetchImpl = fetch } = {}) {
+/**
+ * 下载候选到缓存（本地文件直接返回路径）。
+ * 三条护栏，都是踩过的：Wikimedia 上有几百 MB 的纪录片（我们只用其中几秒）——超过 maxBytes 直接换下一条；
+ * 网络挂住不能无限等——带超时；写 .part 再改名——中途被 Ctrl-C 不会在缓存里留下一个"看着像好的"半截文件。
+ */
+export async function materialize(candidate, { fetchImpl = fetch, maxBytes = 256 << 20, timeoutMs = 90_000 } = {}) {
   if (candidate.file) return candidate.file;
   if (!candidate.url) throw new Error(`候选 ${candidate.id} 没有可下载地址`);
   fs.mkdirSync(CACHE_DIR, { recursive: true });
   const ext = (candidate.url.match(/\.(webm|ogv|ogg|mov|mp4|m4v)(\?|$)/i)?.[1] ?? 'mp4').toLowerCase();
   const dest = path.join(CACHE_DIR, `${candidate.id.replace(/[^a-z0-9]+/gi, '_')}.${ext}`);
   if (fs.existsSync(dest) && fs.statSync(dest).size > 0) return dest;
-  const r = await fetchImpl(candidate.url, { headers: { 'User-Agent': UA } });
-  if (!r.ok) throw new Error(`下载素材失败 ${r.status}：${candidate.url}`);
-  fs.writeFileSync(dest, Buffer.from(await r.arrayBuffer()));
-  return dest;
+  const ac = new AbortController();
+  const timer = setTimeout(() => ac.abort(), timeoutMs);
+  const part = `${dest}.${process.pid}.part`;
+  try {
+    const r = await fetchImpl(candidate.url, { headers: { 'User-Agent': UA }, redirect: 'follow', signal: ac.signal });
+    if (!r.ok) throw new Error(`下载素材失败 ${r.status}：${candidate.url}`);
+    const declared = Number(r.headers?.get?.('content-length') || 0);
+    if (declared > maxBytes) throw new StockTooLarge(`候选 ${candidate.id} 有 ${(declared / 1048576).toFixed(0)} MB，超过 ${(maxBytes / 1048576).toFixed(0)} MB 上限，换下一条`);
+    let bytes = 0; const chunks = [];
+    // 没有 content-length 的源（Wikimedia 常见）边收边数，超了立刻断
+    for await (const chunk of r.body) {
+      bytes += chunk.length;
+      if (bytes > maxBytes) { ac.abort(); throw new StockTooLarge(`候选 ${candidate.id} 下载超过 ${(maxBytes / 1048576).toFixed(0)} MB 上限，换下一条`); }
+      chunks.push(Buffer.from(chunk));
+    }
+    if (!bytes) throw new Error(`候选 ${candidate.id} 下载到 0 字节`);
+    fs.writeFileSync(part, Buffer.concat(chunks));
+    fs.renameSync(part, dest);
+    return dest;
+  } catch (e) {
+    fs.rmSync(part, { force: true });
+    if (e?.name === 'AbortError' && !(e instanceof StockTooLarge)) throw new Error(`下载素材超时（${timeoutMs / 1000}s）：${candidate.url}`);
+    throw e;
+  } finally { clearTimeout(timer); }
+}
+
+/** 按顺序试候选，返回第一条下载成功的 { candidate, file }；全失败返回 null（失败原因进 notes） */
+export async function materializeFirst(candidates, { fetchImpl = fetch, onError = () => {} } = {}) {
+  for (const c of candidates) {
+    try { return { candidate: c, file: await materialize(c, { fetchImpl }) }; }
+    catch (e) { onError(c, e); }
+  }
+  return null;
 }
 
 export class StockRateLimit extends Error {}
+export class StockTooLarge extends Error {}
 export const tokenize = (q) => String(q).toLowerCase().split(/[^a-z0-9\u4e00-\u9fff]+/).filter((w) => w.length > 1);
 function* walk(dir) { for (const n of fs.readdirSync(dir)) { const p = path.join(dir, n); const st = fs.statSync(p); if (st.isDirectory()) yield* walk(p); else yield p; } }
 const hash = (s) => crypto.createHash('sha1').update(s).digest('hex').slice(0, 10);
-function cacheIndexFile(query) { return path.join(CACHE_DIR, 'index', `${hash(query.toLowerCase().trim())}.json`); }
-function readCacheIndex(query) { try { const j = JSON.parse(fs.readFileSync(cacheIndexFile(query), 'utf-8')); return Date.now() - j.at < 7 * 86400e3 ? j.items : null; } catch { return null; } }
-function writeCacheIndex(query, items) { try { fs.mkdirSync(path.dirname(cacheIndexFile(query)), { recursive: true }); fs.writeFileSync(cacheIndexFile(query), JSON.stringify({ at: Date.now(), items })); } catch { /* 缓存失败不影响主流程 */ } }
+/**
+ * 缓存按"当前配了哪些素材库 key"分桶。否则会出现这种事：用户今天 0 key 跑了一遍（存的是 Wikimedia 结果），
+ * 明天注册了 Pexels key，同样的检索词却在 7 天内一直命中旧缓存，说好的"配了 key 画面更好"根本没生效。
+ */
+export function cacheTier(config) { return [config?.stock?.pexelsKey && 'px', config?.stock?.pixabayKey && 'pb'].filter(Boolean).join('-') || 'free'; }
+function cacheIndexFile(query, tier = 'free') { return path.join(CACHE_DIR, 'index', `${tier}-${hash(query.toLowerCase().trim())}.json`); }
+function readCacheIndex(query, tier) { try { const j = JSON.parse(fs.readFileSync(cacheIndexFile(query, tier), 'utf-8')); return Date.now() - j.at < 7 * 86400e3 ? j.items : null; } catch { return null; } }
+function writeCacheIndex(query, items, tier) { try { fs.mkdirSync(path.dirname(cacheIndexFile(query, tier)), { recursive: true }); fs.writeFileSync(cacheIndexFile(query, tier), JSON.stringify({ at: Date.now(), items })); } catch { /* 缓存失败不影响主流程 */ } }
 export const cacheDir = () => CACHE_DIR;
 export const homeDir = () => os.homedir();

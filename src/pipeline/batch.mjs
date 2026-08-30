@@ -15,7 +15,7 @@ export function planVariants({ voices = [], captions = [], rates = [] }, base) {
   return out;
 }
 
-export async function runBatch(project, variants, { baseDir, log = () => {}, onVariant = () => {}, fetchImpl, config } = {}) {
+export async function runBatch(project, variants, { baseDir, log = () => {}, onVariant = () => {}, fetchImpl, config, vision } = {}) {
   const results = [];
   for (const [i, v] of variants.entries()) {
     const dir = path.join(baseDir, 'variants', v.id); fs.mkdirSync(dir, { recursive: true });
@@ -24,7 +24,7 @@ export async function runBatch(project, variants, { baseDir, log = () => {}, onV
     p.id = `${project.id}-${v.id}`; p.voice = { ...p.voice, voice: v.voice, rate: v.rate }; p.captions = { ...p.captions, preset: v.captions };
     p.final = null; for (const s of p.shots) { s.audio = null; s.durationSec = null; s.status = 'planned'; }
     log(`▶ 版本 ${i + 1}/${variants.length}：${v.id}`);
-    try { const r = await runKoubo(p, { outDir: dir, log: (m) => log(`   ${m}`), fetchImpl, config }); results.push({ id: v.id, ok: true, file: r.final.file, durationSec: r.final.durationSec, quality: r.final.quality }); }
+    try { const r = await runKoubo(p, { outDir: dir, log: (m) => log(`   ${m}`), fetchImpl, config, vision }); results.push({ id: v.id, ok: true, file: r.final.file, durationSec: r.final.durationSec, quality: r.final.quality }); }
     catch (e) { results.push({ id: v.id, ok: false, error: e.message }); log(`   ⛔ ${e.message}`); }
     onVariant(results[results.length - 1]);
   }

@@ -70,15 +70,41 @@ kaipian.put('/projects/:id', (req, res) => {
   if (b.defaults) cur.defaults = { ...cur.defaults, ...b.defaults };
   fs.writeFileSync(f, JSON.stringify(cur, null, 2)); res.json(cur);
 });
+// 同一个项目同时只允许跑一次：两个标签页各点一次「出片」会同时写同一个 work 目录和 project.json，
+// 产物互相覆盖且症状难查。关掉页面就取消——不然 ffmpeg 会在后台一直跑到底，用户还以为已经停了。
+const running = new Map();   // projectId -> AbortController
 kaipian.get('/projects/:id/run', async (req, res) => {
-  const f = path.join(projDir(req.params.id), 'project.json'); if (!fs.existsSync(f)) return res.status(404).json({ error: '项目不存在' });
+  const id = safe(req.params.id);
+  const f = path.join(projDir(id), 'project.json'); if (!fs.existsSync(f)) return res.status(404).json({ error: '项目不存在' });
+  if (running.has(id)) return res.status(409).json({ error: '这个项目正在出片，等它跑完或先取消' });
   res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' });
   const send = (ev, data) => res.write(`event: ${ev}\ndata: ${JSON.stringify(data)}\n\n`);
+  const ac = new AbortController(); running.set(id, ac);
+  req.on('close', () => ac.abort());
   try {
     const project = JSON.parse(fs.readFileSync(f, 'utf-8'));
-    const p = await runKoubo(project, { outDir: path.dirname(f), log: (m) => send('log', { m }), vision: readConfig().vision });
+    const p = await runKoubo(project, { outDir: path.dirname(f), log: (m) => send('log', { m }), vision: readConfig().vision, signal: ac.signal });
     send('done', { final: p.final, provenance: p.provenance });
   } catch (e) { send('error', { m: e.message }); }
+  finally { running.delete(id); }
+  res.end();
+});
+kaipian.post('/projects/:id/cancel', (req, res) => {
+  const ac = running.get(safe(req.params.id));
+  if (!ac) return res.status(404).json({ error: '这个项目没有在跑' });
+  ac.abort(); res.json({ ok: true });
+});
+
+// ffmpeg 能力与一键安装：Homebrew 的 ffmpeg 不含 libass ⇒ 字幕烧不进画面，这是免费路径的硬伤，
+// 所以和本地模型一样做成"界面上点一下就装"，装到 ~/.openshorts/bin，不动系统 ffmpeg。
+import { ffmpegCaps, installFfmpeg } from '../src/media/ffmpeg.mjs';
+kaipian.get('/ffmpeg', async (_req, res, next) => { try { res.json(await ffmpegCaps()); } catch (e) { next(e); } });
+kaipian.get('/ffmpeg/install', async (req, res) => {
+  res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' });
+  const send = (ev, data) => res.write(`event: ${ev}\ndata: ${JSON.stringify(data)}\n\n`);
+  const ac = new AbortController(); req.on('close', () => ac.abort());
+  try { send('done', await installFfmpeg({ signal: ac.signal, onLog: (m) => send('log', { m }), onProgress: (p) => send('progress', p) })); }
+  catch (e) { send('error', { m: e.message }); }
   res.end();
 });
 kaipian.get('/projects/:id/file/:name', (req, res) => {
@@ -285,7 +311,7 @@ kaipian.get('/projects/:id/batch', async (req, res) => {
   res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' });
   const send = (ev, data) => res.write(`event: ${ev}\ndata: ${JSON.stringify(data)}\n\n`);
   send('plan', { variants });
-  try { const results = await runBatch(project, variants, { baseDir: path.dirname(f), log: (m) => send('log', { m }), onVariant: (r) => send('variant', r) }); send('done', { results }); }
+  try { const results = await runBatch(project, variants, { baseDir: path.dirname(f), log: (m) => send('log', { m }), onVariant: (r) => send('variant', r), vision: readConfig().vision }); send('done', { results }); }
   catch (e) { send('error', { m: e.message }); }
   res.end();
 });

@@ -1,5 +1,21 @@
 # Changelog
 
+## [2.0.0-alpha.4] - 2026-08-30 · 成片"真的有字"：修免费路径上三个只在别人机器上炸的坑
+
+真机复盘上一版案例时发现，免费路径的成片在 Mac 上默认是**没有可见字幕**的，且在 ffmpeg 6.x 上**没有声音**。都不是边角情况，是默认路径。
+
+- **字幕烧不进画面（Mac 必现）**：Homebrew 现在的 `ffmpeg` formula 已经不再依赖 libass / freetype / fontconfig（`brew deps ffmpeg` 里没有它们），而 README 与 doctor 恰好让用户 `brew install ffmpeg`。后果不是"少个角标"：口播线找不到素材时会退纯色底、让字幕成为画面主体——烧不进去那一镜就是纯黑；软字幕轨抖音/视频号一律不认。
+  - 新增 `openshorts install-ffmpeg` 与界面第 2 步同款按钮：装一份带 libass 的预编译 ffmpeg/ffprobe 到 `~/.openshorts/bin`（约 40 MB，只对开片生效，不动系统 ffmpeg），装完当场验 `subtitles` 滤镜在不在。
+  - 所有 ffmpeg 调用统一走 `src/media/ffmpeg.mjs` 解析（环境变量 > 自己装的 > PATH）。
+  - doctor 把"缺 libass"从 ⚠️ 升为 ⛔ 并说明后果；不再建议 `brew reinstall ffmpeg`（没用）。质检 `captions` 从 warn 升为 fail。
+- **ffmpeg 6.x 上静默丢音轨**：分段渲染同时用 `-vf` 和 `-filter_complex`，在 ffmpeg 6.x 上退出码 0、无警告，输出里 audio 流声明还在但一个包都没有（Ubuntu 24.04 / Debian 12 默认就是 6.x；ffmpeg 8 恰好正常）。画面滤镜改到 `-filter_complex` 里，并在每段渲染后当场校验音频包数。加回归测试；CI 扩到 ubuntu / macOS / windows 三平台。
+- **看图排序漏掉"唯一候选"**：只有 1 条候选时直接放行——而这恰恰是最容易混进标题卡的情况（案例里 s3 就是一段 1920 年代动画的英文标题卡）。改成 1 条也要打分；抽帧从固定第 1 秒改为**正片中段**（片头正是标题卡）。
+- **字幕两处排版错**：ASS 样式预设按 1080 宽定，PlayResX 却直接写实际宽度，540 宽的项目用 64px 字直接顶出画外 → 按宽度等比缩放（角标同）；字幕按**镜头边界**断条，不再把"上一镜的尾巴 + 下一镜的开头"挤进同一条。
+- **`sources` / doctor 不认 Wikimedia 兜底**：0 key 时素材库一律显示 ⛔，与"0 元 0 key 出片"自相矛盾。改为如实标"免 key 兜底可用，配 Pexels key 更贴合"。
+- **素材缓存按 key 分桶**：以前 0 key 跑过一次后，即使新配了 Pexels key，同样的检索词 7 天内仍命中旧的 Wikimedia 缓存，"配了 key 画面更好"根本不生效。
+- **健壮性**：Edge TTS 退避重试 3 次（非官方端点会抽）；每镜跑完就把项目写回盘（中途挂掉不用从头来）；素材下载加体积上限 / 超时 / 写 `.part` 再改名，第一条取不到就顺位试下一条；出片可取消（关页面即停），同一项目不能并发出片（返回 409）。
+- 批量出片现在也走看图排序（此前漏传 `vision`，批量版本可能用上主流程已判退的素材）。
+
 ## [2.0.0-alpha.3] - 2026-08-30 · M3 批量 / 发布包 / 英文切换
 - 批量出版本：同脚本 × 音色 × 字幕样式 × 语速，串行出片，产物 `variants/<id>/`；CLI `openshorts batch`、API SSE、界面第 4 步多选。
 - 发布包：抖音 / 视频号 / B 站 / YouTube Shorts 四套规格（标题字数、标签数、AI 标识提示），一键生成目录 + zip（mp4、封面、SRT、发布文案含素材署名与质检摘要）；CLI `openshorts export`。不自动发布。

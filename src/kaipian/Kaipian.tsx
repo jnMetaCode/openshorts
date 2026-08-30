@@ -40,6 +40,7 @@ export const Kaipian = () => {
   const [duration, setDuration] = useState('60秒');
   const [tone, setTone] = useState('科普讲解');
   const [sources, setSources] = useState<Sources | null>(null);
+  const [ff, setFf] = useState<{found: boolean; version: string; subtitles: boolean; drawtext: boolean; managed: boolean} | null>(null);
   const [voices, setVoices] = useState<Voice[]>([]);
   const [voice, setVoice] = useState('zh-CN-XiaoxiaoNeural');
   const [captions, setCaptions] = useState('douyin');
@@ -61,6 +62,7 @@ export const Kaipian = () => {
     api<any>('/api/kaipian/drama/options').then(setDramaOpts).catch(() => {});
     api<any>('/api/kaipian/drama/providers').then(setProviders).catch(() => {});
     api<any>('/api/kaipian/local/status').then(setLocalSt).catch(() => {});
+    api<any>('/api/kaipian/ffmpeg').then(setFf).catch(() => {});
   };
   useEffect(() => {
     refresh().catch((e) => setError(String(e.message)));
@@ -110,6 +112,15 @@ export const Kaipian = () => {
     es.addEventListener('progress', (e: any) => { const p = JSON.parse(e.data); setDl((d) => ({...(d ?? {log: []}), file: p.file, bytes: p.bytes, total: p.total})); });
     es.addEventListener('done', async (e: any) => { es.close(); setLocalSt((s) => ({...(s as any), ...JSON.parse(e.data)})); setDl((d) => ({...(d ?? {log: []}), log: [...(d?.log ?? []), '完成'], bytes: undefined})); await refresh(); });
     es.addEventListener('error', (e: any) => { try { setError(JSON.parse(e.data).m); } catch { setError('下载中断（可重试，支持断点续传）'); } es.close(); });
+  };
+  // Homebrew 的 ffmpeg 已不含 libass ⇒ 字幕烧不进画面，成片在抖音上没有字。一键装一份带 libass 的到 ~/.openshorts/bin。
+  const installFfmpeg = () => {
+    setDl({log: []}); setError('');
+    const es = new EventSource('/api/kaipian/ffmpeg/install');
+    es.addEventListener('log', (e: any) => setDl((d) => ({...(d ?? {log: []}), log: [...(d?.log ?? []), JSON.parse(e.data).m]})));
+    es.addEventListener('progress', (e: any) => { const p = JSON.parse(e.data); setDl((d) => ({...(d ?? {log: []}), file: p.file, bytes: p.bytes, total: p.total})); });
+    es.addEventListener('done', async (e: any) => { es.close(); setFf(JSON.parse(e.data)); setDl(null); await refresh(); });
+    es.addEventListener('error', (e: any) => { try { setError(JSON.parse(e.data).m); } catch { setError('ffmpeg 下载中断，可重试'); } es.close(); });
   };
   const runBatch = () => {
     if (!project) return; setBatchResults([]); setLog([]); setBusy('批量出片中…'); setError('');
@@ -208,9 +219,16 @@ export const Kaipian = () => {
     </section>}
 
     {step === 2 && line === 'koubo' && <section className="kp-card">
+      {ff && ff.found && !ff.subtitles && <div className="kp-warn" style={{borderColor: '#e0524b'}}>
+        <b>⛔ 这台机器的 ffmpeg 烧不了字幕</b>（缺 libass）。出来的片传到抖音/视频号后<b>看不到字</b>；没找到素材而退成纯色底的镜头会是一块空屏。
+        Homebrew 现在的 ffmpeg 已经不带 libass，重装它没用。
+        <div style={{marginTop: 8}}><button className="primary" onClick={installFfmpeg} disabled={!!dl}>装一份带 libass 的（约 40 MB，只放进 ~/.openshorts/bin，不动系统 ffmpeg）</button></div>
+        {dl && <pre className="kp-log" style={{maxHeight: 120, marginTop: 8}}>{[...dl.log, dl.total ? `${dl.file} ${(Number(dl.bytes ?? 0) / 1048576).toFixed(0)}/${(dl.total / 1048576).toFixed(0)} MB` : ''].filter(Boolean).join('\n')}</pre>}
+      </div>}
+      {ff && !ff.found && <div className="kp-warn" style={{borderColor: '#e0524b'}}><b>⛔ 没找到 ffmpeg</b>，出片一定失败。<button className="primary" onClick={installFfmpeg} disabled={!!dl} style={{marginLeft: 8}}>装一份</button></div>}
       <h3>{t('画面来源')}</h3>
       <div className="kp-srcs">
-        <SrcCard k="stock" label="素材库" hint="Pexels / Pixabay 免费片段 + 本地素材夹 · 不花钱"/>
+        <SrcCard k="stock" label="素材库" hint="Wikimedia 免 key 兜底 + Pexels/Pixabay + 本地素材夹 · 不花钱"/>
         <SrcCard k="image" label="AI 配图" hint="文生图 + 推拉动效 · 按张计费（M2 接入）"/>
         <SrcCard k="local" label="本地生成" hint="sd.cpp 本地出片 · 不花钱、草稿级（M2）"/>
         <SrcCard k="cloud" label="云端出片" hint="秘塔 / 火山 / Agnes … · 按秒计费（M2）"/>

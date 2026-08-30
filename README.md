@@ -59,18 +59,25 @@
 npx openshorts
 ```
 
+> **装完先跑一次 `openshorts doctor`。** 短视频的字幕必须**烧进画面**（抖音、视频号一律不认软字幕轨），
+> 而烧字幕要 ffmpeg 带 libass。**Homebrew 现在的 `ffmpeg` formula 已经不再依赖 libass**
+> （`brew deps ffmpeg` 里没有它），所以 `brew install ffmpeg` 装出来的那份烧不了字——重装也没用。
+> doctor 查到就照它说的跑一次 `openshorts install-ffmpeg`：装一份带 libass 的到 `~/.openshorts/bin`
+> （约 40 MB，只对开片生效，不动系统 ffmpeg）。界面第 2 步也有同一个按钮。
+
 界面四步：**输入**（话题 / 文案 / 故事）→ **来源与花费**（素材库 · AI 配图 · 本地生成 · 云端出片，花多少钱运行前看见）→ **预览与调整**（每镜文案与画面可改）→ **出片与发布**（mp4 + SRT + 封面 + 标题 / 标签 / 发布说明 + 质检报告）。
 
 命令行同一套能力：
 
 ```bash
 openshorts doctor                                   # 体检：ffmpeg / libass / 中文字体 / ulimit / 各画面来源
+openshorts install-ffmpeg                           # doctor 说缺 libass 时跑这个（字幕才能烧进画面）
 openshorts new koubo-kepu --topic "猫为什么总爱钻纸箱" --voice zh-CN-YunxiNeural --local-dir ./素材
 openshorts run ~/OpenShorts/猫为什么总爱钻纸箱/project.json   # 0 元：Edge TTS + 素材库/本地素材 + 本机 ffmpeg
 openshorts drama --plan -i story="…" -i video_provider=local-sdcpp -i video_model=minimax-h3-q2   # AI 短剧：先看花费
 ```
 
-- 写脚本用你自己的文本模型 key（复用 [AO](https://github.com/jnMetaCode/agency-orchestrator) 的 `~/.ao` 配置或环境变量如 `DEEPSEEK_API_KEY`）；素材库要一把免费的 Pexels / Pixabay key（界面一分钟引导）；配音默认 Edge TTS（免费）。产品不内置任何共享 key。
+- 写脚本用你自己的文本模型 key（复用 [AO](https://github.com/jnMetaCode/agency-orchestrator) 的 `~/.ao` 配置或环境变量如 `DEEPSEEK_API_KEY`）；画面**不配 key 也能出**（Wikimedia Commons 免 key 兜底，偏科教/历史），配一把免费的 Pexels / Pixabay key 会明显更贴合（界面一分钟引导）；配音默认 Edge TTS（免费）。产品不内置任何共享 key。
 - 本地 AI 出片：`openshorts doctor` 会告诉你这台机器能跑哪一档（24 GB 内存起，草稿画质），以及 sd-cli 与模型怎么装。
 - 产物落在 `~/OpenShorts/<项目>/`；成片默认带 AI 生成标识；素材署名写进发布文案。
 
@@ -133,7 +140,7 @@ npm run release:bundle
 ```
 
 ```bash
-# macOS
+# macOS。注意 brew 的 ffmpeg 不含 libass，装完再跑一次 `openshorts install-ffmpeg` 才能烧字幕
 brew install ffmpeg imagemagick
 ```
 

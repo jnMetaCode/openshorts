@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 process.env.OPENSHORTS_HOME = fs.mkdtempSync(path.join(os.tmpdir(), 'os-home-'));   // 测试不碰真实 ~/.openshorts（缓存会污染断言）
-const { searchLocal, searchPexels, searchWikimedia, findCandidates, StockRateLimit, relaxQueries } = await import('../src/sources/stock.mjs');
+const { searchLocal, searchPexels, searchWikimedia, findCandidates, StockRateLimit, StockTooLarge, relaxQueries, cacheTier, materialize, materializeFirst } = await import('../src/sources/stock.mjs');
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'os-stock-'));
 fs.writeFileSync(path.join(dir, 'cat_cardboard_box.mp4'), 'x');
@@ -56,4 +56,44 @@ test('Wikimedia 相关性：标题不含任何查询实词的结果被丢弃', a
   const fetchImpl = async () => ({ ok: true, status: 200, json: async () => ({ query: { pages: { 1: { pageid: 1, title: 'File:Office hours.webm', imageinfo: [{ url: 'u', mime: 'video/webm' }] }, 2: { pageid: 2, title: 'File:Lotti the cat in a box.webm', imageinfo: [{ url: 'u2', mime: 'video/webm', extmetadata: {} }] } } } }) });
   const r = await searchWikimedia('cat cardboard', { fetchImpl });
   assert.deepEqual(r.map((x) => x.id), ['wikimedia:2']);
+});
+
+
+test('缓存按"配了哪些 key"分桶：新配了 Pexels key 之后不能再吃 0-key 时代的旧缓存', async () => {
+  assert.equal(cacheTier({ stock: {} }), 'free');
+  assert.equal(cacheTier({ stock: { pexelsKey: 'k' } }), 'px');
+  assert.equal(cacheTier({ stock: { pexelsKey: 'k', pixabayKey: 'j' } }), 'px-pb');
+
+  const wiki = { query: { pages: { 1: { pageid: 1, title: 'File:Cat in box.webm', imageinfo: [{ url: 'https://x/a.webm', mime: 'video/webm', extmetadata: {} }] } } } };
+  const noKey = await findCandidates('cat box', { config: { stock: {} }, fetchImpl: async () => ({ ok: true, status: 200, json: async () => wiki }) });
+  assert.equal(noKey[0].source, 'wikimedia');
+
+  // 同一个检索词，这次配了 Pexels key：必须真的去问 Pexels，而不是命中刚才那条缓存
+  let askedPexels = false;
+  const withKey = await findCandidates('cat box', {
+    config: { stock: { pexelsKey: 'k' } },
+    fetchImpl: async (u) => {
+      if (String(u).includes('pexels')) { askedPexels = true; return { ok: true, status: 200, json: async () => ({ videos: [{ id: 9, duration: 10, video_files: [{ file_type: 'video/mp4', link: 'https://x/p.mp4', height: 1080 }], user: { name: 'A' }, url: 'https://p' }] }) }; }
+      return { ok: true, status: 200, json: async () => wiki };
+    },
+  });
+  assert.ok(askedPexels, '配了 key 就该去问 Pexels');
+  assert.equal(withKey[0].source, 'pexels', '有 key 时优先用 key 源，不能被旧缓存挡住');
+});
+
+test('下载素材：超过体积上限直接换下一条，不把几百 MB 的纪录片吞进内存', async () => {
+  const big = { id: 'wikimedia:1', url: 'https://x/huge.webm' };
+  const fetchImpl = async () => ({ ok: true, status: 200, headers: { get: (h) => (h === 'content-length' ? String(400 * 1048576) : null) }, body: (async function* () { yield Buffer.alloc(1); })() });
+  await assert.rejects(() => materialize(big, { fetchImpl, maxBytes: 256 << 20 }), StockTooLarge);
+});
+
+test('materializeFirst：第一条取不到就顺位试下一条，不直接掉进纯色底', async () => {
+  const okBody = (async function* () { yield Buffer.from('video-bytes'); })();
+  const fetchImpl = async (url) => (String(url).includes('bad')
+    ? { ok: false, status: 404, headers: { get: () => null } }
+    : { ok: true, status: 200, headers: { get: () => null }, body: okBody });
+  const errs = [];
+  const got = await materializeFirst([{ id: 'a:1', url: 'https://x/bad.mp4' }, { id: 'a:2', url: 'https://x/good.mp4' }], { fetchImpl, onError: (c, e) => errs.push(c.id) });
+  assert.equal(got.candidate.id, 'a:2');
+  assert.deepEqual(errs, ['a:1']);
 });

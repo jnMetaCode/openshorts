@@ -20,3 +20,17 @@ test('rankCandidates：按分排序，低于阈值的标 rejected 排最后；�
   assert.deepEqual(bad.map((x) => x.id), ['c0', 'c1', 'c2']);
   fs.rmSync(d, { recursive: true, force: true });
 });
+
+test('只有一条候选也要送去打分：唯一候选恰恰最容易混进标题卡/无关画面', { skip: !hasFfmpeg && '无 ffmpeg' }, async () => {
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'os-rank1-'));
+  const f = path.join(d, 'only.mp4');
+  spawnSync('ffmpeg', ['-v', 'error', '-y', '-f', 'lavfi', '-i', 'color=c=white:size=64x64:rate=10:d=2', '-pix_fmt', 'yuv420p', f]);
+  const calls = [];
+  const connector = { chat: async (_sys, user) => { calls.push(user); return { content: '[{"i":0,"score":1,"why":"是一张英文标题卡"}]' }; } };
+  const one = [{ id: 'wikimedia:1', file: f }];
+  const ranked = await rankCandidates(one, '一只猫钻进纸箱', { connector, cfg: {}, threshold: 4 });
+  assert.equal(calls.length, 1, '必须真的问了模型');
+  assert.equal(ranked[0].score, 1);
+  assert.equal(ranked[0].rejected, true, '不及格的唯一候选要被判退，让上层退纯色底');
+  fs.rmSync(d, { recursive: true, force: true });
+});

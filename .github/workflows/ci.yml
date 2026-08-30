@@ -3,20 +3,33 @@ on:
   push:
   pull_request:
 jobs:
+  # 三平台都跑：踩过的坑几乎都是平台/版本差异——ffmpeg 6.x 会静默丢音轨、
+  # Homebrew 的 ffmpeg 不含 libass、sd-cli 解压走 unzip/tar 两条路。只测 ubuntu 挡不住。
   test:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-      - name: 安装媒体依赖（apt 的 ImageMagick 是 6.x，无 magick 命令，补垫片）
+      - name: 安装媒体依赖（Linux。apt 的 ImageMagick 是 6.x，无 magick 命令，补垫片）
+        if: runner.os == 'Linux'
         run: |
           sudo apt-get update -q && sudo apt-get install -y --no-install-recommends imagemagick ffmpeg librsvg2-bin
           printf '#!/bin/bash\nif [ "$1" = "identify" ]; then shift; exec identify "$@"; fi\nexec convert "$@"\n' | sudo tee /usr/local/bin/magick >/dev/null
           sudo chmod +x /usr/local/bin/magick
           magick -list delegate >/dev/null && ffmpeg -version | head -1
+      - name: 安装媒体依赖（macOS）
+        if: runner.os == 'macOS'
+        run: brew install ffmpeg imagemagick && ffmpeg -version | head -1
+      - name: 安装媒体依赖（Windows）
+        if: runner.os == 'Windows'
+        run: choco install -y ffmpeg
       - run: npm ci
       - run: npm test
       - run: npm run build

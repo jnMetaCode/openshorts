@@ -100,7 +100,8 @@ switch (cmd) {
     const variants = planVariants({ voices: split(o.voices), captions: split(o.captions), rates: split(o.rates).map(Number) }, project);
     console.log(`共 ${variants.length} 版：${variants.map((v) => v.id).join('、')}`);
     const t0 = Date.now();
-    const results = await runBatch(project, variants, { baseDir: path.dirname(path.resolve(pf)), log: (m) => console.log('  ' + m) });
+    const { readConfig: rcb } = await import('../src/config.mjs');
+    const results = await runBatch(project, variants, { baseDir: path.dirname(path.resolve(pf)), log: (m) => console.log('  ' + m), vision: rcb().vision });
     console.log(`\n✓ ${results.filter((r) => r.ok).length}/${results.length} 版完成，${((Date.now() - t0) / 1000).toFixed(0)}s`);
     for (const r of results) console.log(`  ${r.ok ? '✅' : '⛔'} ${r.id}${r.ok ? `  ${r.file}（${r.durationSec?.toFixed(1)}s${r.quality ? `，质检${r.quality.pass ? '通过' : '有问题'}`: ''}）` : `  ${r.error}`}`);
     break;
@@ -119,6 +120,21 @@ switch (cmd) {
     if (free < project.shots.length) console.log(`  其余 ${project.shots.length - free} 个走 AI 出图/出片，按各家计费（数量级见 ao plan）`);
     break;
   }
+  case 'install-ffmpeg': {
+    // Homebrew 的 ffmpeg 已不含 libass ⇒ 字幕烧不进画面。装一份带 libass 的到 ~/.openshorts/bin，只对开片生效。
+    const { installFfmpeg, ffmpegCaps } = await import('../src/media/ffmpeg.mjs');
+    const before = await ffmpegCaps();
+    if (before.subtitles && !parseOpts(rest).force) { console.log(`✅ 当前 ffmpeg ${before.version} 已经能烧字幕（${before.bin}），不用装。要强制重装加 --force`); break; }
+    let lastFile = '';
+    try {
+      const caps = await installFfmpeg({
+        onLog: (m) => console.log('  ' + m),
+        onProgress: (p) => { if (p.total && p.file !== lastFile) { lastFile = p.file; } if (p.total) process.stdout.write(`\r  ${p.file} ${(p.bytes / 1048576).toFixed(0)}/${(p.total / 1048576).toFixed(0)} MB   `); if (p.done) process.stdout.write('\n'); },
+      });
+      console.log(`\n✓ 装好了：${caps.bin}（ffmpeg ${caps.version}）\n  字幕可烧进画面 · AI 标识角标可叠加。之前出的片重跑一次 openshorts run 就有字了。`);
+    } catch (e) { console.error(`\n⛔ ${e.message}`); process.exit(1); }
+    break;
+  }
   case 'doctor': {
     const { doctor, formatDoctor } = await import('../src/doctor.mjs');
     console.log('\nOpenShorts 体检'); console.log(formatDoctor(await doctor())); console.log('\nAO 引擎体检（文本/出图/出片供应商）：');
@@ -135,6 +151,7 @@ switch (cmd) {
   sources   看这台机器能用哪些画面来源（素材库 / AI 配图 / 本地生成 / 云端出片）
   drama     AI 短剧：跑 AO 短剧流水线（参数透传给 ao run；--validate / --plan 只检查）
   doctor    环境体检（转 ao doctor）
+  install-ffmpeg  装一份带 libass 的 ffmpeg 到 ~/.openshorts/bin（Homebrew 的不带，字幕会烧不进画面）
   new       口播科普：openshorts new koubo-kepu --topic "…" [--duration 60秒] [--tone 科普讲解] [--voice …] [--local-dir 素材夹] [--bgm x.mp3]
   run       出片：openshorts run <project.json> [--vision-provider agnes --vision-model agnes-2.0-flash]（候选素材看图排序）
   estimate  看这个项目要不要花钱

@@ -8,13 +8,34 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { ffmpegPath, ffprobePath } from '../media/ffmpeg.mjs';
 const run = promisify(execFile);
 
-export async function frameOf(file, atSec = 1) {
-  const out = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'os-frame-')), 'f.jpg');
-  await run(process.env.OPENSHORTS_FFMPEG || process.env.AO_FFMPEG || 'ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', '-ss', String(atSec), '-i', file, '-frames:v', '1', '-vf', 'scale=512:-2', '-q:v', '5', '-update', '1', out]);
-  const b = fs.readFileSync(out); fs.rmSync(path.dirname(out), { recursive: true, force: true });
-  return `data:image/jpeg;base64,${b.toString('base64')}`;
+const FF = ffmpegPath;
+const FFP = ffprobePath;
+
+/** 素材时长（拿不到返回 0）——用来决定抽哪一帧 */
+export async function clipDuration(file) {
+  try { const r = await run(FFP(), ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', file]); const n = Number(String(r.stdout).trim().split(/[\r\n,]/)[0]); return Number.isFinite(n) ? n : 0; }
+  catch { return 0; }
+}
+
+/**
+ * 抽一帧做证据。默认抽**正片中段**而不是第 1 秒：真机踩过——一段 1920 年代动画的第 1 秒是英文标题卡，
+ * 模型看到标题卡本该判 ≤2 分，但只要它是唯一候选就压根没送去打分（见 rankCandidates），于是整镜变成大写英文字幕板。
+ * 抽中段既躲开片头卡，也更能代表这条素材真正的画面。
+ */
+export async function frameOf(file, atSec = null) {
+  const at = atSec ?? (await clipDuration(file)) * 0.5;
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'os-frame-'));
+  const out = path.join(dir, 'f.jpg');
+  const shot = async (t) => run(FF(), ['-hide_banner', '-loglevel', 'error', '-y', ...(t > 0.05 ? ['-ss', String(t.toFixed ? t.toFixed(2) : t)] : []), '-i', file, '-frames:v', '1', '-vf', 'scale=512:-2', '-q:v', '5', '-update', '1', out]);
+  try {
+    try { await shot(at); } catch { /* 定位失败（素材比 at 短 / 关键帧稀疏）→ 从头抽 */ }
+    if (!fs.existsSync(out) || !fs.statSync(out).size) await shot(0);
+    const b = fs.readFileSync(out);
+    return `data:image/jpeg;base64,${b.toString('base64')}`;
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 }
 
 /** 解析回复里的 JSON 数组 [{i, score, why}] */
@@ -28,7 +49,9 @@ export function parseScores(text, n) {
  * connector: AO 的 LLMConnector（chat(system, user, cfg)）；cfg: { provider, model, api_key? }
  */
 export async function rankCandidates(candidates, intent, { connector, cfg, threshold = 4, log = () => {} }) {
-  if (!connector || candidates.length <= 1) return candidates.map((c) => ({ ...c, score: null }));
+  // 只有一条候选也要过关："唯一候选"恰恰是最容易混进标题卡/无关画面的情况，
+  // 以前这里直接放行，真机就漏过了一整镜英文标题卡。
+  if (!connector || !candidates.length) return candidates.map((c) => ({ ...c, score: null }));
   const frames = [];
   for (const c of candidates) { try { frames.push(await frameOf(c.file)); } catch { frames.push(null); } }
   const usable = candidates.map((c, i) => ({ c, i, f: frames[i] })).filter((x) => x.f);

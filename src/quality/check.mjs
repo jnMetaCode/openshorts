@@ -6,9 +6,10 @@
 import fs from 'node:fs';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { ffmpegPath, ffprobePath } from '../media/ffmpeg.mjs';
 const run = promisify(execFile);
-const FFMPEG = () => process.env.OPENSHORTS_FFMPEG || process.env.AO_FFMPEG || 'ffmpeg';
-const FFPROBE = () => process.env.OPENSHORTS_FFPROBE || process.env.AO_FFPROBE || FFMPEG().replace(/ffmpeg(\.exe)?$/i, 'ffprobe$1');
+const FFMPEG = ffmpegPath;
+const FFPROBE = ffprobePath;
 
 export async function probe(file) {
   const r = await run(FFPROBE(), ['-v', 'error', '-print_format', 'json', '-show_streams', '-show_format', file], { maxBuffer: 8 << 20 });
@@ -35,7 +36,8 @@ export async function checkKoubo(project, { file = project.final?.file, burnedCa
   add('duration', drift <= 0.08 ? 'pass' : drift <= 0.2 ? 'warn' : 'fail', `成片 ${dur.toFixed(1)}s，各镜配音之和 ${expect.toFixed(1)}s（偏差 ${(drift * 100).toFixed(0)}%）`);
   add('audio', a ? 'pass' : 'fail', a ? `${a.codec_name} ${a.sample_rate}Hz` : '无音轨');
   if (a) { const lufs = await loudness(file); if (lufs == null) add('loudness', 'warn', '测不出响度（ffmpeg 缺 ebur128）'); else add('loudness', Math.abs(lufs - targetLufs) <= 3 ? 'pass' : 'warn', `综合响度 ${lufs.toFixed(1)} LUFS（目标 ${targetLufs} ±3）`); }
-  add('captions', burnedCaptions ? 'pass' : 'warn', burnedCaptions ? '字幕已烧进画面' : sub ? '字幕是软轨（播放器可开关；抖音/视频号上传会忽略软轨，要显示得烧进画面——装带 libass 的 ffmpeg）' : '没有字幕');
+  // 短视频平台一律不认软字幕轨，观众看到的就是没有字——这是 fail，不是"提醒"
+  add('captions', burnedCaptions ? 'pass' : 'fail', burnedCaptions ? '字幕已烧进画面' : sub ? '字幕只有软轨：抖音/视频号上传后不显示，纯色底的镜头会是空屏。跑 `openshorts install-ffmpeg` 后重出' : '没有字幕');
   add('cover', project.final?.cover && fs.existsSync(project.final.cover) ? 'pass' : 'warn', project.final?.cover ? '有封面' : '无封面');
   add('ai-label', /AI-generated|AI 生成/.test(String(p.format?.tags?.comment ?? '')) ? 'pass' : 'warn', p.format?.tags?.comment ? '元数据含 AI 生成标识' : '元数据无 AI 标识');
   add('shots', project.shots.every((s) => s.status === 'ready') ? 'pass' : 'warn', `${project.shots.filter((s) => s.status === 'ready').length}/${project.shots.length} 镜头就绪`);

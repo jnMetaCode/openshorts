@@ -41,3 +41,20 @@ test('alignPunctuation：把原文标点贴回词尾，句号处必断条；单�
   const long = Array.from({ length: 30 }, (_, i) => ({ text: '字', startMs: i * 400, endMs: i * 400 + 380 }));
   for (const c of buildCues(long)) assert.ok(c.endMs - c.startMs <= 4600);
 });
+
+test('ASS 样式按画面宽度等比缩放（预设是按 1080 定的，540 宽不能还用 64px 字）', () => {
+  const cues = [{ startMs: 0, endMs: 1000, text: '猫为什么总爱钻纸箱', words: [] }];
+  const at1080 = toASS(cues, { preset: 'douyin', w: 1080, h: 1920 });
+  const at540 = toASS(cues, { preset: 'douyin', w: 540, h: 960 });
+  const size = (ass) => Number(ass.match(/^Style: Default,[^,]+,(\d+),/m)[1]);
+  assert.equal(size(at1080), 64);
+  assert.equal(size(at540), 32, '宽度减半，字号也要减半，否则字顶出画外');
+  assert.match(at540, /,30,30,130,1$/m, '左右边距和底边距一起缩');
+});
+
+test('wrap 用调用方给的 maxChars，不再写死 16', () => {
+  const cues = [{ startMs: 0, endMs: 1000, text: '一二三四五六七八九十一二三四', words: [] }];
+  assert.ok(toSRT(cues, { maxChars: 8 }).includes('\n'), 'maxChars=8 时长句要断行');
+  const ass = toASS(cues, { maxChars: 8 });
+  assert.ok(ass.includes('\\N'), 'ASS 里也按同一个 maxChars 断');
+});

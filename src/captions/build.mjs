@@ -54,15 +54,21 @@ export function estimateWords(text, durationMs) {
   return chars.map((c, i) => ({ text: c, startMs: Math.round(i * per), endMs: Math.round((i + 1) * per), estimated: true }));
 }
 
-export function toSRT(cues) {
-  return cues.map((c, i) => `${i + 1}\n${srtTime(c.startMs)} --> ${srtTime(c.endMs)}\n${wrap(c.text)}\n`).join('\n');
+export function toSRT(cues, { maxChars = 16 } = {}) {
+  return cues.map((c, i) => `${i + 1}\n${srtTime(c.startMs)} --> ${srtTime(c.endMs)}\n${wrap(c.text, maxChars)}\n`).join('\n');
 }
 
-export function toASS(cues, { preset = 'douyin', w = 1080, h = 1920, emphasis = [] } = {}) {
+/**
+ * 样式预设的字号/描边/边距都是按 1080 宽定的，而 PlayResX 直接写成实际宽度，
+ * 于是 540 宽的项目会用 64px 字（相当于 1080 下的 128px）——字直接顶出画外。按宽度等比缩放。
+ */
+export function toASS(cues, { preset = 'douyin', w = 1080, h = 1920, emphasis = [], maxChars = 16 } = {}) {
   const p = STYLE_PRESETS[preset] ?? STYLE_PRESETS.douyin;
-  const head = `[Script Info]\nScriptType: v4.00+\nPlayResX: ${w}\nPlayResY: ${h}\nWrapStyle: 0\n\n[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\nStyle: Default,${p.font},${p.size},${p.color},${p.color},${p.outline},&H80000000,${p.bold},0,0,0,100,100,0,0,${p.box ? 3 : 1},${p.outlineW},${p.shadow},2,60,60,${p.marginV},1\n\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n`;
+  const k = w / 1080;
+  const px = (n) => Math.max(1, Math.round(n * k));
+  const head = `[Script Info]\nScriptType: v4.00+\nPlayResX: ${w}\nPlayResY: ${h}\nWrapStyle: 0\n\n[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\nStyle: Default,${p.font},${px(p.size)},${p.color},${p.color},${p.outline},&H80000000,${p.bold},0,0,0,100,100,0,0,${p.box ? 3 : 1},${px(p.outlineW)},${px(p.shadow)},2,${px(60)},${px(60)},${px(p.marginV)},1\n\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n`;
   const lines = cues.map((c) => {
-    let text = wrap(c.text).replace(/\n/g, '\\N');
+    let text = wrap(c.text, maxChars).replace(/\n/g, '\\N');
     for (const kw of emphasis) if (kw && text.includes(kw)) text = text.split(kw).join(`{\\c${p.highlight}}${kw}{\\c${p.color}}`);
     return `Dialogue: 0,${assTime(c.startMs)},${assTime(c.endMs)},Default,,0,0,0,,${text}`;
   });
