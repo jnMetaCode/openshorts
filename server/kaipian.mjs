@@ -111,6 +111,20 @@ function dramaInputs(b) {
   return inputs;
 }
 const inputArgs = (inputs) => Object.entries(inputs).flatMap(([k, v]) => (v === '' ? [] : ['-i', `${k}=${v}`]));
+async function aoProviders() {
+  // AO 的 exports 只暴露主入口；按绝对路径 import 同目录文件绕过白名单（同一份 dist，不会漂）
+  const main = fileURLToPath(import.meta.resolve('agency-orchestrator'));
+  const api = await import(path.join(path.dirname(main), 'connectors', 'api-providers.js'));
+  const local = await import(path.join(path.dirname(main), 'connectors', 'local-sdcpp.js')).catch(() => null);
+  let keys = {}; try { keys = JSON.parse(fs.readFileSync(path.join(aoHome(), '.local', 'web-keys.json'), 'utf-8')); } catch { /* none */ }
+  const hasKey = (p) => !!(keys[p.id]?.apiKey || process.env[p.envKey]);
+  const localStatus = local?.localSdcppStatus ? local.localSdcppStatus() : null;
+  const video = (api.VIDEO_PROVIDERS ?? []).map((v) => ({ id: v.id, shape: v.shape, hasKey: v.shape === 'local' ? !!localStatus?.ok : hasKey(v), models: (v.models ?? []).map((m) => ({ id: m.id, resolutions: m.resolutions ?? [], durations: m.durations ?? [], ratios: m.ratios ?? [] })) }));
+  const KNOWN_IMAGE = { agnes: ['agnes-image-2.0-flash', 'agnes-image-2.1-flash'], volcengine: ['doubao-seedream-5-0-260128'], 'volcengine-plan': ['doubao-seedream-5.0-lite'], lanox: ['gpt-image-2'], apimart: ['gpt-image-2'], openai: ['gpt-image-2'] };
+  const image = (api.API_PROVIDERS ?? []).filter((p) => hasKey(p)).map((p) => ({ id: p.id, hasKey: true, models: KNOWN_IMAGE[p.id] ?? [] }));
+  return { video, image, localStatus };
+}
+kaipian.get('/drama/providers', async (_req, res, next) => { try { res.json(await aoProviders()); } catch (e) { next(e); } });
 kaipian.get('/drama/options', (_req, res) => {
   const { cli } = aoCli();
   const r = spawnSync(process.execPath, [cli, 'doctor', '--no-probe'], { encoding: 'utf-8', env: { ...process.env, AO_NO_MODEL_HINT: '1' } });

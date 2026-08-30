@@ -22,6 +22,7 @@ export const Kaipian = () => {
   const [dramaOpts, setDramaOpts] = useState<{localReady: boolean; cloudProviders: string[]; doctor: string[]} | null>(null);
   const [cloud, setCloud] = useState({video_provider: 'apimart', video_model: 'veo3.1-fast', video_resolution: '720p', video_duration: '8', image_provider: '', image_model: ''});
   const [preflight, setPreflight] = useState<string[]>([]);
+  const [providers, setProviders] = useState<{video: Array<{id: string; shape: string; hasKey: boolean; models: Array<{id: string; resolutions: string[]; durations: number[]; ratios: string[]}>}>; image: Array<{id: string; models: string[]}>} | null>(null);
   const [redo, setRedo] = useState<{shot: string; feedback: string; tier: 'same' | 'local' | 'cloud'} | null>(null);
   const [topic, setTopic] = useState('');
   const [duration, setDuration] = useState('60秒');
@@ -46,6 +47,7 @@ export const Kaipian = () => {
     const [s, v, a, c, ps] = await Promise.all([api<Sources>('/api/kaipian/sources'), api<Voice[]>('/api/kaipian/voices'), api<any>('/api/kaipian/ao-status'), api<any>('/api/kaipian/config'), api<any>('/api/kaipian/projects')]);
     setSources(s); setVoices(v); setAoStatus(a); setCfg(c); setProjects(ps); if (c?.tts?.voice) setVoice(c.tts.voice);
     api<any>('/api/kaipian/drama/options').then(setDramaOpts).catch(() => {});
+    api<any>('/api/kaipian/drama/providers').then(setProviders).catch(() => {});
   };
   useEffect(() => {
     refresh().catch((e) => setError(String(e.message)));
@@ -136,17 +138,28 @@ export const Kaipian = () => {
         <button className={tier === 'local' ? 'active' : ''} disabled={!dramaOpts?.localReady} onClick={() => setTier('local')}><b>本地草稿档 · 不花钱</b><small>{dramaOpts?.localReady ? '本机 sd.cpp 跑 MiniMax-H3 Q2：640×384、2 秒/镜、每镜约 3–4 分钟；画质草稿级，用来验证方向' : '未就绪：需要 sd-cli + 约 27 GB 模型（openshorts doctor 看怎么装）'}</small></button>
         <button className={tier === 'cloud' ? 'active' : ''} onClick={() => setTier('cloud')}><b>云端成片档 · 按秒计费</b><small>{dramaOpts?.cloudProviders.length ? `已配 key：${dramaOpts.cloudProviders.join(' / ')}` : '还没配视频供应商 key（秘塔 / APIMart / Agnes / 火山）'}</small></button>
       </div>
-      {tier === 'cloud' && <div className="kp-row">
-        <label>视频供应商<input value={cloud.video_provider} onChange={(e) => setCloud({...cloud, video_provider: e.target.value})} placeholder="apimart / metaso / agnes / volcengine"/></label>
-        <label>视频模型<input value={cloud.video_model} onChange={(e) => setCloud({...cloud, video_model: e.target.value})} placeholder="veo3.1-fast / MiniMax-H3 / agnes-video-2.5-flash"/></label>
-        <label>档位<input value={cloud.video_resolution} onChange={(e) => setCloud({...cloud, video_resolution: e.target.value})} placeholder="720p / 768P / 720P"/></label>
-        <label>每镜秒数<input value={cloud.video_duration} onChange={(e) => setCloud({...cloud, video_duration: e.target.value})}/></label>
-      </div>}
-      <div className="kp-row">
-        <label>定妆图供应商（出图，按张计费，通常极低）<input value={cloud.image_provider} onChange={(e) => setCloud({...cloud, image_provider: e.target.value})} placeholder="agnes / volcengine / lanox（留空 = 跟随文本供应商）"/></label>
-        <label>定妆图模型<input value={cloud.image_model} onChange={(e) => setCloud({...cloud, image_model: e.target.value})} placeholder="agnes-image-2.0-flash / doubao-seedream-5-0-260128"/></label>
-      </div>
-      <div className="kp-warn">模型 id 各家不通用，这里不替你猜；不知道填什么去 AO Studio 的出图/出片面板看已探测到的候选。本地草稿档的定妆图仍走云端出图（本地只出视频）。</div>
+      {tier === 'cloud' && (() => {
+        const vps = (providers?.video ?? []).filter((v) => v.shape !== 'local');
+        const vp = vps.find((v) => v.id === cloud.video_provider);
+        const vm = vp?.models.find((m) => m.id === cloud.video_model);
+        const pick = (patch: Partial<typeof cloud>) => setCloud({...cloud, ...patch});
+        return <div className="kp-row">
+          <label>视频供应商<select value={cloud.video_provider} onChange={(e) => { const p = vps.find((v) => v.id === e.target.value); const m = p?.models[0]; pick({video_provider: e.target.value, video_model: m?.id ?? '', video_resolution: m?.resolutions[0] ?? '', video_duration: String(m?.durations[0] ?? '')}); }}>
+            {vps.map((v) => <option key={v.id} value={v.id}>{v.id}{v.hasKey ? ' ✓' : '（未配 key）'}</option>)}
+          </select></label>
+          <label>视频模型{vp && vp.models.length ? <select value={cloud.video_model} onChange={(e) => { const m = vp.models.find((x) => x.id === e.target.value); pick({video_model: e.target.value, video_resolution: m?.resolutions[0] ?? '', video_duration: String(m?.durations[0] ?? '')}); }}>{vp.models.map((m) => <option key={m.id} value={m.id}>{m.id}</option>)}</select> : <input value={cloud.video_model} onChange={(e) => pick({video_model: e.target.value})} placeholder="该供应商没有已核实的模型清单，手填"/>}</label>
+          <label>档位{vm && vm.resolutions.length ? <select value={cloud.video_resolution} onChange={(e) => pick({video_resolution: e.target.value})}>{vm.resolutions.map((r) => <option key={r}>{r}</option>)}</select> : <input value={cloud.video_resolution} onChange={(e) => pick({video_resolution: e.target.value})}/>}</label>
+          <label>每镜秒数{vm && vm.durations.length ? <select value={cloud.video_duration} onChange={(e) => pick({video_duration: e.target.value})}>{vm.durations.map((d) => <option key={d} value={String(d)}>{d}</option>)}</select> : <input value={cloud.video_duration} onChange={(e) => pick({video_duration: e.target.value})}/>}</label>
+        </div>;
+      })()}
+      {(() => {
+        const ips = providers?.image ?? []; const ip = ips.find((p) => p.id === cloud.image_provider);
+        return <div className="kp-row">
+          <label>定妆图供应商（出图，按张计费）<select value={cloud.image_provider} onChange={(e) => { const p = ips.find((x) => x.id === e.target.value); setCloud({...cloud, image_provider: e.target.value, image_model: p?.models[0] ?? ''}); }}><option value="">跟随文本供应商</option>{ips.map((p) => <option key={p.id} value={p.id}>{p.id} ✓</option>)}</select></label>
+          <label>定妆图模型{ip && ip.models.length ? <select value={cloud.image_model} onChange={(e) => setCloud({...cloud, image_model: e.target.value})}>{ip.models.map((m) => <option key={m}>{m}</option>)}<option value="">（手填其他）</option></select> : <input value={cloud.image_model} onChange={(e) => setCloud({...cloud, image_model: e.target.value})} placeholder="该供应商未核实图片模型，手填"/>}</label>
+        </div>;
+      })()}
+      <div className="kp-warn">下拉只列 AO 供应商表里真机核实过的模型与档位（各家 id 不通用，不猜）；没列出的可手填。本地草稿档的定妆图仍走云端出图。</div>
       {preflight.length > 0 && <div className="kp-cost"><b>本次花费预览</b>{preflight.map((l, i) => <small key={i} style={{display: 'block'}}>{l}</small>)}</div>}
       <div className="kp-actions"><button onClick={() => setStep(1)}>上一步</button><button onClick={dramaPreflight} disabled={!!busy || !cloud.image_model}>看花费</button><button className="primary" disabled={!!busy || !cloud.image_model || preflight.length === 0} onClick={dramaRun}>确认花费，出片 →</button></div>
     </section>}
