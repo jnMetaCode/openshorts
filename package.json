@@ -11,15 +11,19 @@
   "files": [
     "bin",
     "dist",
+    "!dist/audio",
+    "!dist/uploads",
     "server",
     "shared",
     "scripts",
     "src",
+    "!src/studio/**/*.css.map",
     "public/assets",
+    "!public/audio",
     "templates",
     "adapters",
-    "examples",
-    "docs",
+    "docs/v2",
+    "docs/*.md",
     "README.md",
     "LICENSE",
     "CHANGELOG.md",
@@ -54,7 +58,8 @@
     "asset": "node scripts/record-asset.mjs",
     "comfy": "node scripts/comfy-asset.mjs",
     "new": "node scripts/draft-story.mjs",
-    "openshorts": "node bin/openshorts.mjs"
+    "openshorts": "node bin/openshorts.mjs",
+    "prepack": "npm run build"
   },
   "dependencies": {
     "@remotion/bundler": "4.0.499",

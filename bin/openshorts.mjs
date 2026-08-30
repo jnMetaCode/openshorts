@@ -60,7 +60,14 @@ switch (cmd) {
     const wf = path.join(root, 'templates', 'koubo-kepu.yaml');
     const inputs = { topic: opt.topic, duration: opt.duration || '60秒', tone: opt.tone || '科普讲解' };
     console.log(`✍️  正在写脚本（${inputs.duration} · ${inputs.tone}）…`);
-    const res = await run(wf, inputs, { quiet: true, outputDir: path.join(cfg.outputDir, '.ao-runs'), ...(opt.provider ? { llmOverride: { provider: opt.provider, model: opt.model } } : {}) });
+    let res;
+    try { res = await run(wf, inputs, { quiet: true, outputDir: path.join(cfg.outputDir, '.ao-runs'), ...(opt.provider ? { llmOverride: { provider: opt.provider, model: opt.model } } : {}) }); }
+    catch (e) {
+      // 最常见的是没配文本模型 key：一句话说清怎么配，不吐堆栈
+      console.error(`\n⛔ ${e.message.split('\n')[0]}`);
+      console.error('   写脚本要一个文本模型：设环境变量（如 DEEPSEEK_API_KEY）再运行，或在 AO 的 ~/.ao 配置里存一次 key；也可以加 --provider ollama --model <本地模型> 走本地。');
+      process.exit(1);
+    }
     if (!res.success) { console.error('脚本步骤失败：', res.steps.filter((s) => s.status === 'failed').map((s) => `${s.id}: ${s.error}`).join('; ')); process.exit(1); }
     const project = buildKouboProject(res, { topic: opt.topic, inputs, defaults: { voice: opt.voice || cfg.tts?.voice, captionPreset: opt.captions || 'douyin', localDirs: opt['local-dir'] ? [path.resolve(opt['local-dir'])] : [], bgm: opt.bgm ? path.resolve(opt.bgm) : null } });
     const dir = path.join(cfg.outputDir, project.id); fs.mkdirSync(dir, { recursive: true });

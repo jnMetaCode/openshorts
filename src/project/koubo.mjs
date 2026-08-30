@@ -16,9 +16,10 @@ export function buildKouboProject(aoResult, { id, topic, inputs = {}, output = {
   const segs = Array.isArray(script.segments) ? script.segments : [];
   if (!segs.length) throw new Error('脚本没有 segments');
   const shots = [];
-  if (script.hook) shots.push(shot('hook', script.hook, segs[0]?.visualIntent ?? '', segs[0]?.query ?? '', segs[0]?.emphasis ?? []));
-  for (const s of segs) shots.push(shot(s.id || `s${shots.length + 1}`, s.text, s.visualIntent, s.query, s.emphasis ?? []));
-  if (script.outro) shots.push(shot('outro', script.outro, segs[segs.length - 1]?.visualIntent ?? '', segs[segs.length - 1]?.query ?? '', []));
+  const src = defaults.visualSource === 'solid' ? 'solid' : null;   // 用户选"只用纯色底"时镜头直接标 solid，run 阶段不去找素材
+  if (script.hook) shots.push(shot('hook', script.hook, segs[0]?.visualIntent ?? '', segs[0]?.query ?? '', segs[0]?.emphasis ?? [], src));
+  for (const s of segs) shots.push(shot(s.id || `s${shots.length + 1}`, s.text, s.visualIntent, s.query, s.emphasis ?? [], src));
+  if (script.outro) shots.push(shot('outro', script.outro, segs[segs.length - 1]?.visualIntent ?? '', segs[segs.length - 1]?.query ?? '', [], src));
   return {
     schemaVersion: 2,
     id: id ?? slug(topic ?? aoResult.name ?? 'koubo'),
@@ -37,5 +38,5 @@ export function buildKouboProject(aoResult, { id, topic, inputs = {}, output = {
     ao: { file: aoResult.file ?? null, success: !!aoResult.success, totalTokens: aoResult.totalTokens ?? null },
   };
 }
-const shot = (id, text, visualIntent, query, emphasis) => ({ id, text: String(text ?? '').trim(), visualIntent: visualIntent ?? '', query: query ?? '', emphasis: Array.isArray(emphasis) ? emphasis : [], visual: { source: null, provider: null, file: null, candidateId: null, cost: { kind: 'free' } }, audio: null, durationSec: null, status: 'planned' });
+const shot = (id, text, visualIntent, query, emphasis, source = null) => ({ id, text: String(text ?? '').trim(), visualIntent: visualIntent ?? '', query: query ?? '', emphasis: Array.isArray(emphasis) ? emphasis : [], visual: { source, provider: null, file: null, candidateId: null, cost: { kind: 'free' } }, audio: null, durationSec: null, status: 'planned' });
 const slug = (s) => String(s).toLowerCase().replace(/[^a-z0-9一-鿿]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'koubo';

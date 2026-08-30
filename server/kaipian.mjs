@@ -23,6 +23,8 @@ kaipian.get('/doctor', async (_req, res, next) => { try { const { doctor } = awa
 kaipian.get('/config', (_req, res) => { const c = readConfig(); res.json({ ...c, stock: { pexelsKey: mask(c.stock?.pexelsKey), pixabayKey: mask(c.stock?.pixabayKey), hasPexels: !!c.stock?.pexelsKey, hasPixabay: !!c.stock?.pixabayKey }, aoHome: aoHome() }); });
 kaipian.put('/config', (req, res) => {
   const cur = readConfig(); const b = req.body ?? {};
+  // 输出目录必须真能写：先建、再试写，失败 400——否则下一次出片才在最后一步炸
+  if (b.outputDir) { const od = path.resolve(String(b.outputDir)); try { fs.mkdirSync(od, { recursive: true }); fs.accessSync(od, fs.constants.W_OK); } catch { return res.status(400).json({ error: `输出目录不可写：${od}` }); } b.outputDir = od; }
   const next = { ...cur, ...(b.outputDir ? { outputDir: b.outputDir } : {}), tts: { ...cur.tts, ...(b.tts ?? {}) }, stock: { ...cur.stock } };
   if (typeof b.pexelsKey === 'string' && b.pexelsKey && !b.pexelsKey.includes('…')) next.stock.pexelsKey = b.pexelsKey.trim();
   if (typeof b.pixabayKey === 'string' && b.pixabayKey && !b.pixabayKey.includes('…')) next.stock.pixabayKey = b.pixabayKey.trim();

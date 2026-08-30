@@ -21,3 +21,10 @@ test('parseJsonLoose 容忍前言与代码块；缺 segments 报错', () => {
   assert.equal(parseJsonLoose('```json\n{"a":1}\n```').a, 1);
   assert.throws(() => buildKouboProject({ steps: [{ id: 'script', status: 'completed', output: '{"hook":"x"}' }] }), /segments/);
 });
+
+test('选"只用纯色底"时每个镜头标 solid，run 不会去查素材库', () => {
+  const p = buildKouboProject(aoResult, { topic: 'x', defaults: { visualSource: 'solid' } });
+  assert.ok(p.shots.every((s) => s.visual.source === 'solid'));
+  const q = buildKouboProject(aoResult, { topic: 'x' });
+  assert.ok(q.shots.every((s) => s.visual.source === null));
+});
