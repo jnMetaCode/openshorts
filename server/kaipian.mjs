@@ -145,6 +145,8 @@ kaipian.get('/drama/run', (req, res) => {
   for (const s of [child.stdout, child.stderr]) s.on('data', (d) => { buf += d.toString(); const parts = buf.split('\n'); buf = parts.pop(); parts.forEach(onLine); });
   child.on('close', (code) => {
     if (buf) onLine(buf);
+    // 非 0 退出（中断/失败）不回填：否则会拿半截的运行目录覆盖项目
+    if (code !== 0) { send('error', { m: `引擎退出码 ${code}（中断或失败），项目未改动` }); return res.end(); }
     try { const id = finishDramaRun({ runDir, runsDir, inputs, tier: q.tier || 'cloud' }); send('done', { id, code }); }
     catch (e) { send('error', { m: `${e.message}（退出码 ${code}）` }); }
     res.end();
@@ -160,7 +162,7 @@ function finishDramaRun({ runDir, runsDir, inputs, tier, existingId, shotSources
   const tpl = JSON.parse(fs.readFileSync(path.join(root, 'templates', 'ai-drama.template.json'), 'utf-8'));
   const id = existingId || safe(`短剧-${inputs.story.slice(0, 16)}-${new Date().toISOString().slice(5, 16).replace(/[:T]/g, '')}`);
   const project = aoResultToProject(meta, tpl, { id, assetsBase: 'assets' });
-  project.line = 'drama'; project.title = inputs.story.slice(0, 30); project.topic = inputs.story; project.inputs = inputs; project.tier = tier;
+  project.line = 'drama'; project.title = inputs.story.slice(0, 30); project.topic = inputs.story; project.inputs = inputs; project.tier = tier; project.shotSources = shotSources ?? {};
   for (const s of project.shots) {
     const ov = shotSources?.[s.id];
     const vp = ov?.video_provider ?? inputs.video_provider, vm = ov?.video_model ?? inputs.video_model;
@@ -202,6 +204,7 @@ kaipian.get('/projects/:id/drama/redo', (req, res) => {
   for (const st of [child.stdout, child.stderr]) st.on('data', (d) => { buf += d.toString(); const parts = buf.split('\n'); buf = parts.pop(); parts.forEach(onLine); });
   child.on('close', (code) => {
     if (buf) onLine(buf);
+    if (code !== 0) { send('error', { m: `引擎退出码 ${code}（中断或失败），项目未改动` }); return res.end(); }
     try { const id = finishDramaRun({ runDir, runsDir, inputs: prev.inputs, tier: prev.tier, existingId: prev.id, shotSources: { ...(prev.shotSources ?? {}), ...shotSources } }); send('done', { id, code }); }
     catch (e) { send('error', { m: `${e.message}（退出码 ${code}）` }); }
     res.end();
