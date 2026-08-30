@@ -269,3 +269,7 @@ kaipian.get('/local/install', async (req, res) => {
   res.end();
 });
 function walkFind(dir, re) { for (const n of fs.readdirSync(dir)) { const p = path.join(dir, n); const st = fs.statSync(p); if (st.isDirectory()) { const r = walkFind(p, re); if (r) return r; } else if (re.test(n)) return p; } return null; }
+
+// 链接 → 正文（口播线输入）：只抓公开页，超时 20 s，正文 ≤ 6000 字
+import { fetchArticle } from '../src/input/url-text.mjs';
+kaipian.post('/fetch-url', async (req, res, next) => { try { res.json(await fetchArticle(String(req.body?.url ?? '').trim())); } catch (e) { res.status(400).json({ error: e.message }); } });

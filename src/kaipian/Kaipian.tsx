@@ -28,6 +28,7 @@ export const Kaipian = () => {
   const [providers, setProviders] = useState<{video: Array<{id: string; shape: string; hasKey: boolean; models: Array<{id: string; resolutions: string[]; durations: number[]; ratios: string[]}>}>; image: Array<{id: string; models: string[]}>} | null>(null);
   const [redo, setRedo] = useState<{shot: string; feedback: string; tier: 'same' | 'local' | 'cloud'} | null>(null);
   const [topic, setTopic] = useState('');
+  const [articleUrl, setArticleUrl] = useState('');
   const [duration, setDuration] = useState('60秒');
   const [tone, setTone] = useState('科普讲解');
   const [sources, setSources] = useState<Sources | null>(null);
@@ -60,6 +61,7 @@ export const Kaipian = () => {
     if (id) openProject(id).catch((e) => setError(String(e.message)));
   }, []);
 
+  const grabUrl = async () => { setBusy('抓取文章…'); setError(''); try { const a = await api<{title: string; text: string; chars: number}>('/api/kaipian/fetch-url', {method: 'POST', body: JSON.stringify({url: articleUrl})}); setTopic(`${a.title ? a.title + '\n\n' : ''}${a.text}`); } catch (e: any) { setError(e.message); } finally { setBusy(''); } };
   const preview = async () => { setBusy('试听中…'); try { const r = await api<{dataUrl: string}>('/api/kaipian/tts/preview', {method: 'POST', body: JSON.stringify({voice, text: topic.slice(0, 40) || '你有没有发现，猫为什么总爱钻纸箱？'})}); if (audioRef.current) { audioRef.current.src = r.dataUrl; await audioRef.current.play(); } } catch (e: any) { setError(e.message); } finally { setBusy(''); } };
   const saveKeys = async () => { await api('/api/kaipian/config', {method: 'PUT', body: JSON.stringify({...keyDraft, tts: {voice}})}); setKeyDraft({pexelsKey: '', pixabayKey: ''}); await refresh(); };
   const createProject = async () => {
@@ -126,6 +128,7 @@ export const Kaipian = () => {
       </div>
       {line === 'koubo' ? <>
         <label>话题或文案<textarea value={topic} onChange={(e) => setTopic(e.target.value)} rows={5} placeholder="例如：猫为什么总爱钻纸箱？也可以直接粘一整段文案，AI 会按它分段。"/></label>
+        <div className="kp-inline" style={{marginTop: 6}}><input value={articleUrl} onChange={(e) => setArticleUrl(e.target.value)} placeholder="或粘一个文章链接（公众号 / 博客 / 新闻），抓正文当素材"/><button onClick={grabUrl} disabled={!articleUrl.trim() || !!busy}>抓正文</button></div>
         <div className="kp-row">
           <label>目标时长<select value={duration} onChange={(e) => setDuration(e.target.value)}>{['45秒', '60秒', '90秒'].map((d) => <option key={d}>{d}</option>)}</select></label>
           <label>语气<select value={tone} onChange={(e) => setTone(e.target.value)}>{['科普讲解', '犀利观点', '轻松口播'].map((d) => <option key={d}>{d}</option>)}</select></label>
