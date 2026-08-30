@@ -1,0 +1,299 @@
+{
+  "name": "短剧流水线（3 镜）",
+  "file": "/Users/yx/work/wenzhang/agency-orchestrator/workflows/短剧流水线.yaml",
+  "finishedAt": "2026-08-28T12:57:42.026Z",
+  "success": true,
+  "totalDuration": "316.1s",
+  "totalTokens": {
+    "input": 17945,
+    "output": 1532
+  },
+  "inputs": {
+    "story": "深夜便利店，值夜班的女孩把最后一份关东煮留给了每天来但从不说话的流浪老人；今晚老人没来，她把关东煮放在门口，转身时发现老人在玻璃外看着她笑",
+    "genre": "治愈日常",
+    "style": "霓虹赛博电影（Neon cyberpunk cinema）: rain-soaked night city, neon signage in magenta and cyan, wet asphalt reflections, ARRI Alexa 65 with Zeiss Master Anamorphic lenses, high contrast teal-and-magenta grade, volumetric haze, practical neon as key light",
+    "image_provider": "agnes",
+    "image_model": "agnes-image-2.0-flash",
+    "video_provider": "agnes",
+    "video_model": "agnes-video-2.5-flash",
+    "video_resolution": "720P",
+    "video_ratio": "16:9",
+    "video_duration": "4",
+    "narration": "不配音",
+    "tts_provider": "",
+    "tts_model": "",
+    "tts_voice": "",
+    "bgm_file": ""
+  },
+  "steps": [
+    {
+      "id": "script",
+      "role": "game-development/narrative-designer",
+      "agentName": "编剧",
+      "agentEmoji": "✍️",
+      "status": "completed",
+      "output_var": "script",
+      "acceptance": "1. 【主角】是一段 60 字以内的外形描述，且面部特征、服装质地、两处瑕疵都写到了\n2. 三镜分别落在\"建立 / 冲突 / 转折或收束\"上，不是三段并列的平铺\n3. 三镜发生在不超过两个场景里（换景越多，出片时越对不上）\n4. 每镜的动作量能在 4 秒内演完，不是塞了三件事\n5. 全文不含任何影视 IP、角色名、明星姓名\n6. 镜头 3 收在克制的画面上——不堆爆炸/光爆/粒子，人停住、呼吸、留白\n",
+      "verification": {
+        "pass": true,
+        "failed": [],
+        "reworked": false
+      },
+      "duration": "0.0s",
+      "tokens": {
+        "input": 0,
+        "output": 0
+      }
+    },
+    {
+      "id": "character_prompt",
+      "role": "design/design-image-prompt-engineer",
+      "agentName": "定妆图提示词",
+      "agentEmoji": "🧍",
+      "status": "completed",
+      "output_var": "character_prompt",
+      "acceptance": "1. 主角外形逐项落实：面部特征、服装质地、两处瑕疵，一样不缺\n2. 写明了具体摄影机型号 + 镜头型号，不是\"专业设备\"\"高清\"这类空话\n3. 正面全身、浅灰背景、柔和棚光三项都在（这是定妆图，不是剧照）\n4. 不含任何影视 IP 名、角色名、明星姓名\n5. 只有提示词本身，没有解释和前后语\n",
+      "verification": {
+        "pass": true,
+        "failed": [],
+        "reworked": false
+      },
+      "duration": "0.0s",
+      "tokens": {
+        "input": 0,
+        "output": 0
+      }
+    },
+    {
+      "id": "shot1_prompt",
+      "role": "design/design-image-prompt-engineer",
+      "agentName": "镜头 1 提示词",
+      "agentEmoji": "🎬",
+      "status": "completed",
+      "output_var": "shot1_prompt",
+      "acceptance": "1. 【氛围与画质】的摄影机/镜头/色调/光源与另两镜**一致**（三镜是一部片，不是三条广告）\n2. 重点写动作与运镜，**没有重新描述长相**（首帧已由定妆图锁定，再描述会和定妆图打架）\n3. 每段都有具体名词，不是\"氛围很好\"\"质感高级\"这类形容\n4. 不含任何影视 IP 名、角色名、明星姓名\n",
+      "verification": {
+        "pass": true,
+        "failed": [],
+        "reworked": false
+      },
+      "duration": "0.0s",
+      "tokens": {
+        "input": 0,
+        "output": 0
+      }
+    },
+    {
+      "id": "shot3_prompt",
+      "role": "design/design-image-prompt-engineer",
+      "agentName": "镜头 3 提示词",
+      "agentEmoji": "🎬",
+      "status": "completed",
+      "output_var": "shot3_prompt",
+      "acceptance": "1. 【氛围与画质】的摄影机/镜头/色调/光源与另两镜**一致**（三镜是一部片，不是三条广告）\n2. 重点写动作与运镜，**没有重新描述长相**（首帧已由定妆图锁定，再描述会和定妆图打架）\n3. 每段都有具体名词，不是\"氛围很好\"\"质感高级\"这类形容\n4. 不含任何影视 IP 名、角色名、明星姓名；且这一镜是收尾——克制，不堆爆炸/光爆/粒子\n",
+      "verification": {
+        "pass": true,
+        "failed": [],
+        "reworked": false
+      },
+      "duration": "0.0s",
+      "tokens": {
+        "input": 0,
+        "output": 0
+      }
+    },
+    {
+      "id": "shot2_prompt",
+      "role": "design/design-image-prompt-engineer",
+      "agentName": "镜头 2 提示词",
+      "agentEmoji": "🎬",
+      "status": "completed",
+      "output_var": "shot2_prompt",
+      "acceptance": "1. 【氛围与画质】的摄影机/镜头/色调/光源与另两镜**一致**（三镜是一部片，不是三条广告）\n2. 重点写动作与运镜，**没有重新描述长相**（首帧已由定妆图锁定，再描述会和定妆图打架）\n3. 每段都有具体名词，不是\"氛围很好\"\"质感高级\"这类形容\n4. 不含任何影视 IP 名、角色名、明星姓名\n",
+      "duration": "38.0s",
+      "tokens": {
+        "input": 7556,
+        "output": 485
+      }
+    },
+    {
+      "id": "narration1",
+      "role": "game-development/narrative-designer",
+      "agentName": "镜 1 旁白",
+      "agentEmoji": "📝",
+      "status": "skipped",
+      "output_var": "narration1",
+      "acceptance": "1. 只有一条旁白，没有前缀、引号和解释\n2. 补的是画面之外的信息，不是复述画面里看得见的动作\n3. 口语短句，没有\"命运的齿轮\"这类旁白腔空话\n4. 不含任何影视 IP、角色名、明星姓名\n",
+      "duration": "38.0s",
+      "tokens": {
+        "input": 0,
+        "output": 0
+      }
+    },
+    {
+      "id": "character",
+      "agentName": "主角定妆图",
+      "agentEmoji": "🎨",
+      "status": "completed",
+      "output_var": "character_img",
+      "acceptance": "1. 画面里只有一个人物，正面、全身可见（头顶到脚都在画面内）\n2. 背景是干净的浅色单色，没有场景、道具、文字或水印\n3. 人物与提示词描述的性别、年龄段、服装一致\n",
+      "verification": {
+        "pass": false,
+        "failed": [
+          "画面里只有一个人物，正面、全身可见（头顶到脚都在画面内）（画面中只展示了人物的上半身（头顶到腰部），腿部及脚部不在画面内，不是全身可见）",
+          "人物与提示词描述的性别、年龄段、服装一致（提示词要求'pilot jacket'（飞行员夹克），但画面中人物穿的是破洞牛仔夹克（denim jacket），服装类型不一致）"
+        ],
+        "reworked": true
+      },
+      "duration": "0.0s",
+      "tokens": {
+        "input": 0,
+        "output": 0
+      },
+      "imageAsset": {
+        "filename": "character.png"
+      }
+    },
+    {
+      "id": "vo1",
+      "status": "skipped",
+      "duration": "0.0s",
+      "tokens": {
+        "input": 0,
+        "output": 0
+      }
+    },
+    {
+      "id": "narration2",
+      "role": "game-development/narrative-designer",
+      "status": "skipped",
+      "duration": "0.0s",
+      "tokens": {
+        "input": 0,
+        "output": 0
+      }
+    },
+    {
+      "id": "vo2",
+      "status": "skipped",
+      "duration": "0.0s",
+      "tokens": {
+        "input": 0,
+        "output": 0
+      }
+    },
+    {
+      "id": "narration3",
+      "role": "game-development/narrative-designer",
+      "status": "skipped",
+      "duration": "0.0s",
+      "tokens": {
+        "input": 0,
+        "output": 0
+      }
+    },
+    {
+      "id": "shot2",
+      "agentName": "镜头 2 出片",
+      "agentEmoji": "🎥",
+      "status": "completed",
+      "output_var": "shot2_mp4",
+      "acceptance": "1. 画面里有主角，且是定妆图里的同一个人物（发型、服装一致）\n2. 画面里没有文字、字幕、水印或 logo\n",
+      "verification": {
+        "pass": false,
+        "failed": [
+          "画面里没有文字、字幕、水印或 logo（画面中玻璃门上有明显的文字标识（如'Арт'字样），便利店内货架上也有商品标签文字，门上还有彩色条纹装饰标识）"
+        ],
+        "reworked": false
+      },
+      "duration": "243.7s",
+      "tokens": {
+        "input": 3476,
+        "output": 115
+      },
+      "videoAsset": {
+        "filename": "shot2.mp4",
+        "seconds": 4
+      }
+    },
+    {
+      "id": "shot3",
+      "agentName": "镜头 3 出片",
+      "agentEmoji": "🎥",
+      "status": "completed",
+      "output_var": "shot3_mp4",
+      "acceptance": "1. 画面里有主角，且是定妆图里的同一个人物（发型、服装一致）\n2. 画面里没有文字、字幕、水印或 logo\n",
+      "verification": {
+        "pass": false,
+        "failed": [
+          "画面里没有文字、字幕、水印或 logo（第1帧右侧玻璃上有蓝色标志，可见'ZE'字样；第2、3帧老人手中杯子上有'AXT'字样，均为画面中出现的文字/标志）"
+        ],
+        "reworked": false
+      },
+      "duration": "243.7s",
+      "tokens": {
+        "input": 3340,
+        "output": 110
+      },
+      "videoAsset": {
+        "filename": "shot3.mp4",
+        "seconds": 4
+      }
+    },
+    {
+      "id": "shot1",
+      "agentName": "镜头 1 出片",
+      "agentEmoji": "🎥",
+      "status": "completed",
+      "output_var": "shot1_mp4",
+      "acceptance": "1. 画面里有主角，且是定妆图里的同一个人物（发型、服装一致）\n2. 画面里没有文字、字幕、水印或 logo\n",
+      "duration": "243.7s",
+      "tokens": {
+        "input": 0,
+        "output": 0
+      },
+      "videoAsset": {
+        "filename": "shot1.mp4",
+        "seconds": 4
+      }
+    },
+    {
+      "id": "vo3",
+      "status": "skipped",
+      "duration": "0.0s",
+      "tokens": {
+        "input": 0,
+        "output": 0
+      }
+    },
+    {
+      "id": "film",
+      "agentName": "三镜合成 + 后期",
+      "agentEmoji": "🎞",
+      "status": "completed",
+      "output_var": "film_mp4",
+      "duration": "1.0s",
+      "tokens": {
+        "input": 0,
+        "output": 0
+      },
+      "videoAsset": {
+        "filename": "film.mp4"
+      }
+    },
+    {
+      "id": "pack",
+      "role": "design/design-visual-storyteller",
+      "agentName": "交付页",
+      "agentEmoji": "📦",
+      "status": "completed",
+      "output_var": "delivery",
+      "acceptance": "1. 五行链接（成片、定妆图、三镜）**原样保留**且顺序正确，成片在最前——改写一个字符就点不开\n2. 每镜一句\"这一镜在讲什么\"，说的是画面内容不是技术参数\n3. 重跑建议是具体改动（改哪一段、怎么改），不是\"多抽几次\"\n",
+      "duration": "33.4s",
+      "tokens": {
+        "input": 3573,
+        "output": 822
+      }
+    }
+  ]
+}

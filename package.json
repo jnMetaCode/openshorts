@@ -1,6 +1,6 @@
 {
   "name": "openshorts",
-  "version": "1.0.0",
+  "version": "2.0.0-alpha.0",
   "private": true,
   "type": "module",
   "description": "Local-first layered paper collage video editor powered by Remotion",
@@ -9,6 +9,7 @@
     "node": ">=20"
   },
   "files": [
+    "bin",
     "dist",
     "server",
     "shared",
@@ -52,13 +53,15 @@
     "voices": "node scripts/preview-voices.mjs",
     "asset": "node scripts/record-asset.mjs",
     "comfy": "node scripts/comfy-asset.mjs",
-    "new": "node scripts/draft-story.mjs"
+    "new": "node scripts/draft-story.mjs",
+    "openshorts": "node bin/openshorts.mjs"
   },
   "dependencies": {
     "@remotion/bundler": "4.0.499",
     "@remotion/cli": "4.0.499",
     "@remotion/player": "4.0.499",
     "@remotion/renderer": "4.0.499",
+    "agency-orchestrator": "^0.19.1",
     "cors": "2.8.5",
     "express": "5.1.0",
     "multer": "2.0.2",
@@ -75,5 +78,8 @@
     "concurrently": "9.2.1",
     "typescript": "5.9.3",
     "vite": "7.1.7"
+  },
+  "bin": {
+    "openshorts": "bin/openshorts.mjs"
   }
 }

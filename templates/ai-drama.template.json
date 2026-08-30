@@ -1,0 +1,8 @@
+{
+  "id": "ai-drama",
+  "name": "AI 短剧（3 镜）",
+  "line": "drama",
+  "ao": { "workflow": "workflows/短剧流水线.yaml", "package": "agency-orchestrator" },
+  "description": "一段故事 → 三镜剧本 → 主角定妆图 → 图生视频三镜（看图验收）→ 合成。直接复用 AO 的短剧流水线，不复制 YAML。",
+  "defaults": { "provider": null, "model": null }
+}

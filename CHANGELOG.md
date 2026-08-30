@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.0.0-alpha.0] - 2026-08-30 · M0 骨架
+- v2 方向定案与六份文档（`docs/v2/`）；个人内容拆到私有 papercut-studio，公开仓转 public。
+- 依赖 `agency-orchestrator@^0.19.1`；新增 `bin/openshorts.mjs`：`npx openshorts`（open / sources / drama / doctor / version）。
+- `openshorts drama`：直接跑 AO 自带的短剧流水线（`templates/ai-drama.template.json` 只记引用，不复制 YAML）；`--validate` / `--plan` 只检查。
+- `openshorts sources`：这台机器能用哪些画面来源及原因（素材库 key / AO key / sd-cli 与内存档位 / ffmpeg）。
+- `src/config.mjs`：`~/.openshorts/config.json`；API key 沿用 AO 的 `~/.ao`（ADR-008）。
+- `src/core/ao-result.mjs`：AO 运行结果 → 项目 JSON 回填（纯函数），用真实短剧运行的 metadata 做快照测试（4 条）。
+
 ## 未发布
 
 - 对标 MoneyPrinterTurbo（101k 星）吸收三项：`npm run new` 话题一键起稿（LLM 生成可审阅
