@@ -22,6 +22,7 @@ export const Kaipian = () => {
   const [dramaOpts, setDramaOpts] = useState<{localReady: boolean; cloudProviders: string[]; doctor: string[]} | null>(null);
   const [cloud, setCloud] = useState({video_provider: 'apimart', video_model: 'veo3.1-fast', video_resolution: '720p', video_duration: '8', image_provider: '', image_model: ''});
   const [preflight, setPreflight] = useState<string[]>([]);
+  const [redo, setRedo] = useState<{shot: string; feedback: string; tier: 'same' | 'local' | 'cloud'} | null>(null);
   const [topic, setTopic] = useState('');
   const [duration, setDuration] = useState('60秒');
   const [tone, setTone] = useState('科普讲解');
@@ -77,6 +78,14 @@ export const Kaipian = () => {
     es.addEventListener('log', (e: any) => setLog((l) => [...l, JSON.parse(e.data).m]));
     es.addEventListener('done', async (e: any) => { es.close(); const {id} = JSON.parse(e.data); const p = await api<Project>(`/api/kaipian/projects/${encodeURIComponent(id)}`); setProject(p); setBusy(''); setStep(4); await refresh(); });
     es.addEventListener('error', (e: any) => { try { setError(JSON.parse(e.data).m); } catch { setError('出片中断'); } es.close(); setBusy(''); });
+  };
+  const dramaRedo = (shot: string, feedback: string, tierSel: 'same' | 'local' | 'cloud') => {
+    if (!project) return; setLog([]); setError(''); setBusy(`重出 ${shot} 中…`); setRedo(null);
+    const qs = new URLSearchParams({shot, feedback, ...(tierSel !== 'same' ? {tier: tierSel} : {}), ...(tierSel === 'cloud' ? {video_provider: cloud.video_provider, video_model: cloud.video_model, video_resolution: cloud.video_resolution, video_duration: cloud.video_duration} : {})});
+    const es = new EventSource(`/api/kaipian/projects/${encodeURIComponent(project.id)}/drama/redo?${qs}`);
+    es.addEventListener('log', (e: any) => setLog((l) => [...l, JSON.parse(e.data).m]));
+    es.addEventListener('done', async () => { es.close(); const p = await api<Project>(`/api/kaipian/projects/${encodeURIComponent(project.id)}`); setProject(p); setBusy(''); });
+    es.addEventListener('error', (e: any) => { try { setError(JSON.parse(e.data).m); } catch { setError('重出中断'); } es.close(); setBusy(''); });
   };
   const openProject = async (id: string) => { const p = await api<Project>(`/api/kaipian/projects/${encodeURIComponent(id)}`); setProject(p); setStep(p.final ? 4 : 3); };
   const copy = (t: string) => navigator.clipboard?.writeText(t);
@@ -195,7 +204,18 @@ export const Kaipian = () => {
         {s.verification ? <em className={s.verification.pass ? 'ok' : 'warn'}>{s.verification.pass ? '✅ 验收通过' : `⚠️ 验收 ${s.verification.failed.length} 条未过`}{s.verification.reworked ? '（已重出 1 次）' : ''}</em> : <em>未验收</em>}
         {s.verification && !s.verification.pass && <ul className="kp-prov">{s.verification.failed.map((f, i) => <li key={i}>{f}</li>)}</ul>}
         <small>{s.visual.source === 'local' ? '本地 · 不花钱' : `${s.visual.provider ?? ''} ${s.visual.model ?? ''}`}{s.durationSec ? ` · ${s.durationSec}s` : ''}</small>
+        <div className="kp-shot-actions">
+          {s.verification && !s.verification.pass && <button disabled={!!busy} onClick={() => dramaRedo(s.id, s.verification!.failed.join('\n'), 'same')}>按验收意见重出</button>}
+          <button disabled={!!busy} onClick={() => setRedo(redo?.shot === s.id ? null : {shot: s.id, feedback: '', tier: 'same'})}>提意见 / 换来源</button>
+        </div>
+        {redo?.shot === s.id && <div className="kp-redo">
+          <textarea rows={2} value={redo.feedback} onChange={(e) => setRedo({...redo, feedback: e.target.value})} placeholder="想怎么改（可空：只换来源重出）"/>
+          {s.kind === 'video' && <select value={redo.tier} onChange={(e) => setRedo({...redo, tier: e.target.value as any})}><option value="same">同一来源</option><option value="local" disabled={!dramaOpts?.localReady}>本地草稿档（不花钱）</option><option value="cloud">云端成片档（按秒计费，用第 2 步填的供应商）</option></select>}
+          <button className="primary" disabled={!!busy} onClick={() => dramaRedo(s.id, redo.feedback, redo.tier)}>重出这一镜</button>
+          <small>上游剧本 / 定妆图 / 其他镜头原样复用；合成会自动重跑。</small>
+        </div>}
       </div>)}</div>
+      {busy && log.length > 0 && <pre className="kp-log">{log.join('\n')}</pre>}
       <div className="kp-actions"><a className="kp-btn" href={project.final?.file ? fileUrl(project, project.final.file) : '#'} download>下载成片</a><button onClick={() => { setProject(null); setStep(2); }}>换档位再出一版</button><button className="primary" onClick={() => { setProject(null); setStory(''); setStep(1); }}>再做一条</button></div>
       <div className="kp-warn">草稿满意后切「云端成片档」用同一段故事重出；想让某一镜按验收意见重出，用命令行 <code>ao run … --resume last --from shot2 --feedback "…"</code>（界面版 M2 后半段）。</div>
     </section>}
