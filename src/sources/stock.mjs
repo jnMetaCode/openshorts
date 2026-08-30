@@ -64,6 +64,24 @@ export async function searchPixabay(query, { key, limit = 3, minDuration = 0, fe
   });
 }
 
+/**
+ * Wikimedia Commons（不要 key！CC / 公有领域，需署名）：真正零配置的免费素材源。
+ * 检索 `filetype:video`，多为 webm/ogv，ffmpeg 都能吃；署名信息进 provenance（CC BY-SA 要求）。
+ */
+export async function searchWikimedia(query, { limit = 3, fetchImpl = fetch } = {}) {
+  const u = new URL('https://commons.wikimedia.org/w/api.php');
+  Object.entries({ action: 'query', generator: 'search', gsrsearch: `filetype:video ${query}`, gsrnamespace: '6', gsrlimit: String(Math.max(limit * 3, 9)), prop: 'imageinfo', iiprop: 'url|size|mime|extmetadata', iiextmetadatafilter: 'LicenseShortName|Artist|Credit|LicenseUrl', format: 'json', origin: '*' }).forEach(([k, v]) => u.searchParams.set(k, v));
+  const r = await fetchImpl(u, { headers: { 'User-Agent': UA } });
+  if (r.status === 429) throw new StockRateLimit('Wikimedia 触发限速，稍后再试');
+  if (!r.ok) throw new Error(`Wikimedia ${r.status}`);
+  const j = await r.json();
+  const pages = Object.values(j.query?.pages ?? {});
+  return pages.filter((p) => /^video\//.test(p.imageinfo?.[0]?.mime ?? '')).slice(0, limit).map((p) => {
+    const ii = p.imageinfo[0]; const em = ii.extmetadata ?? {}; const strip = (h) => String(h ?? '').replace(/<[^>]+>/g, '').trim();
+    return { id: `wikimedia:${p.pageid}`, source: 'wikimedia', file: null, url: ii.url, width: ii.width, height: ii.height, duration: null, license: strip(em.LicenseShortName?.value) || 'CC（见页面）', licenseUrl: em.LicenseUrl?.value ?? null, author: strip(em.Artist?.value) || null, page: ii.descriptionurl ?? `https://commons.wikimedia.org/?curid=${p.pageid}`, title: p.title };
+  });
+}
+
 /** 统一入口：按顺序找候选，去掉本项目已用过的；全部为空时返回 []（调用方降级到 AI 配图 / 纯色底） */
 export async function findCandidates(query, { localDirs = [], used = new Set(), limit = 3, minDuration = 0, fetchImpl = fetch, config = readConfig() } = {}) {
   const out = [];
@@ -73,10 +91,13 @@ export async function findCandidates(query, { localDirs = [], used = new Set(), 
   const cached = readCacheIndex(query); if (cached) push(cached);
   if (out.length >= limit) return out.slice(0, limit);
   const errors = [];
-  for (const [fn, key] of [[searchPexels, config.stock?.pexelsKey], [searchPixabay, config.stock?.pixabayKey]]) {
+  // 有 key 的先用（画质/时长更可控），没 key 时 Wikimedia 兜底——所以"没注册任何 key"也能出第一条片
+  const chain = [[searchPexels, { key: config.stock?.pexelsKey }], [searchPixabay, { key: config.stock?.pixabayKey }], [searchWikimedia, {}]];
+  for (const [fn, extra] of chain) {
     if (out.length >= limit) break;
-    try { const r = await fn(query, { key, limit, minDuration, fetchImpl }); push(r); if (r.length) writeCacheIndex(query, r); }
-    catch (e) { errors.push(e.message); if (e instanceof StockRateLimit) break; }
+    if ('key' in extra && !extra.key) continue;
+    try { const r = await fn(query, { ...extra, limit, minDuration, fetchImpl }); push(r); if (r.length) writeCacheIndex(query, r); }
+    catch (e) { errors.push(e.message); if (e instanceof StockRateLimit) continue; }
   }
   if (!out.length && errors.length) throw new Error(`素材库检索失败：${errors.join('；')}`);
   return out.slice(0, limit);
@@ -87,7 +108,8 @@ export async function materialize(candidate, { fetchImpl = fetch } = {}) {
   if (candidate.file) return candidate.file;
   if (!candidate.url) throw new Error(`候选 ${candidate.id} 没有可下载地址`);
   fs.mkdirSync(CACHE_DIR, { recursive: true });
-  const dest = path.join(CACHE_DIR, `${candidate.id.replace(/[^a-z0-9]+/gi, '_')}.mp4`);
+  const ext = (candidate.url.match(/\.(webm|ogv|ogg|mov|mp4|m4v)(\?|$)/i)?.[1] ?? 'mp4').toLowerCase();
+  const dest = path.join(CACHE_DIR, `${candidate.id.replace(/[^a-z0-9]+/gi, '_')}.${ext}`);
   if (fs.existsSync(dest) && fs.statSync(dest).size > 0) return dest;
   const r = await fetchImpl(candidate.url, { headers: { 'User-Agent': UA } });
   if (!r.ok) throw new Error(`下载素材失败 ${r.status}：${candidate.url}`);

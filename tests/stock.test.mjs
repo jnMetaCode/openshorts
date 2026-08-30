@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { searchLocal, searchPexels, findCandidates, StockRateLimit } from '../src/sources/stock.mjs';
+import { searchLocal, searchPexels, searchWikimedia, findCandidates, StockRateLimit } from '../src/sources/stock.mjs';
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'os-stock-'));
 fs.writeFileSync(path.join(dir, 'cat_cardboard_box.mp4'), 'x');
@@ -35,4 +35,12 @@ test('findCandidates：本地优先、去重、无 key 无本地时返回空而�
   assert.ok(!b.some((c) => c.id === a[0].id));
   const c = await findCandidates('nothing matches xyz', { localDirs: [dir], config: { stock: {} } });
   assert.deepEqual(c, []);
+});
+
+test('Wikimedia（免 key）：解析视频页、带 CC 许可与作者；无任何 key 时作为兜底进入候选', async () => {
+  const fetchImpl = async () => ({ ok: true, status: 200, json: async () => ({ query: { pages: { 1: { pageid: 1, title: 'File:a.webm', imageinfo: [{ url: 'https://upload.wikimedia.org/a.webm', mime: 'video/webm', width: 1920, height: 1080, descriptionurl: 'https://commons.wikimedia.org/wiki/File:a.webm', extmetadata: { LicenseShortName: { value: 'CC BY-SA 3.0' }, Artist: { value: '<a href="x">Kluse</a>' } } }] }, 2: { pageid: 2, title: 'File:b.jpg', imageinfo: [{ url: 'u', mime: 'image/jpeg' }] } } } }) });
+  const r = await searchWikimedia('cat', { fetchImpl });
+  assert.equal(r.length, 1); assert.equal(r[0].license, 'CC BY-SA 3.0'); assert.equal(r[0].author, 'Kluse'); assert.equal(r[0].source, 'wikimedia');
+  const c = await findCandidates('cat', { config: { stock: {} }, fetchImpl });
+  assert.equal(c[0]?.source, 'wikimedia', '没 key 也有候选');
 });

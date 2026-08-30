@@ -19,8 +19,24 @@ export function extractArticle(html, url = '') {
   return { title: text(title), text: t, chars: [...t].length, url };
 }
 
-export async function fetchArticle(url, { fetchImpl = fetch, maxChars = 6000 } = {}) {
+import dns from 'node:dns/promises';
+import net from 'node:net';
+/** 内网 / 环回 / 链路本地 / 元数据地址一律拒绝——本机服务也不该替页面去访问内网（SSRF） */
+export function isPrivateAddress(ip) {
+  if (net.isIPv4(ip)) { const [a, b] = ip.split('.').map(Number); return a === 10 || a === 127 || a === 0 || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || (a === 100 && b >= 64 && b <= 127); }
+  const v6 = ip.toLowerCase(); return v6 === '::1' || v6 === '::' || v6.startsWith('fc') || v6.startsWith('fd') || v6.startsWith('fe80') || v6.startsWith('::ffff:127.') || v6.startsWith('::ffff:10.') || v6.startsWith('::ffff:192.168.');
+}
+export async function assertPublicHost(url, { resolve = (h) => dns.lookup(h, { all: true }) } = {}) {
+  const host = new URL(url).hostname;
+  if (host === 'localhost' || host.endsWith('.local') || host.endsWith('.internal')) throw new Error('不抓本机或内网地址');
+  const addrs = net.isIP(host) ? [{ address: host }] : await resolve(host).catch(() => []);
+  if (!addrs.length) throw new Error('域名解析失败');
+  if (addrs.some((a) => isPrivateAddress(a.address))) throw new Error('不抓本机或内网地址');
+}
+
+export async function fetchArticle(url, { fetchImpl = fetch, maxChars = 6000, resolve } = {}) {
   if (!/^https?:\/\//i.test(url)) throw new Error('请输入 http(s) 链接');
+  await assertPublicHost(url, resolve ? { resolve } : {});
   const r = await fetchImpl(url, { headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh) AppleWebKit/537.36 OpenShorts/2.0', Accept: 'text/html,*/*' }, redirect: 'follow', signal: AbortSignal.timeout(20000) });
   if (!r.ok) throw new Error(`抓取失败 HTTP ${r.status}`);
   const a = extractArticle(await r.text(), url);
