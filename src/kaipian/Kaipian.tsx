@@ -188,7 +188,7 @@ export const Kaipian = () => {
 
     {step === 4 && project?.line === 'drama' && <section className="kp-card kp-final">
       <h3>{project.title}<small> · {project.tier === 'local' ? '本地草稿档' : '云端成片档'} · {project.inputs?.video_provider} / {project.inputs?.video_model}</small></h3>
-      {project.final?.file && <video controls style={{width: '100%', maxWidth: 720, borderRadius: 8, background: '#000'}} src={fileUrl(project, project.final.file)}/>}
+      {project.final?.file && <video controls className={`kp-drama-film ${project.inputs?.video_ratio === '9:16' ? 'portrait' : ''}`} src={fileUrl(project, project.final.file)} poster={project.shots[0]?.visual?.file ? fileUrl(project, project.shots[0].visual.file) : undefined}/>}
       <div className="kp-drama-shots">{(project.shots as unknown as DramaShot[]).map((s) => <div key={s.id} className="kp-drama-shot">
         {s.kind === 'image' ? <img src={fileUrl(project, s.visual.file)} alt={s.stepName}/> : <video controls muted src={fileUrl(project, s.visual.file)}/>}
         <b>{s.stepName}</b>

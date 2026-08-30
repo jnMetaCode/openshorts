@@ -1,5 +1,10 @@
 # Changelog
 
+## [2.0.0-alpha.2] - 2026-08-30 · M2 AI 短剧进界面 + 本地草稿档
+- 四步界面加「AI 短剧」线：故事 / 题材 / 风格 / 画幅 → 档位（本地草稿档 · 不花钱 / 云端成片档 · 按秒计费）→ 花费预览（按所选输入算）→ 确认花费出片（AO 子进程，stdout 逐行转 SSE）→ 成片 + 定妆图 + 三镜卡片（每镜验收结论与未满足项）。
+- 本地草稿档依赖 AO 新增的视频供应商 `local-sdcpp`（本机 stable-diffusion.cpp + MiniMax-H3 GGUF；串行、不联网、不花钱）。真机（M2 Max 32 GB）：定妆图 Agnes 29 s 验收通过，三镜本地各 2.33 s 共约 21 分钟，合成 7 秒成片，全程 0 元；画质如 ADR-004 所述是 2-bit 草稿级，只用于验证方向。
+- README 快速开始改为 v2 用法。需要 AO ≥ 0.19.2（未发版前用 `npm link ../agency-orchestrator`）。
+
 ## [2.0.0-alpha.1] - 2026-08-30 · M1 口播科普（免费路径跑通）
 - **出片后自动质检 + `openshorts doctor`**：质检报分辨率/时长偏差/音轨/EBU R128 响度/字幕（软轨只算提醒）/封面/AI 标识/镜头就绪，结果进项目 JSON 与界面第 4 步；真机抓到 Edge TTS 成片 -23 LUFS 偏轻 → 合成加 `loudnorm` 归一到 -16（实测 -17.6）。doctor 体检 ffmpeg 与 libass/drawtext/ebur128、中文字体、`ulimit -n`、输出目录、whisper、四种来源，再转 AO doctor。
 - **四步界面「开片」成为默认入口**（`/`；v1 图层动画编辑器移到 `/editor`）：① 输入（内容线 / 话题 / 时长 / 语气，无文本 key 时指路）② 来源与花费（四种来源可用性卡片、素材库 key 引导、本地素材夹、音色试听、字幕预设、花费 0 元说明）③ 预览与调整（每镜文案 / 画面意图 / 检索词可改，出片日志实时）④ 出片与发布（播放器、下载 mp4/SRT/封面、标题点击复制、话题、发布说明、素材署名、降级提示）。后端 `server/kaipian.mjs`：`/api/kaipian/*`（sources / config / voices / tts/preview / new / projects / run(SSE) / file）。
