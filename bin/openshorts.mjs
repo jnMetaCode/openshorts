@@ -81,7 +81,11 @@ switch (cmd) {
     if (project.line !== 'koubo') { console.error('M1 的 run 只支持口播线项目（AI 短剧请用 openshorts drama）'); process.exit(1); }
     const { runKoubo } = await import('../src/pipeline/koubo-run.mjs');
     const t0 = Date.now();
-    const p = await runKoubo(project, { outDir: path.dirname(path.resolve(pf)), log: (m) => console.log('  ' + m) });
+    const o = parseOpts(rest.slice(1));
+    const { readConfig: rc } = await import('../src/config.mjs'); const c = rc();
+    const vision = o['vision-provider'] ? { provider: o['vision-provider'], model: o['vision-model'] || '' } : c.vision;
+    if (vision?.provider) console.log(`  🔍 素材候选看图排序：${vision.provider} / ${vision.model}`);
+    const p = await runKoubo(project, { outDir: path.dirname(path.resolve(pf)), log: (m) => console.log('  ' + m), vision });
     console.log(`\n✓ 成片：${p.final.file}（${p.final.durationSec.toFixed(1)}s，${((Date.now() - t0) / 1000).toFixed(0)}s 出片）\n  字幕：${p.final.srt}\n  封面：${p.final.cover ?? '无'}\n  发布文案：${p.final.publish}`);
     for (const n of p.final.notes) console.log(`  ⚠️ ${n}`);
     break;
@@ -132,7 +136,7 @@ switch (cmd) {
   drama     AI 短剧：跑 AO 短剧流水线（参数透传给 ao run；--validate / --plan 只检查）
   doctor    环境体检（转 ao doctor）
   new       口播科普：openshorts new koubo-kepu --topic "…" [--duration 60秒] [--tone 科普讲解] [--voice …] [--local-dir 素材夹] [--bgm x.mp3]
-  run       出片：openshorts run <project.json>（配音 → 素材 → 字幕 → 合成）
+  run       出片：openshorts run <project.json> [--vision-provider agnes --vision-model agnes-2.0-flash]（候选素材看图排序）
   estimate  看这个项目要不要花钱
   export    发布包：openshorts export <project.json> --platform douyin|shipinhao|bilibili|shorts（mp4+封面+SRT+文案，不自动发布）
   batch     批量：openshorts batch <project.json> --voices a,b [--captions douyin,clean] [--rates 1,1.1]`);

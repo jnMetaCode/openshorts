@@ -25,7 +25,7 @@ kaipian.put('/config', (req, res) => {
   const cur = readConfig(); const b = req.body ?? {};
   // 输出目录必须真能写：先建、再试写，失败 400——否则下一次出片才在最后一步炸
   if (b.outputDir) { const od = path.resolve(String(b.outputDir)); try { fs.mkdirSync(od, { recursive: true }); fs.accessSync(od, fs.constants.W_OK); } catch { return res.status(400).json({ error: `输出目录不可写：${od}` }); } b.outputDir = od; }
-  const next = { ...cur, ...(b.outputDir ? { outputDir: b.outputDir } : {}), tts: { ...cur.tts, ...(b.tts ?? {}) }, stock: { ...cur.stock } };
+  const next = { ...cur, ...(b.outputDir ? { outputDir: b.outputDir } : {}), tts: { ...cur.tts, ...(b.tts ?? {}) }, vision: { ...(cur.vision ?? {}), ...(b.vision ?? {}) }, stock: { ...cur.stock } };
   if (typeof b.pexelsKey === 'string' && b.pexelsKey && !b.pexelsKey.includes('…')) next.stock.pexelsKey = b.pexelsKey.trim();
   if (typeof b.pixabayKey === 'string' && b.pixabayKey && !b.pixabayKey.includes('…')) next.stock.pixabayKey = b.pixabayKey.trim();
   writeConfig(next); res.json({ ok: true });
@@ -76,7 +76,7 @@ kaipian.get('/projects/:id/run', async (req, res) => {
   const send = (ev, data) => res.write(`event: ${ev}\ndata: ${JSON.stringify(data)}\n\n`);
   try {
     const project = JSON.parse(fs.readFileSync(f, 'utf-8'));
-    const p = await runKoubo(project, { outDir: path.dirname(f), log: (m) => send('log', { m }) });
+    const p = await runKoubo(project, { outDir: path.dirname(f), log: (m) => send('log', { m }), vision: readConfig().vision });
     send('done', { final: p.final, provenance: p.provenance });
   } catch (e) { send('error', { m: e.message }); }
   res.end();

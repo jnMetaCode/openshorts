@@ -11,9 +11,23 @@ import { findCandidates, materialize } from '../sources/stock.mjs';
 import { buildCues, estimateWords, toSRT, toASS, alignPunctuation } from '../captions/build.mjs';
 import { renderSegment, concatSegments, finalize, probeDuration, hasFilter } from '../compose/koubo.mjs';
 import { checkKoubo } from '../quality/check.mjs';
+import { rankCandidates } from '../sources/rank.mjs';
+import { aoSavedKeys } from '../config.mjs';
 const run = promisify(execFile);
 
-export async function runKoubo(project, { outDir, log = () => {}, fetchImpl = fetch, config } = {}) {
+/** 看图排序用的连接器：config.vision.{provider,model}（或 project.vision）；key 从 AO 保存的 key / 环境变量来 */
+async function visionJudge(vision, log) {
+  if (!vision?.provider || !vision?.model) return null;
+  try {
+    const { createConnector } = await import('agency-orchestrator');
+    const saved = aoSavedKeys();
+    const cfg = { provider: vision.provider, model: vision.model, api_key: saved[vision.provider]?.apiKey || undefined, timeout: 60000, retry: 0 };
+    return { connector: createConnector(cfg), cfg };
+  } catch (e) { log(`素材排序不可用：${e.message.split('\n')[0]}`); return null; }
+}
+
+export async function runKoubo(project, { outDir, log = () => {}, fetchImpl = fetch, config, vision } = {}) {
+  const judge = await visionJudge(vision ?? project.vision ?? config?.vision, log);
   const dir = outDir ?? path.join(process.env.HOME || '.', 'OpenShorts', project.id);
   const work = path.join(dir, 'work'); fs.mkdirSync(work, { recursive: true });
   const notes = []; const used = new Set(); const segFiles = []; const allWords = []; let cursorMs = 0;
@@ -41,8 +55,16 @@ export async function runKoubo(project, { outDir, log = () => {}, fetchImpl = fe
         let cands = await findCandidates(shot.query || shot.visualIntent, { localDirs: project.defaults.localDirs, used, minDuration: 0, fetchImpl, ...(config ? { config } : {}) });
         // 没有没用过的候选时，宁可复用一条也别落到纯色底（复用会在 notes 里说明）
         if (!cands.length && used.size) { cands = await findCandidates(shot.query || shot.visualIntent, { localDirs: project.defaults.localDirs, used: new Set(), minDuration: 0, fetchImpl, ...(config ? { config } : {}) }); if (cands.length) notes.push(`镜头 ${shot.id} 复用了已用过的素材 ${cands[0].id}（候选不够）`); }
-        chosen = cands[0] ?? null;
-        if (chosen) { clip = await materialize(chosen, { fetchImpl }); used.add(chosen.id); }
+        if (judge && cands.length > 1) {
+          // 看图排序：把候选都拉下来抽一帧，让模型按画面意图打分；全部不及格 → 当没找到
+          const withFiles = [];
+          for (const c of cands.slice(0, 3)) { try { withFiles.push({ ...c, file: await materialize(c, { fetchImpl }) }); } catch (e) { notes.push(`候选 ${c.id} 下载失败：${e.message.slice(0, 80)}`); } }
+          const ranked = await rankCandidates(withFiles, shot.visualIntent || shot.query, { connector: judge.connector, cfg: judge.cfg, log });
+          const top = ranked[0];
+          if (top && !top.rejected) { chosen = top; clip = top.file; log(`🔍 ${shot.id} 候选 ${ranked.map((r) => `${r.id.split(':')[0]}=${r.score ?? '-'}`).join(' ')} → 选 ${top.id}${top.why ? `（${top.why}）` : ''}`); }
+          else { notes.push(`镜头 ${shot.id} 的 ${ranked.length} 条候选都不贴合画面意图（${ranked.map((r) => `${r.score}`).join('/')}），退纯色底`); }
+        } else { chosen = cands[0] ?? null; if (chosen) clip = await materialize(chosen, { fetchImpl }); }
+        if (chosen) used.add(chosen.id);
       } catch (e) { notes.push(`镜头 ${shot.id} 素材库：${e.message}`); }
     }
     if (!clip) {

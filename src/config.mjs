@@ -10,7 +10,7 @@ export const OPENSHORTS_HOME = process.env.OPENSHORTS_HOME || path.join(os.homed
 export const CONFIG_FILE = path.join(OPENSHORTS_HOME, 'config.json');
 export const DEFAULT_OUTPUT_DIR = path.join(os.homedir(), 'OpenShorts');
 
-const DEFAULTS = { outputDir: DEFAULT_OUTPUT_DIR, stock: { pexelsKey: '', pixabayKey: '' }, tts: { provider: 'edge-tts', voice: 'zh-CN-XiaoxiaoNeural' }, telemetry: false };
+const DEFAULTS = { outputDir: DEFAULT_OUTPUT_DIR, stock: { pexelsKey: '', pixabayKey: '' }, tts: { provider: 'edge-tts', voice: 'zh-CN-XiaoxiaoNeural' }, vision: { provider: '', model: '' }, telemetry: false };
 
 export function readConfig() {
   try { return { ...DEFAULTS, ...JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8')) }; } catch { return { ...DEFAULTS }; }
@@ -23,3 +23,6 @@ export function writeConfig(patch) {
 }
 /** AO 的数据目录（key 存这里）：与 AO 的 web/data-dir 规则一致，优先 AO_DATA_DIR / AO_HOME，默认 ~/.ao */
 export function aoHome() { return process.env.AO_DATA_DIR || process.env.AO_HOME || path.join(os.homedir(), '.ao'); }
+
+/** AO 保存的 key（Studio 存的）：{ provider: { apiKey } } */
+export function aoSavedKeys() { try { return JSON.parse(fs.readFileSync(path.join(aoHome(), '.local', 'web-keys.json'), 'utf-8')); } catch { return {}; } }
