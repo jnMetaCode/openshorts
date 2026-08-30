@@ -80,7 +80,8 @@ kaipian.get('/projects/:id/run', async (req, res) => {
   res.end();
 });
 kaipian.get('/projects/:id/file/:name', (req, res) => {
-  const dir = projDir(req.params.id); const f = path.resolve(dir, safe(req.params.name));
+  const dir = projDir(req.params.id); let f = path.resolve(dir, safe(req.params.name));
+  if (!fs.existsSync(f) && fs.existsSync(path.join(dir, 'assets', safe(req.params.name)))) f = path.join(dir, 'assets', safe(req.params.name));
   if (!f.startsWith(dir) || !fs.existsSync(f)) return res.status(404).end();
   res.sendFile(f);
 });
@@ -89,4 +90,78 @@ kaipian.get('/ao-status', (_req, res) => {
   const envs = ['DEEPSEEK_API_KEY', 'OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'AGNES_API_KEY', 'APIMART_API_KEY', 'ARK_API_KEY', 'MOONSHOT_API_KEY', 'ZHIPU_API_KEY'].filter((k) => !!process.env[k]);
   const saved = Object.keys(keys).filter((k) => keys[k]?.apiKey);
   res.json({ hasTextKey: saved.length > 0 || envs.length > 0, saved, envs, aoHome: aoHome(), home: os.homedir() });
+});
+
+// ───────────── AI 短剧线（复用 AO 短剧流水线；AO 以子进程跑，stdout 逐行转 SSE） ─────────────
+import { spawn, spawnSync } from 'node:child_process';
+import { aoResultToProject } from '../src/core/ao-result.mjs';
+function aoCli() { const main = fileURLToPath(import.meta.resolve('agency-orchestrator')); const dir = path.resolve(path.dirname(main), '..'); return { dir, cli: path.join(dir, 'dist', 'cli.js'), wf: path.join(dir, 'workflows', '短剧流水线.yaml') }; }
+const TIERS = {
+  local: { video_provider: 'local-sdcpp', video_model: 'minimax-h3-q2', video_resolution: '640x384', video_ratio: '16:9', video_duration: '2', label: '本地草稿档（不花钱，每镜约 3–4 分钟，2-bit 画质）' },
+  cloud: { label: '云端成片档（按秒计费，运行前看花费）' },
+};
+function dramaInputs(b) {
+  const t = b.tier === 'local' ? TIERS.local : {};
+  const inputs = { story: String(b.story ?? '').trim(), genre: b.genre || '剧情短剧', style: b.style || '美式复古好莱坞', narration: '不配音',
+    image_provider: b.image_provider || '', image_model: b.image_model || '',
+    video_provider: b.video_provider || t.video_provider || 'apimart', video_model: b.video_model || t.video_model || 'veo3.1-fast', video_resolution: b.video_resolution || t.video_resolution || '720p', video_ratio: b.video_ratio || t.video_ratio || '16:9', video_duration: String(b.video_duration || t.video_duration || '8') };
+  if (b.tier === 'local') { inputs.video_ratio = b.video_ratio === '9:16' ? '9:16' : '16:9'; inputs.video_resolution = inputs.video_ratio === '9:16' ? '384x640' : '640x384'; }
+  return inputs;
+}
+const inputArgs = (inputs) => Object.entries(inputs).flatMap(([k, v]) => (v === '' ? [] : ['-i', `${k}=${v}`]));
+kaipian.get('/drama/options', (_req, res) => {
+  const { cli } = aoCli();
+  const r = spawnSync(process.execPath, [cli, 'doctor', '--no-probe'], { encoding: 'utf-8', env: { ...process.env, AO_NO_MODEL_HINT: '1' } });
+  const out = String(r.stdout || '') + String(r.stderr || '');
+  const localReady = /本地出片可用/.test(out);
+  const cloud = (out.match(/文生视频可用（type: video）：([^（\n]+)/) || [])[1]?.split(/,\s*/).map((s) => s.trim()).filter(Boolean) ?? [];
+  res.json({ tiers: TIERS, localReady, cloudProviders: cloud, doctor: out.split('\n').filter((l) => /本地出片|文生视频|出图/.test(l)) });
+});
+kaipian.post('/drama/preflight', (req, res) => {
+  const inputs = dramaInputs(req.body ?? {});
+  if (!inputs.story) return res.status(400).json({ error: '请输入故事' });
+  const { cli, wf } = aoCli();
+  const r = spawnSync(process.execPath, [cli, 'plan', wf, ...inputArgs(inputs)], { encoding: 'utf-8', env: { ...process.env, AO_NO_MODEL_HINT: '1' } });
+  const lines = (String(r.stdout || '') + String(r.stderr || '')).split('\n').map((l) => l.trim()).filter((l) => /^(🎬|🎨|🎙|🎞|·|合计)/.test(l));
+  res.json({ inputs, lines, ok: r.status === 0, raw: r.status !== 0 ? String(r.stderr || r.stdout).slice(-400) : undefined });
+});
+kaipian.get('/drama/run', (req, res) => {
+  const q = req.query; const inputs = dramaInputs(q);
+  if (!inputs.story) return res.status(400).json({ error: '请输入故事' });
+  res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' });
+  const send = (ev, data) => res.write(`event: ${ev}\ndata: ${JSON.stringify(data)}\n\n`);
+  const { cli, wf } = aoCli(); const cfg = readConfig();
+  const runsDir = path.join(cfg.outputDir, '.ao-runs'); fs.mkdirSync(runsDir, { recursive: true });
+  const args = [cli, 'run', wf, '--output', runsDir, ...inputArgs(inputs)];
+  if (q.provider) args.push('--provider', String(q.provider)); if (q.model) args.push('--model', String(q.model));
+  if (q.verify_provider) args.push('--verify-provider', String(q.verify_provider), '--verify-model', String(q.verify_model || ''));
+  const child = spawn(process.execPath, args, { env: { ...process.env, AO_NO_MODEL_HINT: '1', AO_NO_RESUME_HINT: '1', FORCE_COLOR: '0' } });
+  let buf = ''; let runDir = '';
+  const onLine = (line) => {
+    const clean = line.replace(/\x1b\[[0-9;]*m/g, '').replace(/\r/g, '').trim(); if (!clean) return;
+    const m = clean.match(/详细输出:\s*(.+)$/); if (m) runDir = m[1].trim();
+    if (/^(──|🎬|🎨|🎞|⚠️|⟳|✅|❌|完成|失败|部分失败|🖥|💰|·|🎙)/.test(clean) || /验收|重出|素材|镜头/.test(clean)) send('log', { m: clean.slice(0, 300) });
+  };
+  for (const s of [child.stdout, child.stderr]) s.on('data', (d) => { buf += d.toString(); const parts = buf.split('\n'); buf = parts.pop(); parts.forEach(onLine); });
+  child.on('close', (code) => {
+    if (buf) onLine(buf);
+    try {
+      if (!runDir) { const dirs = fs.readdirSync(runsDir).filter((d) => d.startsWith('短剧流水线')).map((d) => path.join(runsDir, d)).sort((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs); runDir = dirs[0]; }
+      if (!runDir || !fs.existsSync(path.join(runDir, 'metadata.json'))) throw new Error('没有找到运行结果');
+      const meta = JSON.parse(fs.readFileSync(path.join(runDir, 'metadata.json'), 'utf-8'));
+      const tpl = JSON.parse(fs.readFileSync(path.join(root, 'templates', 'ai-drama.template.json'), 'utf-8'));
+      const id = safe(`短剧-${inputs.story.slice(0, 16)}-${new Date().toISOString().slice(5, 16).replace(/[:T]/g, '')}`);
+      const project = aoResultToProject(meta, tpl, { id, assetsBase: 'assets' });
+      project.line = 'drama'; project.title = inputs.story.slice(0, 30); project.topic = inputs.story; project.inputs = inputs; project.tier = q.tier || 'cloud';
+      for (const s of project.shots) { s.visual.provider = s.kind === 'video' ? inputs.video_provider : inputs.image_provider || null; s.visual.model = s.kind === 'video' ? inputs.video_model : inputs.image_model || null; s.visual.source = inputs.video_provider === 'local-sdcpp' && s.kind === 'video' ? 'local' : 'cloud'; }
+      const dir = projDir(id); fs.mkdirSync(path.join(dir, 'assets'), { recursive: true });
+      for (const f of fs.readdirSync(path.join(runDir, 'assets'))) fs.copyFileSync(path.join(runDir, 'assets', f), path.join(dir, 'assets', f));
+      project.final = project.final ? { file: path.join(dir, project.final.file), aoRun: runDir, notes: [] } : null;
+      project.shots.forEach((s) => { s.visual.file = path.join(dir, s.visual.file); });
+      fs.writeFileSync(path.join(dir, 'project.json'), JSON.stringify(project, null, 2));
+      send('done', { id, code, success: !!meta.success });
+    } catch (e) { send('error', { m: `${e.message}（退出码 ${code}）` }); }
+    res.end();
+  });
+  req.on('close', () => { try { child.kill('SIGTERM'); } catch { /* noop */ } });
 });
