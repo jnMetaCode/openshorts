@@ -4,17 +4,49 @@ import pathSync from 'node:path';
  * 口播线项目 JSON（架构 §2）：由 AO 跑完「口播科普」模板的结果（segments_json / meta_json）构建。
  * 镜头 = 钩子 + 各段 + 收尾；每镜先只带文案与画面意图，画面/配音/字幕由 run 阶段填。纯函数。
  */
+/**
+ * 修模型常犯的一种 JSON 破损：**字符串值里夹了没转义的英文双引号**。
+ * 真机原话：`"hook": "洋葱根本不是故意让你流泪的——它只是在"报警"。"` —— 整条 new 直接崩掉，
+ * 脚本白写、token 白花。
+ *
+ * 判断办法：在字符串内部遇到 `"` 时往后看第一个非空白字符，是 `,` `:` `}` `]` 或结尾才算真正的收尾引号，
+ * 否则就是句子里的引号，补一个反斜杠。只处理这一类，不做通用的"猜你想写什么"。
+ */
+export function repairJson(text) {
+  const s = String(text);
+  let out = '', inStr = false, esc = false;
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (esc) { out += c; esc = false; continue; }
+    if (c === '\\') { out += c; esc = true; continue; }
+    if (c !== '"') { out += c; continue; }
+    if (!inStr) { inStr = true; out += c; continue; }
+    let j = i + 1; while (j < s.length && /\s/.test(s[j])) j++;
+    if (j >= s.length || ',:}]'.includes(s[j])) { inStr = false; out += c; }
+    else out += '\\"';                       // 句子里的引号，转义掉
+  }
+  return out;
+}
+
 export function parseJsonLoose(text) {
   if (!text) throw new Error('空输出');
   const m = String(text).match(/\{[\s\S]*\}/);
   if (!m) throw new Error('输出里没有 JSON 对象');
-  return JSON.parse(m[0]);
+  try { return JSON.parse(m[0]); }
+  catch (e) {
+    try { return JSON.parse(repairJson(m[0])); }
+    catch { throw new Error(`模型返回的 JSON 解析不了：${e.message}`); }
+  }
 }
 
 export function buildKouboProject(aoResult, { id, topic, inputs = {}, output = { w: 1080, h: 1920, fps: 30, platform: 'douyin' }, defaults = {} } = {}) {
   const step = (sid) => aoResult.steps?.find((s) => s.id === sid);
   const script = parseJsonLoose(step('script')?.output);
-  let meta = {}; try { meta = parseJsonLoose(step('meta')?.output); } catch { meta = {}; }
+  // meta 失败以前是默默吞掉的：用户拿到一条没有标题、没有话题、没有发布说明的片子，一句提示都没有。
+  // 真机上就这么空过一次（推理模型把 token 预算全花在思考上，可见内容返回 0 字符）。
+  let meta = {}; let metaError = null;
+  try { meta = parseJsonLoose(step('meta')?.output); }
+  catch (e) { metaError = step('meta')?.output ? `解析失败：${e.message}` : '模型没有返回内容（推理模型可能把 token 预算用在思考上了，可调大模板里的 max_tokens）'; }
   const segs = Array.isArray(script.segments) ? script.segments : [];
   if (!segs.length) throw new Error('脚本没有 segments');
   const shots = [];
@@ -35,7 +67,8 @@ export function buildKouboProject(aoResult, { id, topic, inputs = {}, output = {
     defaults: { visualSource: defaults.visualSource ?? 'stock', cutEverySec: defaults.cutEverySec ?? 4, localDirs: defaults.localDirs ?? [] },
     bgm: defaults.bgm ? { file: defaults.bgm, volume: 0.2 } : null,
     shots,
-    publish: { titles: meta.titles ?? [], tags: meta.tags ?? [], note: meta.publishNote ?? '', aiLabel: true, aiLabelText: meta.aiLabel ?? '本视频含 AI 生成内容' },
+    publish: { titles: meta.titles ?? [], tags: meta.tags ?? [], note: meta.publishNote ?? '', aiLabel: true, aiLabelText: meta.aiLabel ?? '本视频含 AI 生成内容',
+      ...(metaError ? { error: `标题/话题/发布说明没生成（${metaError}）——片子照常能出，发布信息要自己填` } : {}) },
     provenance: [],
     ao: { file: aoResult.file ?? null, success: !!aoResult.success, totalTokens: aoResult.totalTokens ?? null },
   };

@@ -78,11 +78,25 @@ switch (cmd) {
       process.exit(1);
     }
     if (!res.success) { console.error('脚本步骤失败：', res.steps.filter((s) => s.status === 'failed').map((s) => `${s.id}: ${s.error}`).join('; ')); process.exit(1); }
-    const project = buildKouboProject(res, { topic: opt.topic, inputs, defaults: { voice: opt.voice || cfg.tts?.voice, captionPreset: opt.captions || 'douyin', localDirs: opt['local-dir'] ? [path.resolve(opt['local-dir'])] : [], bgm: opt.bgm ? path.resolve(opt.bgm) : null } });
+    let project;
+    try {
+      project = buildKouboProject(res, { topic: opt.topic, inputs, defaults: { voice: opt.voice || cfg.tts?.voice, captionPreset: opt.captions || 'douyin', localDirs: opt['local-dir'] ? [path.resolve(opt['local-dir'])] : [], bgm: opt.bgm ? path.resolve(opt.bgm) : null } });
+    } catch (e) {
+      // 模型偶尔写出解析不了的 JSON。别甩一个原始堆栈——脚本已经花了 token，
+      // 把原始输出落盘、告诉用户在哪、告诉他重跑一次通常就好。
+      const dump = path.join(cfg.outputDir, `失败脚本-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '')}.txt`);
+      try { fs.mkdirSync(cfg.outputDir, { recursive: true }); fs.writeFileSync(dump, (res.steps ?? []).map((st) => `── ${st.id} (${st.status}) ──\n${st.output ?? ''}`).join('\n\n')); } catch { /* 落盘失败就算了 */ }
+      console.error(`\n⛔ 脚本写出来了，但解析不了：${e.message}`);
+      console.error(`   原始输出留在：${dump}`);
+      console.error(`   直接重跑一次通常就好（模型偶发）；或换个模型：--provider deepseek --model deepseek-chat`);
+      process.exit(1);
+    }
     project.id = uniqueProjectId(cfg.outputDir, project.id);   // 同话题再跑一次不该覆盖上一条片子
     const dir = path.join(cfg.outputDir, project.id); fs.mkdirSync(dir, { recursive: true });
     const pf = path.join(dir, 'project.json'); fs.writeFileSync(pf, JSON.stringify(project, null, 2));
-    console.log(`✓ 项目已建：${pf}\n  ${project.shots.length} 个镜头 · 标题候选：${project.publish.titles[0] ?? '（无）'}\n  下一步：openshorts run "${pf}"`);
+    console.log(`✓ 项目已建：${pf}\n  ${project.shots.length} 个镜头 · 标题候选：${project.publish.titles[0] ?? '（无）'}`);
+    if (project.publish.error) console.log(`  ⚠️ ${project.publish.error}`);
+    console.log(`  下一步：openshorts run "${pf}"`);
     break;
   }
   case 'run': {

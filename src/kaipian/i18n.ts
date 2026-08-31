@@ -1,5 +1,16 @@
 // 极简 i18n：以中文原文为 key，英文为值；缺翻译时回退中文。切换存 localStorage（仅本机偏好）。
 const EN: Record<string, string> = {
+  // 侧栏：这台机器 / 模型配置
+  '这台机器': 'This machine', '看图把关': 'Visual check', '本机出图': 'Local image gen', '文本模型': 'Text model', '素材源': 'Footage sources',
+  '装一份带 libass 的（40 MB）': 'Install one with libass (40 MB)',
+  '写脚本的模型': 'Script model', '看图把关的模型': 'Visual-check model',
+  '供应商': 'Provider', '模型': 'Model', '模型 id（可手填）': 'Model id (free text)', 'key': 'API key',
+  '选一个…': 'Pick one…', '不开': 'Off', '已存过，留空则沿用': 'Saved — leave blank to keep', '粘贴后保存': 'Paste to save',
+  '验证并保存': 'Test & save', '验证并开启': 'Test & enable', '关闭看图把关': 'Turn visual check off',
+  '给每条候选素材抽一帧打分，不及格的退回本机出图。没开的话，画面只按检索词字面匹配——真机上"猫为什么钻纸箱"因此配过一口铜钟。只能选能看图的供应商。':
+    'Scores one frame from each candidate clip; anything below the bar falls back to local image generation. With it off, visuals are picked by literal keyword match — on a real run "why cats love boxes" got a brass bell. Only vision-capable providers are listed.',
+  '项目': 'Projects', '取消': 'Cancel', '只重出这一镜': 'Redo this shot only', '改文案 / 重出单镜': 'Edit script / redo a shot',
+  '先在第 1 步生成脚本': 'Write the script in step 1 first', '先出片': 'Render first',
   '文案进，成片出 · 本地优先 · 花多少钱运行前看见': 'Script in, video out · local-first · see the cost before you run',
   '最近项目…': 'Recent projects…', '图层动画编辑器（v1）': 'Layer-animation editor (v1)',
   '输入': 'Input', '来源与花费': 'Sources & cost', '预览与调整': 'Preview & adjust', '出片与发布': 'Render & publish',

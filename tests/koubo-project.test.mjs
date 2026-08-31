@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { buildKouboProject, parseJsonLoose, uniqueProjectId } from '../src/project/koubo.mjs';
+import { buildKouboProject, parseJsonLoose, uniqueProjectId, repairJson } from '../src/project/koubo.mjs';
 
 const aoResult = { name: '口播科普', success: true, steps: [
   { id: 'script', status: 'completed', output: '好的，脚本如下：\n{"hook":"猫为什么总爱钻纸箱？","segments":[{"id":"s1","text":"第一段","visualIntent":"猫钻箱","query":"cat inside cardboard box","emphasis":["安全感"]},{"id":"s2","text":"第二段","visualIntent":"猫科动物伏击","query":"wild cat stalking grass"}],"outro":"关注我，下期讲狗。"}' },
@@ -42,4 +42,26 @@ test('同一个话题跑第二次不该覆盖上一条片子', () => {
   assert.notEqual(second, '猫为什么钻纸箱', 'new 每次都是新写的脚本，即使话题一样也是另一条片子');
   assert.match(second, /^猫为什么钻纸箱-\d{8}$/);
   fs.rmSync(dir, { recursive: true, force: true });
+});
+
+/**
+ * 模型最常犯的一种 JSON 破损：字符串值里夹了没转义的英文双引号。
+ * 真机原话：{"hook": "…它只是在"报警"。"} —— 以前整条 new 直接崩一个原始堆栈，脚本白写、token 白花。
+ */
+test('模型写坏的 JSON：字符串里没转义的引号要能修回来，正常 JSON 不能被改坏', () => {
+  const broken = '{"hook": "它只是在"报警"。", "segments": [{"id":"s1","text":"他说"好"，然后走了"}]}';
+  assert.throws(() => JSON.parse(broken), '前提：原生 parse 确实过不了');
+  const p = parseJsonLoose(broken);
+  assert.equal(p.hook, '它只是在"报警"。');
+  assert.equal(p.segments[0].text, '他说"好"，然后走了');
+
+  // 正常 JSON 必须原样通过（修复逻辑不能反过来把好的改坏）
+  for (const good of ['{"a":"x","b":[1,2],"c":{"d":"带 \\" 转义的引号"}}', '{"a":"结尾是引号\\""}', '{"a":""}', '{"a":"逗号, 冒号: 括号}"}']) {
+    assert.deepEqual(parseJsonLoose(good), JSON.parse(good), good);
+  }
+
+  // 修不回来的照样要报错，而且是人话
+  assert.throws(() => parseJsonLoose('{"a": }'), /解析不了/);
+  assert.throws(() => parseJsonLoose('没有 JSON'), /没有 JSON 对象/);
+  assert.throws(() => parseJsonLoose(''), /空输出/);
 });
