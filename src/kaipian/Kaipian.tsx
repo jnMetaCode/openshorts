@@ -49,6 +49,9 @@ export const Kaipian = () => {
   const [voices, setVoices] = useState<Voice[]>([]);
   const [voice, setVoice] = useState('zh-CN-XiaoxiaoNeural');
   const [captions, setCaptions] = useState('douyin');
+  // 字幕六项（字体/位置/颜色/大小/描边/背景）。同类项目把这几项都放出来是有道理的：
+  // 各平台的字幕风格差别很大，创作者对这个很敏感；我们原来只有 3 套写死的预设。
+  const [capStyle, setCapStyle] = useState<{font?: string; size?: number; color?: string; outline?: string; outlineW?: number; position?: string; box?: boolean}>({});
   const [source, setSource] = useState<'stock' | 'solid'>('stock');
   const [localDir, setLocalDir] = useState('');
   const [aoStatus, setAoStatus] = useState<{hasTextKey: boolean; saved: string[]; envs: string[]; aoHome: string} | null>(null);
@@ -84,10 +87,10 @@ export const Kaipian = () => {
   const saveKeys = async () => { await api('/api/kaipian/config', {method: 'PUT', body: JSON.stringify({...keyDraft, tts: {voice}})}); setKeyDraft({pexelsKey: '', pixabayKey: ''}); await refresh(); };
   const createProject = async () => {
     setError(''); setBusy('AI 正在写脚本（20–60 秒）…');
-    try { const p = await api<Project>('/api/kaipian/new', {method: 'POST', body: JSON.stringify({topic, duration, tone, voice, captions, source, localDir})}); setProject(p); setStep(3); await refresh(); }
+    try { const p = await api<Project>('/api/kaipian/new', {method: 'POST', body: JSON.stringify({topic, duration, tone, voice, captions, captionStyle: capStyle, source, localDir})}); setProject(p); setStep(3); await refresh(); }
     catch (e: any) { setError(e.message); } finally { setBusy(''); }
   };
-  const saveShots = async () => { if (!project) return; const p = await api<Project>(`/api/kaipian/projects/${encodeURIComponent(project.id)}`, {method: 'PUT', body: JSON.stringify({shots: project.shots.map((s) => ({id: s.id, text: s.text, query: s.query, visualIntent: s.visualIntent})), voice: {voice}, captions: {preset: captions}})}); setProject(p); };
+  const saveShots = async () => { if (!project) return; const p = await api<Project>(`/api/kaipian/projects/${encodeURIComponent(project.id)}`, {method: 'PUT', body: JSON.stringify({shots: project.shots.map((s) => ({id: s.id, text: s.text, query: s.query, visualIntent: s.visualIntent})), voice: {voice}, captions: {preset: captions, style: capStyle}})}); setProject(p); };
   // only 传镜头 id 就是「只重出这几镜」：其余镜头的配音与分段按指纹复用，不重配音也不重花时间
   const runProject = async (only?: string[]) => {
     if (!project) return; await saveShots(); setLog([]); setBusy(only ? `重出 ${only.join('、')}…` : '出片中…'); setError('');
@@ -377,8 +380,22 @@ export const Kaipian = () => {
       <h3>{t('配音与字幕')}</h3>
       <div className="kp-row">
         <label>{t('音色')}<div className="kp-inline"><select value={voice} onChange={(e) => setVoice(e.target.value)}>{voices.map((v) => <option key={v.id} value={v.id}>{v.label}</option>)}</select><button onClick={preview} disabled={!!busy}>{t('▶ 试听')}</button><audio ref={audioRef}/></div></label>
-        <label>{t('字幕样式')}<select value={captions} onChange={(e) => setCaptions(e.target.value)}><option value="douyin">抖音黄字描边</option><option value="clean">简约白</option><option value="boxed">黑底白字</option></select></label>
+        <label>{t('字幕样式')}<select value={captions} onChange={(e) => { setCaptions(e.target.value); setCapStyle({}); }}><option value="douyin">抖音黄字描边</option><option value="clean">简约白</option><option value="boxed">黑底白字</option></select></label>
       </div>
+      <details className="kp-keys"><summary>{t('字幕细调（不改就用预设）')}</summary>
+        <div className="kp-row">
+          <label>{t('字号')}<input type="number" min={12} max={200} value={capStyle.size ?? ''} placeholder="64" onChange={(e) => setCapStyle({...capStyle, size: e.target.value ? Number(e.target.value) : undefined})}/></label>
+          <label>{t('位置')}<select value={capStyle.position ?? 'bottom'} onChange={(e) => setCapStyle({...capStyle, position: e.target.value})}><option value="bottom">底部</option><option value="middle">中部</option><option value="top">顶部</option></select></label>
+          <label>{t('描边粗细')}<input type="number" min={0} max={12} value={capStyle.outlineW ?? ''} placeholder="3" onChange={(e) => setCapStyle({...capStyle, outlineW: e.target.value ? Number(e.target.value) : undefined})}/></label>
+        </div>
+        <div className="kp-row">
+          <label>{t('字色')}<input type="color" value={capStyle.color ?? '#FFE500'} onChange={(e) => setCapStyle({...capStyle, color: e.target.value})}/></label>
+          <label>{t('描边色')}<input type="color" value={capStyle.outline ?? '#000000'} onChange={(e) => setCapStyle({...capStyle, outline: e.target.value})}/></label>
+          <label>{t('字体')}<input value={capStyle.font ?? ''} placeholder="PingFang SC" onChange={(e) => setCapStyle({...capStyle, font: e.target.value || undefined})}/></label>
+        </div>
+        <label className="kp-inline" style={{gap: 6}}><input type="checkbox" checked={!!capStyle.box} onChange={(e) => setCapStyle({...capStyle, box: e.target.checked})}/> {t('字幕加底色块')}</label>
+        <p className="kp-hint">{t('字体要用本机装了的名字；找不到时 libass 会回退到系统默认，中文可能变方块。')}</p>
+      </details>
       <div className="kp-cost"><b>{t('本次花费：0 元')}</b><small>素材库 / 本地素材 / 纯色底不花钱 · Edge TTS 免费 · 合成用本机 ffmpeg{sources && !sources.tools.ffmpeg ? ' ⛔ 未检测到 ffmpeg，出片会失败' : ''}</small></div>
       <div className="kp-actions"><button onClick={() => setStep(1)}>{t('上一步')}</button><button className="primary" disabled={!!busy} onClick={createProject}>{t('生成脚本 →')}</button></div>
     </section>}

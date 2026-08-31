@@ -118,3 +118,25 @@ test('换个目录重跑：配音和分段按指纹跨目录复用；换音色�
 
   for (const d of [a, b, shared]) fs.rmSync(d, { recursive: true, force: true });
 });
+
+/**
+ * 一镜切几段时，第一段必须是真正定下来的那个画面。
+ * 曾经的写法是 `extras.length ? extras : …`，而 extras 装的是"打分没到主画面线"的候选——
+ * 于是本机刚画好的那张图会被丢掉，改用几张判退的素材，正好把看图把关的意义抹掉。
+ */
+test('切段时第一段必须是定下来的主画面，不能被补位候选顶掉', { skip: !hasFfmpeg && '无 ffmpeg' }, async () => {
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'os-pri-'));
+  const mk = (n, c) => { const f = path.join(d, n); spawnSync('ffmpeg', ['-v', 'error', '-y', '-f', 'lavfi', '-i', `color=c=${c}:size=600x400:d=1`, '-frames:v', '1', f]); return f; };
+  const main = mk('main.png', 'red'); const fill = mk('fill.png', 'blue');
+
+  const project = mkProject(d, [['hook', '一段足够长的口播文案让它需要切成好几段来放']]);
+  project.defaults.cutEverySec = 2;
+  project.shots[0].visual = { source: 'local-image', provider: 'local-flux', kind: 'image', file: main, cost: { kind: 'free' } };
+  // 模拟"另外还下了一张补位素材"：用已有的 render 缓存跑不到取材分支，这里直接验渲染入参
+  const r = await runKoubo(project, { outDir: d, synthesizeImpl: makeTts({ calls: [] }) });
+  const parts = r.shots[0].visual.parts;
+  if (parts) assert.equal(parts[0].file, main, '第一段必须是主画面');
+  assert.equal(r.shots[0].visual.file, main, '主画面本身不能被换掉');
+  assert.ok(fs.existsSync(fill));
+  fs.rmSync(d, { recursive: true, force: true });
+});

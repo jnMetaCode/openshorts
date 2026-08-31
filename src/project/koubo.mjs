@@ -63,7 +63,7 @@ export function buildKouboProject(aoResult, { id, topic, inputs = {}, output = {
     inputs,
     output,
     voice: { provider: 'edge-tts', voice: defaults.voice ?? 'zh-CN-XiaoxiaoNeural', rate: 1.0 },
-    captions: { preset: defaults.captionPreset ?? 'douyin', maxChars: 16 },
+    captions: { preset: defaults.captionPreset ?? 'douyin', maxChars: 16, style: defaults.captionStyle ?? {} },
     defaults: { visualSource: defaults.visualSource ?? 'stock', cutEverySec: defaults.cutEverySec ?? 4, localDirs: defaults.localDirs ?? [] },
     bgm: defaults.bgm ? { file: defaults.bgm, volume: 0.2 } : null,
     shots,

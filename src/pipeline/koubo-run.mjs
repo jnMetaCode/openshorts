@@ -238,7 +238,11 @@ export async function runKoubo(project, { outDir, log = () => {}, fetchImpl = fe
     // 一镜口播常有 10 秒以上，一个画面挂那么久在手机上很难看（短视频惯例 2–4 秒一换，MPT 默认 3 秒）。
     // 用这一镜已有的候选切成几段；只有一条素材时不硬凑，行为跟以前一样。
     const cutEvery = Number(shot.cutEverySec ?? project.defaults?.cutEverySec ?? 4);
-    const pool2 = extras.length ? extras : (shot.visual?.file ? [{ file: shot.visual.file, kind: shot.visual.kind ?? 'video', id: shot.visual.candidateId }] : []);
+    // 第一段必须是**真正定下来的那个画面**（中选的素材，或本机刚画的那张），
+    // extras 里装的是打分没到主画面线的候选——直接拿 extras 当 pool 会把本机出的图丢掉，
+    // 改用那几张判退的素材，正好把看图把关的意义抹掉。
+    const primary = shot.visual?.file ? { file: shot.visual.file, kind: shot.visual.kind ?? 'video', id: shot.visual.candidateId ?? null } : null;
+    const pool2 = primary ? [primary, ...extras.filter((e) => e.file !== primary.file)] : extras;
     const want = cutEvery > 0 ? Math.max(1, Math.round(durationSec / cutEvery)) : 1;
     const n = Math.max(1, Math.min(want, pool2.length));
     const parts = n > 1 ? pool2.slice(0, n).map((c) => ({ clip: c.file, kind: c.kind ?? 'video' })) : null;
@@ -267,7 +271,7 @@ export async function runKoubo(project, { outDir, log = () => {}, fetchImpl = fe
   const cues = shotWords.flatMap((sw) => buildCues(sw.words, { maxChars: project.captions.maxChars, offsetMs: sw.offsetMs }));
   const emphasis = [...new Set(project.shots.flatMap((s) => s.emphasis ?? []))];
   const srt = path.join(dir, `${project.id}.srt`); fs.writeFileSync(srt, toSRT(cues, { maxChars: project.captions.maxChars }));
-  const ass = path.join(work, 'captions.ass'); fs.writeFileSync(ass, toASS(cues, { preset: project.captions.preset, w, h, emphasis, maxChars: project.captions.maxChars }));
+  const ass = path.join(work, 'captions.ass'); fs.writeFileSync(ass, toASS(cues, { preset: project.captions.preset, w, h, emphasis, maxChars: project.captions.maxChars, style: project.captions.style ?? {} }));
   const out = path.join(dir, `${project.id}.mp4`);
   const fin = await finalize({ video: joined, ass, srt, bgm: project.bgm?.file, bgmVolume: project.bgm?.volume ?? 0.2, aiLabel: project.publish.aiLabel, out, w, h, signal });
   notes.push(...fin.notes);

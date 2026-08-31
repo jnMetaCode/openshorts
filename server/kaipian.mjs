@@ -50,7 +50,7 @@ kaipian.post('/new', async (req, res, next) => {
     const over = cfg.text?.provider ? { llmOverride: { provider: cfg.text.provider, ...(cfg.text.model ? { model: cfg.text.model } : {}) } } : {};
     const r = await run(path.join(root, 'templates', 'koubo-kepu.yaml'), inputs, { quiet: true, outputDir: path.join(cfg.outputDir, '.ao-runs'), ...over });
     if (!r.success) return res.status(502).json({ error: '脚本生成失败：' + r.steps.filter((s) => s.status === 'failed').map((s) => `${s.id}: ${s.error}`).join('；') });
-    const project = buildKouboProject(r, { topic: inputs.topic, inputs, defaults: { voice: b.voice || cfg.tts?.voice, captionPreset: b.captions || 'douyin', visualSource: b.source || 'stock', localDirs: b.localDir ? [path.resolve(String(b.localDir))] : [], bgm: b.bgm ? path.resolve(String(b.bgm)) : null } });
+    const project = buildKouboProject(r, { topic: inputs.topic, inputs, defaults: { voice: b.voice || cfg.tts?.voice, captionPreset: b.captions || 'douyin', captionStyle: b.captionStyle && typeof b.captionStyle === 'object' ? b.captionStyle : {}, visualSource: b.source || 'stock', localDirs: b.localDir ? [path.resolve(String(b.localDir))] : [], bgm: b.bgm ? path.resolve(String(b.bgm)) : null } });
     project.id = uniqueProjectId(cfg.outputDir, safe(project.id));   // 同话题再跑一次不该覆盖上一条片子
     fs.mkdirSync(projDir(project.id), { recursive: true });
     fs.writeFileSync(path.join(projDir(project.id), 'project.json'), JSON.stringify(project, null, 2));
@@ -70,7 +70,7 @@ kaipian.put('/projects/:id', (req, res) => {
   // 只允许改文案/画面意图/检索词/音色/字幕预设/来源，不允许改路径类字段
   if (Array.isArray(b.shots)) cur.shots = cur.shots.map((s) => { const e = b.shots.find((x) => x.id === s.id); return e ? { ...s, text: String(e.text ?? s.text), query: String(e.query ?? s.query), visualIntent: String(e.visualIntent ?? s.visualIntent), visual: e.resetVisual ? { ...s.visual, file: null, candidateId: null, source: null } : s.visual } : s; });
   if (b.voice) cur.voice = { ...cur.voice, ...b.voice };
-  if (b.captions) cur.captions = { ...cur.captions, ...b.captions };
+  if (b.captions) cur.captions = { ...cur.captions, ...b.captions, style: { ...(cur.captions?.style ?? {}), ...(b.captions.style ?? {}) } };
   if (b.defaults) cur.defaults = { ...cur.defaults, ...b.defaults };
   fs.writeFileSync(f, JSON.stringify(cur, null, 2)); res.json(cur);
 });
