@@ -34,11 +34,23 @@ export async function downloadWithResume(url, dest, { onProgress = () => {}, fet
   return dest;
 }
 
-/** stable-diffusion.cpp 最新 Release 里对应本机平台的预编译包 */
-export function pickSdcppAsset(assets, platform = process.platform, arch = process.arch, gpu = 'auto') {
+/**
+ * 资源名里写着这个包是给哪个 macOS 编的：`sd-master-xxxx-bin-Darwin-macOS-26.5.2-arm64.zip`。
+ * 不看这一段的话，会给 macOS 14 的用户装一个 macOS 26 的包——装"成功"、cliFound 为真，
+ * 一跑就 `dyld: Symbol not found ... built for macOS 26.0 which is newer than running OS`。
+ * 真机上就是这样：最新 release 只有 macOS 26.5.2 的包，而本机 14.7.4。
+ */
+export const assetMacOS = (name) => { const m = String(name).match(/macOS-(\d+)(?:\.(\d+))?/i); return m ? Number(m[1]) + (m[2] ? Number(m[2]) / 100 : 0) : null; };
+
+/** stable-diffusion.cpp Release 里对应本机平台的预编译包（macOS 还要版本跑得动） */
+export function pickSdcppAsset(assets, platform = process.platform, arch = process.arch, gpu = 'auto', macOSVersion = null) {
   const names = assets.map((a) => a.name);
   const pick = (re) => { const n = names.find((x) => re.test(x)); return n ? assets.find((a) => a.name === n) : null; };
-  if (platform === 'darwin') return pick(/Darwin.*arm64\.zip$/i) ?? pick(/Darwin.*\.zip$/i);
+  if (platform === 'darwin') {
+    const runs = (a) => { const v = assetMacOS(a.name); return !v || macOSVersion == null || v <= macOSVersion + 1e-9; };
+    const ok = assets.filter((a) => /Darwin.*\.zip$/i.test(a.name) && runs(a));
+    return ok.find((a) => /arm64\.zip$/i.test(a.name)) ?? ok[0] ?? null;
+  }
   if (platform === 'win32') return (gpu === 'cuda' && pick(/win-cuda12-x64\.zip$/i)) || pick(/win-vulkan-x64\.zip$/i) || pick(/win-cpu-x64\.zip$/i);
   return (gpu === 'cuda' && pick(/Linux.*cuda.*\.zip$/i)) || pick(/Linux.*vulkan\.zip$/i) || pick(/Linux.*x86_64\.zip$/i);
 }

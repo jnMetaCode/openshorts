@@ -55,3 +55,27 @@ test('模型没下全就出图 → 报清楚缺什么、该跑哪条命令，不
     /没装 sd-cli|还缺 .* 个模型文件/,
   );
 });
+
+/**
+ * 上游 2026 年把 CI 换到 macOS 26 之后，最近的所有发布只提供 macOS 26 的包。
+ * 不看资源名里那段版本号的话，会给 macOS 14 的用户装一个跑不起来的二进制——
+ * 装"成功"、cliFound 为真，直到出图那一刻才 dyld 崩溃。
+ */
+test('挑预编译包要看资源名里写的系统版本，跑不动的宁可不装', async () => {
+  const { pickSdcppAsset, assetMacOS } = await import('../src/local/download.mjs');
+  assert.equal(assetMacOS('sd-master-6b3edaa-bin-Darwin-macOS-26.5.2-arm64.zip'), 26.05);
+  assert.equal(assetMacOS('sd-master-bin-Darwin-macOS-14-arm64.zip'), 14);
+  assert.equal(assetMacOS('sd-master-bin-Linux-x86_64.zip'), null, '非 macOS 的包不带这段');
+
+  const newOnly = [{ name: 'sd-bin-Darwin-macOS-26.5.2-arm64.zip' }];
+  assert.equal(pickSdcppAsset(newOnly, 'darwin', 'arm64', 'auto', 14.07), null, 'macOS 14 上不该选 macOS 26 的包');
+  assert.ok(pickSdcppAsset(newOnly, 'darwin', 'arm64', 'auto', 26.05), '系统够新就能选');
+
+  const both = [{ name: 'sd-bin-Darwin-macOS-26.5.2-arm64.zip' }, { name: 'sd-bin-Darwin-macOS-13.0-arm64.zip' }];
+  assert.equal(pickSdcppAsset(both, 'darwin', 'arm64', 'auto', 14.07).name, 'sd-bin-Darwin-macOS-13.0-arm64.zip', '挑跑得动的那个');
+
+  // 不知道本机版本时不要瞎挡（比如测试环境）
+  assert.ok(pickSdcppAsset(newOnly, 'darwin', 'arm64', 'auto', null));
+  // 非 macOS 平台不受影响
+  assert.ok(pickSdcppAsset([{ name: 'sd-bin-Linux-x86_64.zip' }], 'linux', 'x64'));
+});

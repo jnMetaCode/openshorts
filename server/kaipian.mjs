@@ -359,17 +359,9 @@ kaipian.get('/local/install', async (req, res) => {
   try {
     const m = await localModule(); const { cli, modelsDir } = m.sdcppPaths();
     if (what === 'sdcli' || what === 'all') {
-      const rel = await (await fetch('https://api.github.com/repos/leejet/stable-diffusion.cpp/releases/latest', { headers: { 'User-Agent': 'OpenShorts/2.0' }, signal: ac.signal })).json();
-      const asset = pickSdcppAsset(rel.assets ?? []); if (!asset) throw new Error(`没有找到本平台（${process.platform}/${process.arch}）的 sd-cli 预编译包，请从源码编译（见 doctor 提示）`);
-      send('log', { m: `下载 sd-cli ${rel.tag_name} · ${asset.name}（${(asset.size / 1048576).toFixed(0)} MB）` });
-      const zip = path.join(path.dirname(cli), asset.name);
-      await downloadWithResume(asset.browser_download_url, zip, { signal: ac.signal, onProgress: (p) => send('progress', { file: asset.name, ...p }) });
-      fs.mkdirSync(path.dirname(cli), { recursive: true });
-      execFileSync(process.platform === 'win32' ? 'tar' : 'unzip', process.platform === 'win32' ? ['-xf', zip, '-C', path.dirname(cli)] : ['-o', '-q', zip, '-d', path.dirname(cli)]);
-      const found = walkFind(path.dirname(cli), /^sd-cli(\.exe)?$/); if (!found) throw new Error('解压后没找到 sd-cli');
-      if (found !== cli) fs.copyFileSync(found, cli); if (process.platform !== 'win32') fs.chmodSync(cli, 0o755);
-      if (process.platform === 'darwin') { try { execFileSync('xattr', ['-cr', path.dirname(cli)]); } catch { /* 无隔离属性 */ } }
-      send('log', { m: `sd-cli 就绪：${cli}` });
+      // 走跟 CLI 同一份逻辑：会按本机 macOS 版本挑跑得动的包，并在装完当场验一次
+      const { installSdCli } = await import('../src/local/sd-image.mjs');
+      await installSdCli({ signal: ac.signal, onLog: (msg) => send('log', { m: msg }), onProgress: (p) => send('progress', p) });
     }
     if (what === 'model' || what === 'all') {
       const cat = m.LOCAL_MODELS.find((x) => x.id === modelId); if (!cat) throw new Error(`未知档位 ${modelId}`);

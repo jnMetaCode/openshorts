@@ -208,11 +208,12 @@ switch (cmd) {
     const o = parseOpts(rest);
     const m = await import('../src/local/sd-image.mjs');
     const st = await m.sdImageStatus();
-    if (!st.cliFound) { console.error(`⛔ 没装 sd-cli（本地出图/出片都要它）。界面第 2 步「本地生成」里可以一键装，或先跑 openshorts drama 的本地档安装。`); process.exit(1); }
-    if (o.list || rest.includes('--list')) {
+    if (o.list || rest.includes('--list')) {   // 列目录不该依赖二进制装没装
       console.log(`\n本地出图档位（模型目录 ${st.modelsDir}，内存 ${st.memGB} GB）`);
       for (const x of st.models) console.log(`  ${x.present ? '✅' : x.usable ? '⬜' : '⛔'} ${x.id.padEnd(18)} ${x.label} · ${x.sizeGB} GB · ${x.reason}`);
-      console.log(`\n许可证：${st.license}\n装：openshorts install-image --model flux-schnell-q4`);
+      console.log(`\n许可证：${st.license}`);
+      console.log(`sd-cli：${st.cliFound ? `✅ ${st.cli}` : '⬜ 还没装，装模型时会一并装上（约 30 MB，MIT）'}`);
+      console.log(`装：openshorts install-image --model ${m.pickImageModel(st)?.id ?? 'flux-schnell-q2'}`);
       break;
     }
     const want = o.model || m.pickImageModel(st)?.id;
@@ -220,7 +221,7 @@ switch (cmd) {
     if (!tier) { console.error(`⛔ 未知档位 ${want}（openshorts install-image --list 看有哪些）`); process.exit(1); }
     if (!tier.usable) { console.error(`⛔ ${tier.reason}`); process.exit(1); }
     if (tier.present && !o.force) { console.log(`✅ ${tier.label} 已经装好了。要重装加 --force`); break; }
-    console.log(`将下载 ${tier.label}，共约 ${tier.sizeGB} GB 到 ${st.modelsDir}\n许可证：${st.license}`);
+    console.log(`将下载 ${tier.label}，共约 ${tier.sizeGB} GB 到 ${st.modelsDir}${st.cliFound ? '' : '\n（顺带装 sd-cli，约 30 MB，MIT）'}\n许可证：${st.license}`);
     try {
       await m.installSdImage({ model: want, onLog: (x) => console.log('  ' + x),
         onProgress: (p) => { if (p.total) process.stdout.write(`\r  ${p.file} ${(p.bytes / 1073741824).toFixed(2)}/${(p.total / 1073741824).toFixed(2)} GB   `); if (p.done) process.stdout.write('\n'); } });

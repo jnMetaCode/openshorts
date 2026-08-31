@@ -16,10 +16,20 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { spawn } from 'node:child_process';
+import { spawn, execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { downloadWithResume } from './download.mjs';
+import { downloadWithResume, pickSdcppAsset, assetMacOS } from './download.mjs';
 import { OPENSHORTS_HOME } from '../config.mjs';
+
+/** 内部把 14.7 记成 14.07（minor/100 便于比较），显示时还原成人看的写法 */
+const showVer = (v) => `${Math.floor(v)}.${Math.round((v % 1) * 100)}`;
+
+/** 本机 macOS 主版本（非 macOS 返回 null）——用来挑跑得动的预编译包 */
+function macOSVersion() {
+  if (process.platform !== 'darwin') return null;
+  try { const v = execFileSync('sw_vers', ['-productVersion'], { encoding: 'utf-8' }).trim().split('.'); return Number(v[0]) + (v[1] ? Number(v[1]) / 100 : 0); }
+  catch { return null; }
+}
 
 const HF = 'https://huggingface.co';
 const CLIP_L = ['clip_l.safetensors', `${HF}/comfyanonymous/flux_text_encoders/resolve/main/clip_l.safetensors`];
@@ -83,11 +93,69 @@ export function pickImageModel(status, wanted) {
     ?? null;
 }
 
+
+/**
+ * 装 sd-cli（stable-diffusion.cpp 的预编译二进制，MIT）。
+ *
+ * 以前只有网页界面里能装（`/local/install?what=sdcli`），命令行用户跑 `install-image` 会撞到
+ * "没装 sd-cli，去界面里装"——一个只给出网页出口的 CLI 报错，纯命令行的人就走不下去了。
+ * 这里把同一段逻辑搬出来共用。
+ */
+export async function installSdCli({ onLog = () => {}, onProgress = () => {}, signal, fetchImpl = fetch } = {}) {
+  const { cli } = await sdImagePaths();
+  if (fs.existsSync(cli)) { onLog(`sd-cli 已在：${cli}`); return cli; }
+  // 取一整页 release 往回找：最新那个的 macOS 包可能是给比本机更新的系统编的（真机遇到过），
+  // 那就往前翻，找第一个本机跑得动的。
+  const r = await fetchImpl('https://api.github.com/repos/leejet/stable-diffusion.cpp/releases?per_page=20', { headers: { 'User-Agent': 'OpenShorts/2.0' }, signal });
+  if (!r.ok) throw new Error(`拿不到 stable-diffusion.cpp 的发布列表（HTTP ${r.status}）`);
+  const releases = await r.json();
+  const mac = macOSVersion();
+  let rel = null, asset = null;
+  for (const x of Array.isArray(releases) ? releases : []) {
+    const a = pickSdcppAsset(x.assets ?? [], process.platform, process.arch, 'auto', mac);
+    if (a) { rel = x; asset = a; break; }
+  }
+  if (!asset) {
+    // 把"最新的包要求什么系统"一并说出来——上游 2026 年把 CI 换到 macOS 26 之后，
+    // macOS 14/15 的用户在最近的所有发布里都找不到能跑的包，光说"自行编译"等于没说。
+    const newest = (Array.isArray(releases) ? releases : []).flatMap((x) => x.assets ?? [])
+      .filter((a) => new RegExp(process.platform === 'darwin' ? 'Darwin' : process.platform, 'i').test(a.name))[0];
+    const need = newest ? assetMacOS(newest.name) : null;
+    throw new Error(
+      `最近 20 个发布里没有这台机器跑得动的 sd-cli 预编译包`
+      + (mac && need ? `：上游的包是给 macOS ${showVer(need)} 编的，本机是 ${showVer(mac)}` : `（${process.platform}/${process.arch}）`)
+      + `。要么从 stable-diffusion.cpp 源码编译一份放到 ${(await sdImagePaths()).cli}，要么等上游补回旧系统的包。`
+      + `（本机出图只影响"素材库没命中的镜头"——不装的话那些镜头退纯色底，其余功能不受影响。）`);
+  }
+  onLog(`下载 sd-cli ${rel.tag_name} · ${asset.name}（${(asset.size / 1048576).toFixed(0)} MB）`);
+  fs.mkdirSync(path.dirname(cli), { recursive: true });
+  const zip = path.join(path.dirname(cli), asset.name);
+  await downloadWithResume(asset.browser_download_url, zip, { signal, onProgress: (p) => onProgress({ file: asset.name, ...p }) });
+  execFileSync(process.platform === 'win32' ? 'tar' : 'unzip',
+    process.platform === 'win32' ? ['-xf', zip, '-C', path.dirname(cli)] : ['-o', '-q', zip, '-d', path.dirname(cli)]);
+  const found = walkFind(path.dirname(cli), /^sd-cli(\.exe)?$/);
+  if (!found) throw new Error('解压后没找到 sd-cli');
+  if (found !== cli) fs.copyFileSync(found, cli);
+  if (process.platform !== 'win32') fs.chmodSync(cli, 0o755);
+  if (process.platform === 'darwin') { try { execFileSync('xattr', ['-cr', path.dirname(cli)]); } catch { /* 没有隔离属性 */ } }
+  try { fs.rmSync(zip, { force: true }); } catch { /* 留着也无妨 */ }
+  // 装完当场跑一下：macOS 版本对不上时它照样"装成功"，直到出图那一刻才 dyld 崩溃
+  try { execFileSync(cli, ['--help'], { stdio: 'ignore', timeout: 30000 }); }
+  catch (e) {
+    try { fs.rmSync(cli, { force: true }); } catch { /* 删不掉也别拦着报错 */ }
+    throw new Error(`装到的 sd-cli 在这台机器上跑不起来（${String(e.stderr || e.message).split('\n')[0].slice(0, 160)}）——多半是预编译包要求的系统版本比本机新`);
+  }
+  onLog(`sd-cli 就绪：${cli}`);
+  return cli;
+}
+function walkFind(dir, re) { for (const n of fs.readdirSync(dir)) { const p = path.join(dir, n); let st; try { st = fs.statSync(p); } catch { continue; } if (st.isDirectory()) { const r = walkFind(p, re); if (r) return r; } else if (re.test(n)) return p; } return null; }
+
 export async function installSdImage({ model = 'flux-schnell-q4', onLog = () => {}, onProgress = () => {}, signal } = {}) {
   const m = SD_IMAGE_MODELS.find((x) => x.id === model);
   if (!m) throw new Error(`未知档位 ${model}（有 ${SD_IMAGE_MODELS.map((x) => x.id).join('、')}）`);
   const { modelsDir } = await sdImagePaths();
   fs.mkdirSync(modelsDir, { recursive: true });
+  await installSdCli({ onLog, onProgress, signal });      // 缺二进制就一并装上，别把用户推去开网页
   onLog(`${m.label} · 共约 ${m.sizeGB} GB · ${LICENSE_NOTE}`);
   for (const [name, url] of modelFiles(m)) {
     onLog(`下载 ${name}`);
