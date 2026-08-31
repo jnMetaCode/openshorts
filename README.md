@@ -34,7 +34,8 @@
 | 《后羿射日》 | 故事片 · 纸片动画 | 62s | [content/nine-suns](content/nine-suns) |
 | 《三天荔枝道》 | 故事片 · 纸片动画 | 55s | [content/lychee-road](content/lychee-road) |
 | 《这条视频是它自己生成的》 | 产品演示 · 自举 | 48s | [content/openshorts-demo](content/openshorts-demo) |
-| 《猫为什么总爱钻纸箱》 | 口播科普 · Wikimedia 免 key 素材 · Edge TTS · 看图排序 · **0 元 0 key** | 37s | [docs/cases/koubo-cat-box](docs/cases/koubo-cat-box/) |
+| 《为什么切洋葱会流眼泪》 | 口播科普 · CC 素材 + **本机 FLUX 出图** · 看图把关 · 一镜切多段 · **0 元 0 key** | 60s | [docs/cases/koubo-onion](docs/cases/koubo-onion/) |
+| 《猫为什么总爱钻纸箱》 | 口播科普 · Wikimedia 免 key 素材 · Edge TTS · 看图排序 · **0 元 0 key**（早期版本，画面与字幕都不如上面那条，保留作对照） | 37s | [docs/cases/koubo-cat-box](docs/cases/koubo-cat-box/) |
 | 《深夜便利店》本地草稿档 | AI 短剧 · 本地 sd.cpp · MiniMax-H3 Q2 · **0 元** | 7s | [docs/cases/drama-convenience-store](docs/cases/drama-convenience-store/) |
 | 《深夜便利店》云端成片档 | AI 短剧 · Agnes agnes-video-2.5-flash | 13s | 同上（同一故事的草稿 vs 成片对照） |
 

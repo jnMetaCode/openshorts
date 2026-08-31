@@ -70,7 +70,7 @@ export function buildKouboProject(aoResult, { id, topic, inputs = {}, output = {
     publish: { titles: meta.titles ?? [], tags: meta.tags ?? [], note: meta.publishNote ?? '', aiLabel: true, aiLabelText: meta.aiLabel ?? '本视频含 AI 生成内容',
       ...(metaError ? { error: `标题/话题/发布说明没生成（${metaError}）——片子照常能出，发布信息要自己填` } : {}) },
     provenance: [],
-    scriptWarnings: scriptWarnings(shots),
+    scriptWarnings: scriptWarnings(shots, inputs.duration),
     ao: { file: aoResult.file ?? null, success: !!aoResult.success, totalTokens: aoResult.totalTokens ?? null },
   };
 }
@@ -97,8 +97,25 @@ export function uniqueProjectId(outputDir, id, fsImpl) {
  * 「学名叫 petrichor」），Edge TTS 会照着念出一个英文词，字幕上也是一串拉丁字母——
  * 中文科普片里很出戏。缩写除外：AI / DNA / CT 这类本来就念字母，中文里也这么说。
  */
-export function scriptWarnings(shots) {
+/**
+ * 脚本长度对不对得上目标时长。模板里写了字数区间，但模型**时灵时不灵**——
+ * 真机同一个话题两次生成分别是 278 字（落在 60 秒的 243–297 区间内）和 183 字（短 32%）。
+ * 提示词管不住的事，至少不能让它悄悄过去：写少了成片就是比你要的短一大截。
+ */
+export function lengthWarning(shots, duration) {
+  const target = Number(String(duration ?? '').match(/\d+/)?.[0]);
+  if (!target) return null;
+  const chars = shots.reduce((n, s) => n + String(s.text ?? '').length, 0);
+  const secs = chars / 4.5;                       // Edge TTS 实测语速
+  const off = (secs - target) / target;
+  if (Math.abs(off) <= 0.12) return null;
+  return `脚本 ${chars} 字 ≈ ${secs.toFixed(0)} 秒，而目标是 ${target} 秒（${off > 0 ? '长' : '短'} ${Math.abs(off * 100).toFixed(0)}%）——重新生成一次通常就对了`;
+}
+
+export function scriptWarnings(shots, duration) {
   const out = [];
+  const len = lengthWarning(shots, duration);
+  if (len) out.push(len);
   for (const s of shots) {
     const latin = [...new Set((String(s.text).match(/[A-Za-z]{2,}/g) ?? []).filter((w) => w !== w.toUpperCase()))];
     if (latin.length) out.push(`镜头 ${s.id} 的口播里夹了英文单词「${latin.join('、')}」——配音会念出英文，字幕上也是拉丁字母`);

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { buildKouboProject, parseJsonLoose, uniqueProjectId, repairJson, scriptWarnings } from '../src/project/koubo.mjs';
+import { buildKouboProject, parseJsonLoose, uniqueProjectId, repairJson, scriptWarnings, lengthWarning } from '../src/project/koubo.mjs';
 
 const aoResult = { name: '口播科普', success: true, steps: [
   { id: 'script', status: 'completed', output: '好的，脚本如下：\n{"hook":"猫为什么总爱钻纸箱？","segments":[{"id":"s1","text":"第一段","visualIntent":"猫钻箱","query":"cat inside cardboard box","emphasis":["安全感"]},{"id":"s2","text":"第二段","visualIntent":"猫科动物伏击","query":"wild cat stalking grass"}],"outro":"关注我，下期讲狗。"}' },
@@ -84,4 +84,24 @@ test('口播文本的可朗读检查：夹在句子里的英文单词要报，�
   const many = scriptWarnings([{ id: 's3', text: '叫 petrichor 也叫 geosmin，是 petrichor 的来源' }]);
   assert.equal(many.length, 1);
   assert.match(many[0], /petrichor、geosmin/, '去重且合并');
+});
+
+/**
+ * 脚本长度对不对得上目标时长。模板里写了字数区间，但模型时灵时不灵——真机同一话题两次
+ * 分别是 278 字（60 秒目标，在 243–297 区间内）和 183 字（短 32%）。提示词管不住的事，
+ * 至少不能让它悄悄过去：写少了成片就是比你要的短一大截。
+ */
+test('脚本长度偏离目标时长要报出来，容差内不吵', () => {
+  const mk = (n) => [{ id: 's1', text: '字'.repeat(n) }];
+  assert.equal(lengthWarning(mk(270), '60秒'), null, '正中不报');
+  assert.equal(lengthWarning(mk(243), '60秒'), null, '−10% 在容差内');
+  assert.match(lengthWarning(mk(183), '60秒'), /短 32%/, '真机这次');
+  assert.match(lengthWarning(mk(165), '45秒'), /短 19%/, '更早那次');
+  assert.match(lengthWarning(mk(400), '60秒'), /长 \d+%/);
+  assert.equal(lengthWarning(mk(270), ''), null, '没给目标时长就别猜');
+  assert.equal(lengthWarning(mk(270), '一分钟'), null, '解析不出数字也别猜');
+
+  // 要跟"夹英文单词"一起进 scriptWarnings，一次说完
+  const w = scriptWarnings([{ id: 's1', text: '短' + 'x'.repeat(0) }], '60秒');
+  assert.ok(w.some((x) => /秒/.test(x)));
 });
