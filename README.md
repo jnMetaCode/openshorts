@@ -16,7 +16,7 @@
 
 | 你关心的 | 开片 | 素材拼片类工具（如 MoneyPrinterTurbo） | 平台一键 AI 工具 |
 |---|---|---|---|
-| **第一条片要花多少钱、要配什么** | **0 元、0 个 key**：Wikimedia Commons 免 key 素材 + Edge TTS + 本机 ffmpeg；注册 Pexels 后画质更好 | 要先注册素材库 key | 会员 / 积分 |
+| **第一条片要花多少钱、要配什么** | **0 元、0 个 key**：Wikimedia Commons 的 CC 图片（完整图 + 虚化垫底 + 缓推）与视频 + Edge TTS + 本机 ffmpeg；注册免费 Pexels key 后换成实拍视频，画面更好 | 要先注册素材库 key | 会员 / 积分 |
 | **画面从哪来** | 素材库 · 本地 AI（sd.cpp，草稿档不花钱）· 云端 AI（秘塔 / 火山 / Agnes …）· 图层动画，**同一条片可混用、一键切** | 只有素材库（近期加了一家云端） | 只有平台自家模型 |
 | **花钱之前知道要花多少** | 运行前按所选供应商 / 档位 / 秒数给数量级，确认后才跑 | 无 | 事后看余额 |
 | **谁来把关** | 看图验收员：审 AI 出的每一镜、给素材候选按"画面意图"打分（把量子图表从猫科普里踢出去）、成片自动质检（响度 / 时长 / 字幕 / AI 标识）。**看图把关要配一个能看图的模型**；没配时质检会明说"这些画面没人看过" | 无 | 人工 |
@@ -78,7 +78,7 @@ openshorts run ~/OpenShorts/猫为什么总爱钻纸箱/project.json --only s2  
 openshorts drama --plan -i story="…" -i video_provider=local-sdcpp -i video_model=minimax-h3-q2   # AI 短剧：先看花费
 ```
 
-- 写脚本用你自己的文本模型 key（复用 [AO](https://github.com/jnMetaCode/agency-orchestrator) 的 `~/.ao` 配置或环境变量如 `DEEPSEEK_API_KEY`）；画面**不配 key 也能出**（Wikimedia Commons 免 key 兜底，偏科教/历史），配一把免费的 Pexels / Pixabay key 会明显更贴合（界面一分钟引导）；配音默认 Edge TTS（免费）。产品不内置任何共享 key。
+- 写脚本用你自己的文本模型 key（复用 [AO](https://github.com/jnMetaCode/agency-orchestrator) 的 `~/.ao` 配置或环境变量如 `DEEPSEEK_API_KEY`）；画面**不配 key 也能出**（Wikimedia Commons 的 CC 图片为主、视频为辅；图片检索比视频准得多，静图会加虚化垫底与缓推），配一把免费的 Pexels / Pixabay key 换成实拍视频会更好（界面一分钟引导）；配音默认 Edge TTS（免费）。产品不内置任何共享 key。
 - 本地 AI 出片：`openshorts doctor` 会告诉你这台机器能跑哪一档（24 GB 内存起，草稿画质），以及 sd-cli 与模型怎么装。
 - 产物落在 `~/OpenShorts/<项目>/`；成片默认带 AI 生成标识；素材署名写进发布文案。
 
