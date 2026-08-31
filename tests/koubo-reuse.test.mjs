@@ -78,3 +78,43 @@ test('--only 指定了不存在的镜头要立刻报错，并把有哪些镜头�
   await assert.rejects(() => runKoubo(project, { outDir: dir, only: ['s9'] }), /没有这些镜头：s9.*hook、s1/s);
   fs.rmSync(dir, { recursive: true, force: true });
 });
+
+/**
+ * 批量出版本时每一版有自己的 work 目录，以前因此把配音和分段全重做了一遍——
+ * 而只换字幕样式的话，配音和分段是一模一样的（字幕是在最后合成那一步烧的）。
+ * 真机：2 版从 50 秒降到 19 秒，且一次 Edge TTS 都没调。
+ */
+test('换个目录重跑：配音和分段按指纹跨目录复用；换音色则必须重做', { skip: !hasFfmpeg && '无 ffmpeg' }, async () => {
+  const a = fs.mkdtempSync(path.join(os.tmpdir(), 'os-x1-'));
+  const b = fs.mkdtempSync(path.join(os.tmpdir(), 'os-x2-'));
+  const shared = fs.mkdtempSync(path.join(os.tmpdir(), 'os-mat-'));
+  // 用一份放在共用位置的素材：纯色底是每次在当前 work 目录现生成的，visual.file 一变指纹就变
+  // （那是对的行为），拿它测不出跨目录复用
+  const clip = path.join(shared, 'm.mp4');
+  spawnSync('ffmpeg', ['-v', 'error', '-y', '-f', 'lavfi', '-i', 'color=c=teal:size=180x320:rate=10:d=2', '-pix_fmt', 'yuv420p', clip]);
+
+  const counter = { calls: [] };
+  const opts = { synthesizeImpl: makeTts(counter) };
+  const withClip = (proj) => { for (const s of proj.shots) s.visual = { source: 'stock', provider: 'test', kind: 'video', file: clip, cost: { kind: 'free' } }; return proj; };
+
+  let p = await runKoubo(withClip(mkProject(a, [['hook', '第一句'], ['s1', '第二句']])), { ...opts, outDir: a });
+  assert.equal(counter.calls.length, 2);
+  assert.ok(p.shots.every((s) => s.render.segment.startsWith(a)));
+
+  // 同一个项目搬到另一个目录跑（批量出版本就是这种情况）：不该重配音、不该重渲染
+  counter.calls = [];
+  const moved = JSON.parse(JSON.stringify(p)); moved.id = 'moved';
+  const r = await runKoubo(moved, { ...opts, outDir: b });
+  assert.deepEqual(counter.calls, [], '配音该跨目录复用');
+  assert.ok(r.shots.every((s) => s.render.segment.startsWith(a)), '分段也该沿用原来那份，不在新目录重渲');
+  assert.ok(fs.existsSync(r.final.file) && r.final.file.startsWith(b), '成片本身还是要出在新目录');
+
+  // 换音色：指纹变了，必须全部重做，绝不能因为"文件还在"就误用
+  counter.calls = [];
+  const other = JSON.parse(JSON.stringify(p)); other.id = 'othervoice'; other.voice = { ...other.voice, voice: 'v2' };
+  const r2 = await runKoubo(other, { ...opts, outDir: b });
+  assert.equal(counter.calls.length, 2, '换音色要全部重配');
+  assert.ok(r2.shots.every((s) => s.render.segment.startsWith(b)), '换音色后分段必须重渲到新目录');
+
+  for (const d of [a, b, shared]) fs.rmSync(d, { recursive: true, force: true });
+});

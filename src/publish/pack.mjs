@@ -22,7 +22,8 @@ export function checkPlatform(project, platform = 'douyin') {
   const pf = PLATFORMS[platform] ?? PLATFORMS.douyin;
   const out = [];
   const dur = project.final?.durationSec;
-  if (platform === 'shorts' && dur > 60) out.push(`成片 ${dur.toFixed(0)} 秒，超过 60 秒就不算 Shorts 了（会当普通视频分发）`);
+  // 保留一位小数：60.4 被 round 成 60 之后，"成片 60 秒，超过 60 秒"读起来是自相矛盾的
+  if (platform === 'shorts' && dur > 60) out.push(`成片 ${dur.toFixed(1)} 秒，超过 60 秒就不算 Shorts 了（会当普通视频分发）`);
   const { w, h } = project.output ?? {};
   if (w && h && pf.ratio === '9:16' && w >= h) out.push(`成片是 ${w}×${h}（横屏），而 ${pf.name} 这个包是按竖屏 9:16 准备的`);
   const long = (project.publish?.titles ?? []).filter((t) => [...t].length > pf.maxTitle);
@@ -37,8 +38,12 @@ export function buildPublishText(project, platform = 'douyin') {
   const pf = PLATFORMS[platform] ?? PLATFORMS.douyin;
   const titles = (project.publish?.titles ?? []).map((t) => [...t].slice(0, pf.maxTitle).join(''));
   const tags = (project.publish?.tags ?? []).slice(0, pf.maxTags);
-  const lines = [`【${pf.name} 发布包】${project.title || project.topic || ''}`, '', '标题候选：', ...titles.map((t, i) => `  ${i + 1}. ${t}`), '', `话题：${tags.map((t) => `#${t}`).join(' ')}${platform === 'shorts' ? ' #Shorts' : ''}`, '', `发布说明：${project.publish?.note ?? ''}`, `AI 标识：${project.publish?.aiLabelText ?? '含 AI 生成内容'}（${pf.note}）`, ''];
-  if (project.provenance?.length) { lines.push('素材署名：'); for (const p of project.provenance) lines.push(`  ${p.shot}: ${p.source}${p.author ? ` · ${p.author}` : ''}${p.page ? ` ${p.page}` : ''}${p.license ? `（${p.license}）` : ''}`); }
+  const lines = [`【${pf.name} 发布包】${project.title || project.topic || ''}`, '', '标题候选：', ...titles.map((t, i) => `  ${i + 1}. ${t}`), '', `话题：${tags.map((t) => `#${t}`).join(' ')}${platform === 'shorts' ? ' #Shorts' : ''}`, '', `发布说明：${project.publish?.note ?? ''}`, `AI 标识：${project.publish?.aiLabelText ?? '含 AI 生成内容'}`, '', `${pf.name} 规则：${pf.note}`, ''];
+  if (project.provenance?.length) { lines.push('素材署名：'); for (const p of project.provenance) {
+      // license 里本来就可能带括号（"Apache-2.0（FLUX.1-schnell 本地生成）"），再套一层就成了双重括号
+      const lic = String(p.license ?? '').trim();
+      lines.push(`  ${p.shot}: ${p.source}${p.author ? ` · ${p.author}` : ''}${lic ? ` · ${lic}` : ''}${p.page ? `\n      ${p.page}` : ''}`);
+    } }
   const warns = checkPlatform(project, platform);
   if (warns.length) lines.push('', `⚠️ 按 ${pf.name} 规格核对：`, ...warns.map((x) => `  - ${x}`));
   if (project.final?.quality) lines.push('', `质检：${project.final.quality.pass ? '通过' : '有问题'}，${project.final.quality.warnings ?? 0} 条提醒`, ...(project.final.quality.items ?? []).filter((i) => i.status !== 'pass').map((i) => `  - ${i.msg}`));

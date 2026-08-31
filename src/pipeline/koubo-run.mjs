@@ -47,8 +47,9 @@ const audioDuration = async (file, tts) => Math.max((await probeDuration(file)) 
  */
 async function prefetchAudio(project, { work, log, synthesizeImpl, concurrency = 3, signal }) {
   const todo = project.shots.filter((shot) => {
-    const audio = path.join(work, `${shot.id}.mp3`);
-    return !(shot.render?.audioFingerprint === audioFingerprint(shot, project) && fs.existsSync(audio) && shot.render.words);
+    if (shot.render?.audioFingerprint !== audioFingerprint(shot, project) || !shot.render.words) return true;
+    // 上次那条还在就不必重合成——批量出版本时它在主项目的目录里
+    return !((shot.audio?.file && fs.existsSync(shot.audio.file)) || fs.existsSync(path.join(work, `${shot.id}.mp3`)));
   });
   if (todo.length < 2) return;                       // 只有一镜要配，串行反而少一层包装
   log(`🎙 并发配音 ${todo.length} 镜（${Math.min(concurrency, todo.length)} 条并行）`);
@@ -62,7 +63,7 @@ async function prefetchAudio(project, { work, log, synthesizeImpl, concurrency =
         const tts = await retry(() => synthesizeImpl(shot.text, { voice: project.voice.voice, rate: project.voice.rate, outFile: audio }), { times: 3 });
         const durationSec = await audioDuration(audio, tts);
         const words = tts.words.length ? alignPunctuation(tts.words, shot.text) : estimateWords(shot.text, durationSec * 1000);
-        shot.render = { ...shot.render, audioFingerprint: audioFingerprint(shot, project), durationSec, words };
+        shot.render = { ...shot.render, audioFingerprint: audioFingerprint(shot, project), durationSec, words, justSynthesized: true };
       } catch { /* 预取失败不报错：主循环会照常再试一次，那里有完整的错误信息与重试 */ }
     }
   });
@@ -128,14 +129,16 @@ export async function runKoubo(project, { outDir, log = () => {}, fetchImpl = fe
     const cache = shot.render ?? {};
 
     // 1) 配音（决定时长）——文案/音色/语速没变就直接用上次那条，Edge TTS 是全流程最慢也最爱抽的一步
-    const audio = path.join(work, `${shot.id}.mp3`);
     const aFp = audioFingerprint(shot, project);
+    // 上一次那条配音只要还在（哪怕在别的项目目录里，批量出版本就是这种情况），指纹一致就直接用
+    const prior = cache.audioFingerprint === aFp && cache.words && shot.audio?.file && fs.existsSync(shot.audio.file) ? shot.audio.file : null;
+    const audio = prior ?? path.join(work, `${shot.id}.mp3`);
     let durationSec, words;
-    if (cache.audioFingerprint === aFp && fs.existsSync(audio) && cache.words) {
+    if (prior || (cache.audioFingerprint === aFp && fs.existsSync(audio) && cache.words)) {
       durationSec = cache.durationSec; words = cache.words;
       shot.audio = { file: audio, provider: 'edge-tts', voice: project.voice.voice, durationSec };
       shot.durationSec = durationSec;
-      log(`↺ ${shot.id} 复用配音 ${durationSec.toFixed(1)}s`);
+      log(cache.justSynthesized ? `🎙 ${shot.id} 配音 ${durationSec.toFixed(1)}s` : `↺ ${shot.id} 复用配音 ${durationSec.toFixed(1)}s`);
     } else {
       // Edge TTS 走的是微软非官方端点，抖一下就整条片废掉——重试两次再放弃（PRD 风险表里就写着它会抽）
       const tts = await retry(() => synthesizeImpl(shot.text, { voice: project.voice.voice, rate: project.voice.rate, outFile: audio }),
@@ -223,9 +226,11 @@ export async function runKoubo(project, { outDir, log = () => {}, fetchImpl = fe
     }
 
     // 3) 分段渲染（指纹要在画面定下来之后算——退纯色底 / 选中素材都会改 shot.visual）
-    const segOut = path.join(work, `${shot.id}.mp4`);
     const sFp = segmentFingerprint(shot, project, aFp);
-    if (cache.segmentFingerprint === sFp && fs.existsSync(segOut)) log(`↺ ${shot.id} 复用分段`);
+    // 同上：上次渲好的分段还在就直接用，不管它在哪个目录
+    const priorSeg = cache.segmentFingerprint === sFp && cache.segment && fs.existsSync(cache.segment) ? cache.segment : null;
+    const segOut = priorSeg ?? path.join(work, `${shot.id}.mp4`);
+    if (priorSeg || (cache.segmentFingerprint === sFp && fs.existsSync(segOut))) log(`↺ ${shot.id} 复用分段`);
     else await renderSegment({ clip, audio, durationSec, w, h, fps, out: segOut, clipVolume: 0, signal,
       kind: shot.visual?.kind ?? 'video', panReverse: project.shots.indexOf(shot) % 2 === 1 });
     segFiles.push(segOut); shot.status = 'ready'; cursorMs += Math.round(durationSec * 1000);

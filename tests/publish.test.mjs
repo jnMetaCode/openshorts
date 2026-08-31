@@ -40,3 +40,21 @@ test('打包前按平台规格核一遍：只报事实，不拦着打包', () =>
   // 警告要进发布文案，运营拿到 txt 就能看见
   assert.match(buildPublishText({ ...base, final: { durationSec: 92 } }, 'shorts'), /不算 Shorts/);
 });
+
+/** 发布文案是要交给运营的，三处读着别扭的地方（都是真机打出来才看见的） */
+test('发布文案的排版：秒数别 round 掉、平台规则单独成行、署名不要双重括号', () => {
+  const p = {
+    output: { w: 1080, h: 1920 }, final: { durationSec: 60.4 },
+    publish: { titles: ['标题'], tags: ['a'], note: '说明', aiLabelText: '含 AI 生成内容' },
+    provenance: [{ shot: 's1', source: 'local-flux', license: 'Apache-2.0（FLUX.1-schnell 本地生成）', page: 'https://x/y' }],
+  };
+  const txt = buildPublishText(p, 'shorts');
+  // 60.4 被 round 成 60 之后，"成片 60 秒，超过 60 秒"是自相矛盾的
+  assert.match(txt, /成片 60\.4 秒，超过 60 秒/);
+  // 平台规则以前塞在 AI 标识那一行里，读起来像是 AI 标识的一部分
+  assert.match(txt, /^AI 标识：含 AI 生成内容$/m);
+  assert.match(txt, /^YouTube Shorts 规则：/m);
+  // license 本身带括号，外面再套一层就成了「（Apache-2.0（…本地生成））」
+  assert.doesNotMatch(txt, /（Apache-2\.0（/);
+  assert.match(txt, /s1: local-flux · Apache-2\.0（FLUX\.1-schnell 本地生成）/);
+});
