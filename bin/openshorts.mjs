@@ -85,7 +85,8 @@ switch (cmd) {
     const { readConfig: rc } = await import('../src/config.mjs'); const c = rc();
     const vision = o['vision-provider'] ? { provider: o['vision-provider'], model: o['vision-model'] || '' } : c.vision;
     if (vision?.provider) console.log(`  🔍 素材候选看图排序：${vision.provider} / ${vision.model}`);
-    const p = await runKoubo(project, { outDir: path.dirname(path.resolve(pf)), log: (m) => console.log('  ' + m), vision });
+    const only = o.only ? String(o.only).split(',').map((x) => x.trim()).filter(Boolean) : null;
+    const p = await runKoubo(project, { outDir: path.dirname(path.resolve(pf)), log: (m) => console.log('  ' + m), vision, only });
     console.log(`\n✓ 成片：${p.final.file}（${p.final.durationSec.toFixed(1)}s，${((Date.now() - t0) / 1000).toFixed(0)}s 出片）\n  字幕：${p.final.srt}\n  封面：${p.final.cover ?? '无'}\n  发布文案：${p.final.publish}`);
     for (const n of p.final.notes) console.log(`  ⚠️ ${n}`);
     break;
@@ -153,7 +154,8 @@ switch (cmd) {
   doctor    环境体检（转 ao doctor）
   install-ffmpeg  装一份带 libass 的 ffmpeg 到 ~/.openshorts/bin（Homebrew 的不带，字幕会烧不进画面）
   new       口播科普：openshorts new koubo-kepu --topic "…" [--duration 60秒] [--tone 科普讲解] [--voice …] [--local-dir 素材夹] [--bgm x.mp3]
-  run       出片：openshorts run <project.json> [--vision-provider agnes --vision-model agnes-2.0-flash]（候选素材看图排序）
+  run       出片：openshorts run <project.json> [--only s2,s3]（只重出这几镜，其余复用）
+            [--vision-provider agnes --vision-model agnes-2.0-flash]（候选素材看图排序）
   estimate  看这个项目要不要花钱
   export    发布包：openshorts export <project.json> --platform douyin|shipinhao|bilibili|shorts（mp4+封面+SRT+文案，不自动发布）
   batch     批量：openshorts batch <project.json> --voices a,b [--captions douyin,clean] [--rates 1,1.1]`);

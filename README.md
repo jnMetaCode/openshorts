@@ -20,7 +20,7 @@
 | **画面从哪来** | 素材库 · 本地 AI（sd.cpp，草稿档不花钱）· 云端 AI（秘塔 / 火山 / Agnes …）· 图层动画，**同一条片可混用、一键切** | 只有素材库（近期加了一家云端） | 只有平台自家模型 |
 | **花钱之前知道要花多少** | 运行前按所选供应商 / 档位 / 秒数给数量级，确认后才跑 | 无 | 事后看余额 |
 | **谁来把关** | 看图验收员：审 AI 出的每一镜、给素材候选按"画面意图"打分（把量子图表从猫科普里踢出去）、成片自动质检（响度 / 时长 / 字幕 / AI 标识） | 无 | 人工 |
-| **改一镜要不要全重来** | 单镜重出：按验收意见 / 提意见 / 换来源，其余镜头复用 | 全部重跑 | 重新生成 |
+| **改一镜要不要全重来** | 单镜重出：短剧按验收意见 / 提意见 / 换来源；口播改一句话只重出那一镜（配音按文案指纹复用，画面按素材指纹复用） | 全部重跑 | 重新生成 |
 | **脚本谁写** | 276 位专家角色分工（科普作者写稿、抖音策略师起标题、编剧拆三镜） | 一个通用 prompt | 黑盒 |
 | **数据在哪** | 本地优先：key 只存本机，产物在你硬盘，素材署名与 AI 标识写进发布文案 | 本地 | 云端 |
 | **怎么装** | `npx openshorts` 一行 / 桌面端 / Docker | Python 环境 / 整合包 | App |
@@ -74,6 +74,7 @@ openshorts doctor                                   # 体检：ffmpeg / libass /
 openshorts install-ffmpeg                           # doctor 说缺 libass 时跑这个（字幕才能烧进画面）
 openshorts new koubo-kepu --topic "猫为什么总爱钻纸箱" --voice zh-CN-YunxiNeural --local-dir ./素材
 openshorts run ~/OpenShorts/猫为什么总爱钻纸箱/project.json   # 0 元：Edge TTS + 素材库/本地素材 + 本机 ffmpeg
+openshorts run ~/OpenShorts/猫为什么总爱钻纸箱/project.json --only s2   # 只重出第 2 镜（换素材），其余复用
 openshorts drama --plan -i story="…" -i video_provider=local-sdcpp -i video_model=minimax-h3-q2   # AI 短剧：先看花费
 ```
 

@@ -12,6 +12,7 @@ import { buildCues, estimateWords, toSRT, toASS, alignPunctuation } from '../cap
 import { renderSegment, concatSegments, finalize, probeDuration, hasFilter } from '../compose/koubo.mjs';
 import { checkKoubo } from '../quality/check.mjs';
 import { rankCandidates } from '../sources/rank.mjs';
+import crypto from 'node:crypto';
 import { aoSavedKeys } from '../config.mjs';
 import { ffmpegPath } from '../media/ffmpeg.mjs';
 const run = promisify(execFile);
@@ -26,6 +27,49 @@ async function retry(fn, { times = 3, delayMs = 800, onRetry = () => {} } = {}) 
   throw last;
 }
 
+const fp = (...parts) => crypto.createHash('sha1').update(JSON.stringify(parts)).digest('hex').slice(0, 16);
+
+/**
+ * 每镜两级缓存，粒度要分开——这是真机测出来的：
+ * 「退纯色底的镜头下次要再找一遍素材」这条规则如果作用在整镜上，会连配音一起重做，
+ * 而文案没改的话配音根本不需要重来（Edge TTS 是这条流水线里最慢也最容易抽的一步）。
+ * 所以：配音只跟文案/音色/语速有关；分段只跟"这段配音 + 这个画面 + 画幅"有关。
+ * 于是改一句话只重出那一镜，重找素材没找到又退回纯色底时连分段都能复用。
+ */
+const audioFingerprint = (shot, project) => fp(shot.text, project.voice.voice, project.voice.rate);
+/** 配音时长：以文件实测为准，拿不到就用 TTS 报的；下限 1.2s，尾巴留 250ms 呼吸 */
+const audioDuration = async (file, tts) => Math.max((await probeDuration(file)) || (tts.durationMs ?? 0) / 1000, 1.2) + 0.25;
+
+/**
+ * 配音预取：各镜的配音互不相干，没必要一条一条等——并发 3 条先把配音缓存填满，
+ * 主循环随后照常按指纹命中复用（所以主循环逻辑一行没动）。
+ * 并发压到 3：Edge TTS 是非官方端点，开太多容易被掐，收益也早就平掉了。
+ */
+async function prefetchAudio(project, { work, log, synthesizeImpl, concurrency = 3, signal }) {
+  const todo = project.shots.filter((shot) => {
+    const audio = path.join(work, `${shot.id}.mp3`);
+    return !(shot.render?.audioFingerprint === audioFingerprint(shot, project) && fs.existsSync(audio) && shot.render.words);
+  });
+  if (todo.length < 2) return;                       // 只有一镜要配，串行反而少一层包装
+  log(`🎙 并发配音 ${todo.length} 镜（${Math.min(concurrency, todo.length)} 条并行）`);
+  const queue = [...todo];
+  const workers = Array.from({ length: Math.min(concurrency, queue.length) }, async () => {
+    while (queue.length) {
+      if (signal?.aborted) return;
+      const shot = queue.shift();
+      const audio = path.join(work, `${shot.id}.mp3`);
+      try {
+        const tts = await retry(() => synthesizeImpl(shot.text, { voice: project.voice.voice, rate: project.voice.rate, outFile: audio }), { times: 3 });
+        const durationSec = await audioDuration(audio, tts);
+        const words = tts.words.length ? alignPunctuation(tts.words, shot.text) : estimateWords(shot.text, durationSec * 1000);
+        shot.render = { ...shot.render, audioFingerprint: audioFingerprint(shot, project), durationSec, words };
+      } catch { /* 预取失败不报错：主循环会照常再试一次，那里有完整的错误信息与重试 */ }
+    }
+  });
+  await Promise.all(workers);
+}
+const segmentFingerprint = (shot, project, audioFp) => fp(audioFp, shot.visual?.file ?? null, project.output.w, project.output.h, project.output.fps);
+
 /** 看图排序用的连接器：config.vision.{provider,model}（或 project.vision）；key 从 AO 保存的 key / 环境变量来 */
 async function visionJudge(vision, log) {
   if (!vision?.provider || !vision?.model) return null;
@@ -37,7 +81,7 @@ async function visionJudge(vision, log) {
   } catch (e) { log(`素材排序不可用：${e.message.split('\n')[0]}`); return null; }
 }
 
-export async function runKoubo(project, { outDir, log = () => {}, fetchImpl = fetch, config, vision, signal } = {}) {
+export async function runKoubo(project, { outDir, log = () => {}, fetchImpl = fetch, config, vision, signal, only = null, synthesizeImpl = synthesize } = {}) {
   const judge = await visionJudge(vision ?? project.vision ?? config?.vision, log);
   const dir = outDir ?? path.join(process.env.HOME || '.', 'OpenShorts', project.id);
   const work = path.join(dir, 'work'); fs.mkdirSync(work, { recursive: true });
@@ -49,25 +93,49 @@ export async function runKoubo(project, { outDir, log = () => {}, fetchImpl = fe
 
   const abortIfCancelled = () => { if (signal?.aborted) { save(); throw new Error('已取消（进度已存盘，重跑会接着来）'); } };
 
+  const forced = only ? new Set(Array.isArray(only) ? only : [only]) : null;
+  if (forced) {
+    const unknown = [...forced].filter((id) => !project.shots.some((s) => s.id === id));
+    if (unknown.length) throw new Error(`项目里没有这些镜头：${unknown.join('、')}（有的是 ${project.shots.map((s) => s.id).join('、')}）`);
+    log(`↻ 只重出 ${[...forced].join('、')}，其余镜头复用上次的分段`);
+  }
+
+  await prefetchAudio(project, { work, log, synthesizeImpl, signal });
+
   for (const shot of project.shots) {
     abortIfCancelled();
-    // 1) 配音（决定时长）
+
+    const redo = forced?.has(shot.id) ?? false;
+    const cache = shot.render ?? {};
+
+    // 1) 配音（决定时长）——文案/音色/语速没变就直接用上次那条，Edge TTS 是全流程最慢也最爱抽的一步
     const audio = path.join(work, `${shot.id}.mp3`);
-    // Edge TTS 走的是微软非官方端点，抖一下就整条片废掉——重试两次再放弃（PRD 风险表里就写着它会抽）
-    const tts = await retry(() => synthesize(shot.text, { voice: project.voice.voice, rate: project.voice.rate, outFile: audio }),
-      { times: 3, onRetry: (e, n) => log(`⟳ ${shot.id} 配音第 ${n} 次重试（${e.message.split('\n')[0].slice(0, 60)}）`) })
-      .catch((e) => { save(); throw new Error(`镜头 ${shot.id} 配音失败（已重试 3 次）：${e.message}`); });
-    const durationSec = Math.max((await probeDuration(audio)) || (tts.durationMs ?? 0) / 1000, 1.2) + 0.25; // 尾巴留 250ms 呼吸
-    shot.audio = { file: audio, provider: 'edge-tts', voice: project.voice.voice, durationSec };
-    shot.durationSec = durationSec;
-    const words = tts.words.length ? alignPunctuation(tts.words, shot.text) : estimateWords(shot.text, durationSec * 1000);
+    const aFp = audioFingerprint(shot, project);
+    let durationSec, words;
+    if (cache.audioFingerprint === aFp && fs.existsSync(audio) && cache.words) {
+      durationSec = cache.durationSec; words = cache.words;
+      shot.audio = { file: audio, provider: 'edge-tts', voice: project.voice.voice, durationSec };
+      shot.durationSec = durationSec;
+      log(`↺ ${shot.id} 复用配音 ${durationSec.toFixed(1)}s`);
+    } else {
+      // Edge TTS 走的是微软非官方端点，抖一下就整条片废掉——重试两次再放弃（PRD 风险表里就写着它会抽）
+      const tts = await retry(() => synthesizeImpl(shot.text, { voice: project.voice.voice, rate: project.voice.rate, outFile: audio }),
+        { times: 3, onRetry: (e, n) => log(`⟳ ${shot.id} 配音第 ${n} 次重试（${e.message.split('\n')[0].slice(0, 60)}）`) })
+        .catch((e) => { save(); throw new Error(`镜头 ${shot.id} 配音失败（已重试 3 次）：${e.message}`); });
+      durationSec = await audioDuration(audio, tts);
+      shot.audio = { file: audio, provider: 'edge-tts', voice: project.voice.voice, durationSec };
+      shot.durationSec = durationSec;
+      words = tts.words.length ? alignPunctuation(tts.words, shot.text) : estimateWords(shot.text, durationSec * 1000);
+      log(`🎙 ${shot.id} 配音 ${durationSec.toFixed(1)}s${tts.words.length ? '' : '（无词级时间戳，按字数估）'}`);
+    }
     // 按镜存，最后一镜一镜地断字幕：拼成一个大数组再断，会出现"上一镜的尾巴 + 下一镜的开头"挤在同一条字幕里
     shotWords.push({ words, offsetMs: cursorMs });
-    log(`🎙 ${shot.id} 配音 ${durationSec.toFixed(1)}s${tts.words.length ? '' : '（无词级时间戳，按字数估）'}`);
 
     // 2) 画面
     // 上次因"没找到素材"退成的纯色底带 fallback 标记：这次重跑要再找一遍；只有用户主动选的 solid 才不找
     if (shot.visual?.source === 'solid' && shot.visual.fallback) shot.visual = { ...shot.visual, source: null, file: null, fallback: false };
+    // 「重出这一镜」= 把已选的素材丢掉重新找一遍（文案没改的话配音上面已经复用了，不花时间也不花钱）
+    if (redo && shot.visual?.source !== 'solid') shot.visual = { ...shot.visual, source: null, file: null, candidateId: null };
     let clip = shot.visual.file; let chosen = null;
     if (!clip && shot.visual.source !== 'solid') {
       try {
@@ -103,10 +171,13 @@ export async function runKoubo(project, { outDir, log = () => {}, fetchImpl = fe
       log(`🎞 ${shot.id} 素材 ${chosen.source} ${chosen.id}${chosen.author ? ` · ${chosen.author}` : ''}`);
     }
 
-    // 3) 分段渲染
+    // 3) 分段渲染（指纹要在画面定下来之后算——退纯色底 / 选中素材都会改 shot.visual）
     const segOut = path.join(work, `${shot.id}.mp4`);
-    await renderSegment({ clip, audio, durationSec, w, h, fps, out: segOut, clipVolume: 0, signal });
+    const sFp = segmentFingerprint(shot, project, aFp);
+    if (cache.segmentFingerprint === sFp && fs.existsSync(segOut)) log(`↺ ${shot.id} 复用分段`);
+    else await renderSegment({ clip, audio, durationSec, w, h, fps, out: segOut, clipVolume: 0, signal });
     segFiles.push(segOut); shot.status = 'ready'; cursorMs += Math.round(durationSec * 1000);
+    shot.render = { audioFingerprint: aFp, segmentFingerprint: sFp, segment: segOut, durationSec, words };
     save();
   }
 

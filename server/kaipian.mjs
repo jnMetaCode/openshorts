@@ -83,7 +83,8 @@ kaipian.get('/projects/:id/run', async (req, res) => {
   req.on('close', () => ac.abort());
   try {
     const project = JSON.parse(fs.readFileSync(f, 'utf-8'));
-    const p = await runKoubo(project, { outDir: path.dirname(f), log: (m) => send('log', { m }), vision: readConfig().vision, signal: ac.signal });
+    const only = req.query.only ? String(req.query.only).split(',').map((x) => x.trim()).filter(Boolean) : null;
+    const p = await runKoubo(project, { outDir: path.dirname(f), log: (m) => send('log', { m }), vision: readConfig().vision, signal: ac.signal, only });
     send('done', { final: p.final, provenance: p.provenance });
   } catch (e) { send('error', { m: e.message }); }
   finally { running.delete(id); }

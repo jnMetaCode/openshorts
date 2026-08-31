@@ -55,6 +55,7 @@ export const Kaipian = () => {
   const [log, setLog] = useState<string[]>([]);
   const [projects, setProjects] = useState<Array<{id: string; title: string; final: boolean; updatedAt: string}>>([]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const runningEs = useRef<EventSource | null>(null);
 
   const refresh = async () => {
     const [s, v, a, c, ps] = await Promise.all([api<Sources>('/api/kaipian/sources'), api<Voice[]>('/api/kaipian/voices'), api<any>('/api/kaipian/ao-status'), api<any>('/api/kaipian/config'), api<any>('/api/kaipian/projects')]);
@@ -80,12 +81,21 @@ export const Kaipian = () => {
     catch (e: any) { setError(e.message); } finally { setBusy(''); }
   };
   const saveShots = async () => { if (!project) return; const p = await api<Project>(`/api/kaipian/projects/${encodeURIComponent(project.id)}`, {method: 'PUT', body: JSON.stringify({shots: project.shots.map((s) => ({id: s.id, text: s.text, query: s.query, visualIntent: s.visualIntent})), voice: {voice}, captions: {preset: captions}})}); setProject(p); };
-  const runProject = async () => {
-    if (!project) return; await saveShots(); setLog([]); setBusy('出片中…'); setError('');
-    const es = new EventSource(`/api/kaipian/projects/${encodeURIComponent(project.id)}/run`);
+  // only 传镜头 id 就是「只重出这几镜」：其余镜头的配音与分段按指纹复用，不重配音也不重花时间
+  const runProject = async (only?: string[]) => {
+    if (!project) return; await saveShots(); setLog([]); setBusy(only ? `重出 ${only.join('、')}…` : '出片中…'); setError('');
+    const q = only?.length ? `?only=${encodeURIComponent(only.join(','))}` : '';
+    const es = new EventSource(`/api/kaipian/projects/${encodeURIComponent(project.id)}/run${q}`);
+    runningEs.current = es;
     es.addEventListener('log', (e: any) => setLog((l) => [...l, JSON.parse(e.data).m]));
-    es.addEventListener('done', async () => { es.close(); const p = await api<Project>(`/api/kaipian/projects/${encodeURIComponent(project.id)}`); setProject(p); setBusy(''); setStep(4); await refresh(); });
-    es.addEventListener('error', (e: any) => { try { setError(JSON.parse(e.data).m); } catch { setError('出片中断'); } es.close(); setBusy(''); });
+    es.addEventListener('done', async () => { es.close(); runningEs.current = null; const p = await api<Project>(`/api/kaipian/projects/${encodeURIComponent(project.id)}`); setProject(p); setBusy(''); setStep(4); await refresh(); });
+    es.addEventListener('error', (e: any) => { try { setError(JSON.parse(e.data).m); } catch { setError('出片中断'); } es.close(); runningEs.current = null; setBusy(''); });
+  };
+  const cancelRun = async () => {
+    if (!project) return;
+    runningEs.current?.close(); runningEs.current = null;   // 关掉 SSE，服务端据此中止 ffmpeg
+    try { await api(`/api/kaipian/projects/${encodeURIComponent(project.id)}/cancel`, {method: 'POST'}); } catch { /* 已经停了 */ }
+    setBusy(''); setLog((l) => [...l, '已取消（进度已存盘，再点出片会接着来）']);
   };
   const dramaBody = () => ({story, genre, style, tier, video_ratio: ratio, ...(tier === 'cloud' ? cloud : {image_provider: cloud.image_provider, image_model: cloud.image_model})});
   const dramaPreflight = async () => { setError(''); setBusy('估算花费…'); try { const r = await api<{lines: string[]; ok: boolean; raw?: string}>('/api/kaipian/drama/preflight', {method: 'POST', body: JSON.stringify(dramaBody())}); setPreflight(r.ok ? r.lines : [r.raw || '预览失败']); setStep(2); } catch (e: any) { setError(e.message); } finally { setBusy(''); } };
@@ -264,9 +274,15 @@ export const Kaipian = () => {
         <div className="kp-shot-head"><b>{i + 1}. {s.id === 'hook' ? '钩子' : s.id === 'outro' ? '收尾' : `第 ${i} 段`}</b>{s.durationSec ? <em>{s.durationSec.toFixed(1)}s</em> : null}{s.visual?.source ? <em>{s.visual.source}{s.visual.author ? ` · ${s.visual.author}` : ''}</em> : null}</div>
         <textarea value={s.text} rows={2} onChange={(e) => setProject({...project, shots: project.shots.map((x) => x.id === s.id ? {...x, text: e.target.value} : x)})}/>
         <div className="kp-row"><label>画面意图<input value={s.visualIntent} onChange={(e) => setProject({...project, shots: project.shots.map((x) => x.id === s.id ? {...x, visualIntent: e.target.value} : x)})}/></label><label>检索词（英文）<input value={s.query} onChange={(e) => setProject({...project, shots: project.shots.map((x) => x.id === s.id ? {...x, query: e.target.value} : x)})}/></label></div>
+        {project.final && <div className="kp-shot-actions"><button disabled={!!busy} onClick={() => runProject([s.id])} title="丢掉这一镜已选的素材重新找；文案没改的话配音直接复用，不重配音">{t('只重出这一镜')}</button></div>}
       </li>)}</ol>
       {log.length > 0 && <pre className="kp-log">{log.join('\n')}</pre>}
-      <div className="kp-actions"><button onClick={() => setStep(2)} disabled={!!busy}>{t('上一步')}</button><button onClick={saveShots} disabled={!!busy}>{t('保存修改')}</button><button className="primary" disabled={!!busy} onClick={runProject}>{busy ? busy : '出片 →'}</button></div>
+      <div className="kp-actions">
+        <button onClick={() => setStep(2)} disabled={!!busy}>{t('上一步')}</button>
+        <button onClick={saveShots} disabled={!!busy}>{t('保存修改')}</button>
+        {busy ? <button onClick={cancelRun}>{t('取消')}</button> : null}
+        <button className="primary" disabled={!!busy} onClick={() => runProject()}>{busy ? busy : '出片 →'}</button>
+      </div>
     </section>}
 
     {step === 4 && project?.line === 'drama' && <section className="kp-card kp-final">
@@ -291,7 +307,7 @@ export const Kaipian = () => {
       </div>)}</div>
       {busy && log.length > 0 && <pre className="kp-log">{log.join('\n')}</pre>}
       <div className="kp-actions"><a className="kp-btn" href={project.final?.file ? fileUrl(project, project.final.file) : '#'} download>{t('下载成片')}</a><button onClick={() => { setProject(null); setStep(2); }}>{t('换档位再出一版')}</button><button className="primary" onClick={() => { setProject(null); setStory(''); setStep(1); }}>{t('再做一条')}</button></div>
-      <div className="kp-warn">草稿满意后切「云端成片档」用同一段故事重出；想让某一镜按验收意见重出，用命令行 <code>ao run … --resume last --from shot2 --feedback "…"</code>（界面版 M2 后半段）。</div>
+      <div className="kp-warn">草稿满意后切「云端成片档」用同一段故事重出；单镜重出用上面每镜的按钮（只重跑该镜及下游，上游剧本与定妆图不再花钱）。</div>
     </section>}
 
     {step === 4 && project?.line !== 'drama' && project?.final && <section className="kp-card kp-final">
@@ -317,7 +333,7 @@ export const Kaipian = () => {
           <div className="kp-actions" style={{justifyContent: 'flex-start'}}><button onClick={runBatch} disabled={!!busy || (batchVoices.length || 1) * (batchCaptions.length || 1) > 12}>出 {(batchVoices.length || 1) * (batchCaptions.length || 1)} 版</button></div>
           {batchResults.length > 0 && <ul className="kp-copy">{batchResults.map((r) => <li key={r.id} style={{cursor: 'default'}}>{r.ok ? '✅' : '⛔'} {r.id}{r.ok ? <> · {r.durationSec?.toFixed(1)}s · <a href={`/api/kaipian/projects/${encodeURIComponent(project.id)}/variant/${encodeURIComponent(r.id)}`} download>下载</a></> : ` ${r.error}`}</li>)}</ul>}
           {busy && log.length > 0 && <pre className="kp-log">{log.slice(-12).join('\n')}</pre>}
-          <div className="kp-actions"><button onClick={() => setStep(3)}>{t('改文案重出')}</button><button className="primary" onClick={() => { setProject(null); setTopic(''); setStep(1); }}>{t('再做一条')}</button></div>
+          <div className="kp-actions"><button onClick={() => setStep(3)}>{t('改文案 / 重出单镜')}</button><button className="primary" onClick={() => { setProject(null); setTopic(''); setStep(1); }}>{t('再做一条')}</button></div>
         </div>
       </div>
     </section>}
