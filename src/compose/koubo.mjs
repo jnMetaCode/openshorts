@@ -11,6 +11,29 @@ const run = promisify(execFile);
 const FFMPEG = ffmpegPath;
 const FFPROBE = ffprobePath;
 
+/**
+ * 把路径塞进 ffmpeg **滤镜图**里（subtitles=… 这种）时的转义。
+ *
+ * Windows 上不转义就是死路：`C:\Users\yx\captions.ass` 进了滤镜图，`\U`、`\y` 会被滤镜解析器
+ * 当成转义序列吃掉，剩下 `C:Usersyxcaptions.ass`——字幕文件找不到，整条合成失败。
+ * 而 Windows 上 winget / gyan 装的 ffmpeg 都带 libass，所以这条路径一定会走到（不像 mac 那样
+ * 因为没有 libass 反而绕开了）。做法是反斜杠换成正斜杠（ffmpeg 在 Windows 上认），冒号再转义。
+ * POSIX 下文件名里可以合法地带反斜杠，所以只在 win32 上做这一步。
+ */
+export function escapeFilterPath(p, platform = process.platform) {
+  const slashed = platform === 'win32' ? String(p).replace(/\\/g, '/') : String(p);
+  return slashed.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/:/g, '\\:');
+}
+
+/**
+ * concat 分离器的清单行。它有自己的解析器：单引号内反斜杠同样是转义符，
+ * 所以 Windows 路径直接写进去也会被吃掉——同一个坑的另一半。
+ */
+export function concatListLine(file, platform = process.platform) {
+  const p = platform === 'win32' ? String(file).replace(/\\/g, '/') : String(file);
+  return `file '${p.replace(/\\/g, '\\\\').replace(/'/g, "'\\''")}'`;
+}
+
 async function ff(args, label, signal) {
   try { return await run(FFMPEG(), ['-hide_banner', '-loglevel', 'error', '-y', ...args], { maxBuffer: 64 << 20, signal }); }
   catch (e) { const err = e; if (err.name === 'AbortError' || signal?.aborted) throw new Error('已取消'); if (err.code === 'ENOENT') throw new Error('找不到 ffmpeg：跑 `openshorts install-ffmpeg` 装一份带 libass 的（约 40 MB，只装到 ~/.openshorts/bin），或自行安装后设 OPENSHORTS_FFMPEG'); throw new Error(`${label} 失败：${String(err.stderr || err.message).split('\n').filter(Boolean).slice(-2).join(' | ').slice(0, 300)}`); }
@@ -76,7 +99,7 @@ async function ffVersion() { try { return String((await run(FFMPEG(), ['-version
 
 export async function concatSegments(files, out, { signal } = {}) {
   const list = out + '.txt';
-  fs.writeFileSync(list, files.map((f) => `file '${f.replace(/'/g, "'\\''")}'`).join('\n'));
+  fs.writeFileSync(list, files.map((f) => concatListLine(f)).join('\n'));
   await ff(['-f', 'concat', '-safe', '0', '-i', list, '-c', 'copy', out], '拼接', signal);
   fs.rmSync(list, { force: true });
   return out;
@@ -93,7 +116,7 @@ export async function finalize({ video, ass, srt, bgm, bgmVolume = 0.2, aiLabel 
   const norm = 'loudnorm=I=-16:TP=-1.5:LRA=11';
   if (bgm && fs.existsSync(bgm)) { inputs.push('-stream_loop', '-1', '-i', bgm); fc.push(`[1:a]volume=${bgmVolume}[bg];[0:a][bg]amix=inputs=2:duration=first:dropout_transition=2,${norm}[am]`); a = '[am]'; }
   else { fc.push(`[0:a]${norm}[am]`); a = '[am]'; }
-  if (canBurn) { fc.push(`[0:v]subtitles='${ass.replace(/'/g, "\\'").replace(/:/g, '\\:')}'[sv]`); v = '[sv]'; }
+  if (canBurn) { fc.push(`[0:v]subtitles='${escapeFilterPath(ass)}'[sv]`); v = '[sv]'; }
   else if (ass) notes.push('这台 ffmpeg 没有 libass（subtitles 滤镜），字幕只能挂软轨——抖音/视频号上传会丢掉它，纯色底的镜头会是一块空屏。跑 `openshorts install-ffmpeg` 装一份带 libass 的再重出（Homebrew 的 ffmpeg 已不含 libass，重装它没用）');
   // 角标也按宽度缩放（和字幕同一套 1080 基准），否则 540 宽的项目上会显得很大
   const k = w / 1080; const px = (n) => Math.max(1, Math.round(n * k));

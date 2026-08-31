@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { renderSegment, concatSegments, audioPackets, probeDuration } from '../src/compose/koubo.mjs';
+import { renderSegment, concatSegments, audioPackets, probeDuration, escapeFilterPath, concatListLine } from '../src/compose/koubo.mjs';
 
 const hasFfmpeg = spawnSync('ffmpeg', ['-version']).status === 0;
 
@@ -49,4 +49,23 @@ test('图片素材出得来分段：完整图居中、虚化垫底、时长跟�
   await renderSegment({ clip: img, audio, durationSec: 2, w: 270, h: 480, fps: 12, out: rev, kind: 'image', panReverse: true });
   assert.ok(await audioPackets(rev) > 0);
   fs.rmSync(d, { recursive: true, force: true });
+});
+
+/**
+ * Windows 路径进 ffmpeg 滤镜图和 concat 清单，两边都会被反斜杠转义吃掉。
+ * mac 上反而不容易发现——Homebrew 的 ffmpeg 没有 libass，根本走不到烧字幕那条分支；
+ * 而 Windows 上 winget / gyan 装的都带 libass，一定会走到。
+ */
+test('滤镜图里的路径：Windows 反斜杠要换成正斜杠，冒号要转义', () => {
+  assert.equal(escapeFilterPath('C:\\Users\\yx\\work\\captions.ass', 'win32'), 'C\\:/Users/yx/work/captions.ass');
+  assert.equal(escapeFilterPath('/Users/yx/中文 目录/captions.ass', 'darwin'), '/Users/yx/中文 目录/captions.ass', 'POSIX 路径不该被动');
+  assert.equal(escapeFilterPath("/tmp/it's/x.ass", 'darwin'), "/tmp/it\\'s/x.ass");
+  // POSIX 下文件名里可以合法地带反斜杠，不能一律换成斜杠
+  assert.equal(escapeFilterPath('/tmp/a\\b.ass', 'darwin'), '/tmp/a\\\\b.ass');
+});
+
+test('concat 清单行：同一个坑的另一半（它自己的解析器里反斜杠也是转义符）', () => {
+  assert.equal(concatListLine('C:\\Users\\yx\\a.mp4', 'win32'), "file 'C:/Users/yx/a.mp4'");
+  assert.equal(concatListLine('/tmp/a.mp4', 'darwin'), "file '/tmp/a.mp4'");
+  assert.equal(concatListLine("/tmp/it's.mp4", 'darwin'), "file '/tmp/it'\\''s.mp4'");
 });
