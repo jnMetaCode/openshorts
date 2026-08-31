@@ -238,7 +238,7 @@ export const Kaipian = () => {
       {ff && !ff.found && <div className="kp-warn" style={{borderColor: '#e0524b'}}><b>⛔ 没找到 ffmpeg</b>，出片一定失败。<button className="primary" onClick={installFfmpeg} disabled={!!dl} style={{marginLeft: 8}}>装一份</button></div>}
       <h3>{t('画面来源')}</h3>
       <div className="kp-srcs">
-        <SrcCard k="stock" label="素材库" hint="Wikimedia 免 key 兜底 + Pexels/Pixabay + 本地素材夹 · 不花钱"/>
+        <SrcCard k="stock" label="素材库" hint="Wikimedia CC 图片/视频（免 key）+ Pexels/Pixabay + 本地素材夹 · 不花钱"/>
         <SrcCard k="image" label="AI 配图" hint="文生图 + 推拉动效 · 按张计费（M2 接入）"/>
         <SrcCard k="local" label="本地生成" hint="sd.cpp 本地出片 · 不花钱、草稿级（M2）"/>
         <SrcCard k="cloud" label="云端出片" hint="秘塔 / 火山 / Agnes … · 按秒计费（M2）"/>

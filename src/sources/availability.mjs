@@ -30,7 +30,7 @@ export function sourcesAvailability() {
     // 而不是像以前那样一律 ⛔（新用户会以为什么都干不了，其实 0 key 就能出第一条片）
     stock: keyed
       ? { ok: true, tier: 'keyed', reason: `已配素材库 key：${keyedNames.join(' / ')}（+ Wikimedia 兜底）` }
-      : { ok: true, tier: 'free', reason: 'Wikimedia Commons 免 key 兜底（CC 素材，偏科教/历史；找不到就退纯色底）；配一把免费 Pexels key 画面明显更贴合' },
+      : { ok: true, tier: 'free', reason: 'Wikimedia Commons 免 key（CC 图片为主 + 视频为辅，静图会加虚化垫底与缓推；都没命中才退纯色底）；配一把免费 Pexels key 换成实拍视频更好' },
     image: { ok: imageProviders.length > 0, reason: imageProviders.length ? `AO 已配 key：${imageProviders.join(', ')}` : '未在 AO 配任何 API key' },
     local: { ok: sdOk && !!localTier, reason: !localTier ? `内存 ${memGB} GB < 24 GB，本地 H3 不可用（可接 LTX/Wan，M2）` : sdOk ? `sd-cli 就绪 · 档位 ${localTier}` : `未装 sd-cli（内存 ${memGB} GB 可跑 ${localTier}）`, tier: localTier, memGB },
     cloud: { ok: videoProviders.length > 0, reason: videoProviders.length ? `视频供应商：${videoProviders.join(', ')}` : '未配视频供应商 key（秘塔 / APIMart / Agnes / 火山）' },
