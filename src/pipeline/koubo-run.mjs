@@ -70,7 +70,7 @@ async function prefetchAudio(project, { work, log, synthesizeImpl, concurrency =
   await Promise.all(workers);
 }
 const segmentFingerprint = (shot, project, audioFp) => fp(audioFp, shot.visual?.file ?? null, shot.visual?.kind ?? 'video',
-  (shot.visual?.parts ?? []).map((p) => p.file),          // 切成几段、用了哪几条素材，变了就得重渲
+  (shot.visual?.parts ?? []).map((p) => `${p.file}@${p.seekSec ?? 0}`),          // 切成几段、用了哪几条素材，变了就得重渲
   project.output.w, project.output.h, project.output.fps);
 
 /** 看图排序用的连接器：config.vision.{provider,model}（或 project.vision）；key 从 AO 保存的 key / 环境变量来 */
@@ -164,9 +164,13 @@ export async function runKoubo(project, { outDir, log = () => {}, fetchImpl = fe
     const extras = [];                     // 这一镜可用的全部候选（含中选那条），够长的镜头会用它们切成几段
     if (!clip && shot.visual.source !== 'solid') {
       try {
-        let cands = await findCandidates(shot.query || shot.visualIntent, { localDirs: project.defaults.localDirs, used, minDuration: 0, fetchImpl, ...(config ? { config } : {}) });
+        // 镜头越长要切的段越多，候选就得多取几条——固定 3 条时，12 秒的镜头最多只能切 3 段。
+        // 缩略图打分很便宜（几十 KB 一张），多取几条的代价主要在那次模型调用的提示词长度上。
+        const cutEvery0 = Number(shot.cutEverySec ?? project.defaults?.cutEverySec ?? 4);
+        const wantCands = Math.max(3, Math.min(6, cutEvery0 > 0 ? Math.ceil(durationSec / cutEvery0) : 3));
+        let cands = await findCandidates(shot.query || shot.visualIntent, { localDirs: project.defaults.localDirs, used, minDuration: 0, limit: wantCands, fetchImpl, ...(config ? { config } : {}) });
         // 没有没用过的候选时，宁可复用一条也别落到纯色底（复用会在 notes 里说明）
-        if (!cands.length && used.size) { cands = await findCandidates(shot.query || shot.visualIntent, { localDirs: project.defaults.localDirs, used: new Set(), minDuration: 0, fetchImpl, ...(config ? { config } : {}) }); if (cands.length) notes.push(`镜头 ${shot.id} 复用了已用过的素材 ${cands[0].id}（候选不够）`); }
+        if (!cands.length && used.size) { cands = await findCandidates(shot.query || shot.visualIntent, { localDirs: project.defaults.localDirs, used: new Set(), minDuration: 0, limit: wantCands, fetchImpl, ...(config ? { config } : {}) }); if (cands.length) notes.push(`镜头 ${shot.id} 复用了已用过的素材 ${cands[0].id}（候选不够）`); }
         if (judge && cands.length) {
           // 看图排序：先拿各来源自带的缩略图（几十 KB）打分，**只有中选的那条才真下**——
           // 以前是 3 条全下再扔掉 2 条，Commons 的原文件动辄几十 MB。
@@ -174,7 +178,7 @@ export async function runKoubo(project, { outDir, log = () => {}, fetchImpl = fe
           // 没有缩略图（或缩略图挂了）的候选，rankCandidates 会通过 getFile 按需把它下下来再抽帧，
           // 保证每条候选都真的被判过——常见情况下这个回调一次都不会被调用
           const getFile = async (c) => { try { return await materialize(c, { fetchImpl }); } catch (e) { notes.push(`候选 ${c.id} 取不到：${e.message.slice(0, 80)}`); return null; } };
-          const ranked = await rankCandidates(cands.slice(0, 3), shot.visualIntent || shot.query, { connector: judge.connector, cfg: judge.cfg, log, fetchImpl, getFile });
+          const ranked = await rankCandidates(cands.slice(0, wantCands), shot.visualIntent || shot.query, { connector: judge.connector, cfg: judge.cfg, log, fetchImpl, getFile });
           log(`🔍 ${shot.id} 候选 ${ranked.map((r) => `${r.id.split(':')[0]}=${r.score ?? '-'}`).join(' ')}`);
           // 开了把关却一条都没判成（视觉接口抽了 / 都取不到画面证据）时，别默默拿一条没判过的顶上——
           // 用户开把关就是不想要"没人看过的画面"。本机能出图就交给它画，画不了才退而求其次用未判的。
@@ -244,14 +248,32 @@ export async function runKoubo(project, { outDir, log = () => {}, fetchImpl = fe
     const primary = shot.visual?.file ? { file: shot.visual.file, kind: shot.visual.kind ?? 'video', id: shot.visual.candidateId ?? null } : null;
     const pool2 = primary ? [primary, ...extras.filter((e) => e.file !== primary.file)] : extras;
     const want = cutEvery > 0 ? Math.max(1, Math.round(durationSec / cutEvery)) : 1;
-    const n = Math.max(1, Math.min(want, pool2.length));
-    const parts = n > 1 ? pool2.slice(0, n).map((c) => ({ clip: c.file, kind: c.kind ?? 'video' })) : null;
+    let picked = pool2.slice(0, Math.min(want, pool2.length));
+    // 候选不够时，视频素材可以用**同一条的不同时间点**补段——同一段素材的不同瞬间在观感上就是换了画面，
+    // 而且不引入新的版权来源。图片不行（同一张图切几段还是同一张图），所以只对视频做。
+    if (picked.length < want) {
+      const vids = [];
+      for (const c of picked) if ((c.kind ?? 'video') !== 'image') { const d = await probeDuration(c.file).catch(() => 0); if (d > 0) vids.push({ c, d }); }
+      const per = durationSec / want;
+      let k = 0;
+      while (picked.length < want && vids.length) {
+        const { c, d } = vids[k % vids.length];
+        const round = Math.floor(k / vids.length) + 1;
+        const seek = (round * per) % Math.max(d - per, 0.1);           // 每轮往后挪一段的长度，绕回开头
+        if (d <= per * 1.5) break;                                      // 素材本身太短，挪了也是同一段
+        picked.push({ ...c, seekSec: Number(seek.toFixed(2)) });
+        k++;
+      }
+    }
+    const n = Math.max(1, picked.length);
+    const parts = n > 1 ? picked.map((c) => ({ clip: c.file, kind: c.kind ?? 'video', ...(c.seekSec ? { seekSec: c.seekSec } : {}) })) : null;
     if (parts) {
-      const fills = pool2.slice(1, n).filter((c) => c.fillOnly).length;
-      log(`✂️ ${shot.id} ${durationSec.toFixed(1)}s 切成 ${n} 段（每段约 ${(durationSec / n).toFixed(1)}s${fills ? `，其中 ${fills} 段是勉强及格的补位` : ''}）`);
+      const fills = picked.slice(1).filter((c) => c.fillOnly).length;
+      const seeks = picked.filter((c) => c.seekSec).length;
+      log(`✂️ ${shot.id} ${durationSec.toFixed(1)}s 切成 ${n} 段（每段约 ${(durationSec / n).toFixed(1)}s${fills ? `，${fills} 段补位` : ''}${seeks ? `，${seeks} 段取同一条素材的不同时间点` : ''}）`);
       // 一镜用了几条素材，就得给几条署名——CC BY-SA 要求的
-      for (const c of pool2.slice(1, n)) if (c.id && c.id !== chosen?.id) project.provenance.push({ shot: shot.id, source: c.source ?? shot.visual?.provider, id: c.id, kind: c.kind ?? 'video', license: c.license, author: c.author, page: c.page ?? null });
-      shot.visual = { ...shot.visual, parts: pool2.slice(0, n).map((c) => ({ file: c.file, kind: c.kind ?? 'video', id: c.id })) };
+      for (const c of picked.slice(1)) if (c.id && c.id !== chosen?.id && !c.seekSec) project.provenance.push({ shot: shot.id, source: c.source ?? shot.visual?.provider, id: c.id, kind: c.kind ?? 'video', license: c.license, author: c.author, page: c.page ?? null });
+      shot.visual = { ...shot.visual, parts: picked.map((c) => ({ file: c.file, kind: c.kind ?? 'video', id: c.id, ...(c.seekSec ? { seekSec: c.seekSec } : {}) })) };
     } else if (shot.visual?.parts) { const { parts: _drop, ...rest } = shot.visual; shot.visual = rest; }
     const sFp = segmentFingerprint(shot, project, aFp);
     // 同上：上次渲好的分段还在就直接用，不管它在哪个目录

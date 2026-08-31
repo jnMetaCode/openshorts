@@ -25,13 +25,18 @@ const mkProject = (dir, texts) => ({
   publish: { titles: ['t'], tags: [], note: '', aiLabel: false, aiLabelText: '' }, provenance: [], ao: {},
 });
 
-/** 假配音：写一段真 mp3（ffmpeg 生成），返回固定词表——整条流水线因此可以离线跑 */
+/**
+ * 假配音：写一段真 mp3（ffmpeg 生成），返回词表——整条流水线因此可以离线跑。
+ * 时长按字数折算（4.5 字/秒，跟 Edge TTS 实测一致）：固定 1.5 秒的话，
+ * 依赖时长的逻辑（比如"一镜多长要切几段"）在测试里永远触发不了。
+ */
 const makeTts = (counter) => async (text, { outFile }) => {
   counter.calls.push(text);
-  spawnSync('ffmpeg', ['-v', 'error', '-y', '-f', 'lavfi', '-i', 'sine=frequency=300:duration=1.5', '-c:a', 'libmp3lame', outFile]);
   const chars = [...text];
-  const per = 1500 / chars.length;
-  return { file: outFile, buffer: null, durationMs: 1500, words: chars.map((c, i) => ({ text: c, startMs: Math.round(i * per), endMs: Math.round((i + 1) * per) })) };
+  const secs = Math.max(1.5, chars.length / 4.5);
+  spawnSync('ffmpeg', ['-v', 'error', '-y', '-f', 'lavfi', '-i', `sine=frequency=300:duration=${secs.toFixed(2)}`, '-c:a', 'libmp3lame', outFile]);
+  const ms = Math.round(secs * 1000); const per = ms / chars.length;
+  return { file: outFile, buffer: null, durationMs: ms, words: chars.map((c, i) => ({ text: c, startMs: Math.round(i * per), endMs: Math.round((i + 1) * per) })) };
 };
 
 test('单镜重出：只重出指定那一镜，其余复用配音与分段', { skip: !hasFfmpeg && '无 ffmpeg' }, async () => {
@@ -138,5 +143,29 @@ test('切段时第一段必须是定下来的主画面，不能被补位候选�
   if (parts) assert.equal(parts[0].file, main, '第一段必须是主画面');
   assert.equal(r.shots[0].visual.file, main, '主画面本身不能被换掉');
   assert.ok(fs.existsSync(fill));
+  fs.rmSync(d, { recursive: true, force: true });
+});
+
+/**
+ * 候选不够时，视频素材可以用同一条的不同时间点补段——同一段素材的不同瞬间在观感上就是换了画面，
+ * 而且不引入新的版权来源，所以署名里不该重复记。图片不做（同一张图切几段还是同一张图）。
+ */
+test('切段补位：视频用不同时间点，署名不重复记；图片不这么补', { skip: !hasFfmpeg && '无 ffmpeg' }, async () => {
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'os-seek-'));
+  const vid = path.join(d, 'long.mp4');
+  spawnSync('ffmpeg', ['-v', 'error', '-y', '-f', 'lavfi', '-i', 'testsrc=size=180x320:rate=10:d=20', '-pix_fmt', 'yuv420p', vid]);
+
+  const project = mkProject(d, [['hook', '一段挺长的口播，足够切成好几段来放才不显得闷']]);
+  project.defaults.cutEverySec = 2;
+  project.shots[0].visual = { source: 'stock', provider: 'test', kind: 'video', file: vid, candidateId: 'test:1', cost: { kind: 'free' } };
+  const r = await runKoubo(project, { outDir: d, synthesizeImpl: makeTts({ calls: [] }) });
+
+  const parts = r.shots[0].visual.parts ?? [];
+  assert.ok(parts.length > 1, '一条素材也该靠不同时间点切成几段');
+  assert.equal(parts[0].seekSec, undefined, '第一段从头开始');
+  assert.ok(parts.slice(1).every((p) => p.seekSec > 0), '后面几段都要有偏移');
+  assert.equal(new Set(parts.map((p) => p.seekSec ?? 0)).size, parts.length, '每段的时间点都不同');
+  // 同一条素材换时间点不是新来源，署名不能重复记
+  assert.equal(r.provenance.filter((x) => x.id === 'test:1').length, 0, '用的是已在 visual 里记过的那条');
   fs.rmSync(d, { recursive: true, force: true });
 });
