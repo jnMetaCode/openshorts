@@ -42,7 +42,7 @@ export const Kaipian = () => {
   const [sources, setSources] = useState<Sources | null>(null);
   const [ff, setFf] = useState<{found: boolean; version: string; subtitles: boolean; drawtext: boolean; managed: boolean} | null>(null);
   const [textProv, setTextProv] = useState<{providers: Array<{id: string; hasKey: boolean; fromEnv: boolean; envKey: string | null; models: string[]; vision: boolean}>; vision: {provider: string; model: string}} | null>(null);
-  const [mdl, setMdl] = useState({provider: '', model: '', apiKey: ''});
+  const [mdl, setMdl] = useState({provider: '', model: '', apiKey: ''});   // 写脚本的模型（供应商 + 模型 id + key）
   const [vis, setVis] = useState({provider: '', model: ''});
   const [testRes, setTestRes] = useState<{ok: boolean; msg: string} | null>(null);
   const [gen, setGen] = useState<{ok: boolean; cliFound: boolean; memGB: number; license: string; ready: string | null; models: Array<{id: string; label: string; sizeGB: number; present: boolean; usable: boolean; reason: string}>} | null>(null);
@@ -70,7 +70,7 @@ export const Kaipian = () => {
     api<any>('/api/kaipian/local/status').then(setLocalSt).catch(() => {});
     api<any>('/api/kaipian/ffmpeg').then(setFf).catch(() => {});
     api<any>('/api/kaipian/local-image').then(setGen).catch(() => {});
-    api<any>('/api/kaipian/providers/text').then((r) => { setTextProv(r); setVis({provider: r.vision?.provider ?? '', model: r.vision?.model ?? ''}); }).catch(() => {});
+    api<any>('/api/kaipian/providers/text').then((r) => { setTextProv(r); setVis({provider: r.vision?.provider ?? '', model: r.vision?.model ?? ''}); if (r.text?.provider) setMdl((m) => (m.provider ? m : {provider: r.text.provider, model: r.text.model ?? '', apiKey: ''})); }).catch(() => {});
   };
   useEffect(() => {
     refresh().catch((e) => setError(String(e.message)));
@@ -161,6 +161,8 @@ export const Kaipian = () => {
   const saveTextModel = async () => {
     if (!(await testModel(mdl.provider, mdl.model, mdl.apiKey))) return;
     if (mdl.apiKey.trim()) await api('/api/kaipian/ao-keys', {method: 'POST', body: JSON.stringify({provider: mdl.provider, apiKey: mdl.apiKey.trim()})});
+    // 存下来并真的用它写脚本——只存 key 不记模型的话，AO 还是会跑它自己的默认供应商
+    await api('/api/kaipian/config', {method: 'PUT', body: JSON.stringify({text: {provider: mdl.provider, model: mdl.model}})});
     setMdl({...mdl, apiKey: ''}); await refresh();
   };
   const saveVision = async () => {

@@ -25,7 +25,7 @@ kaipian.put('/config', (req, res) => {
   const cur = readConfig(); const b = req.body ?? {};
   // 输出目录必须真能写：先建、再试写，失败 400——否则下一次出片才在最后一步炸
   if (b.outputDir) { const od = path.resolve(String(b.outputDir)); try { fs.mkdirSync(od, { recursive: true }); fs.accessSync(od, fs.constants.W_OK); } catch { return res.status(400).json({ error: `输出目录不可写：${od}` }); } b.outputDir = od; }
-  const next = { ...cur, ...(b.outputDir ? { outputDir: b.outputDir } : {}), tts: { ...cur.tts, ...(b.tts ?? {}) }, vision: { ...(cur.vision ?? {}), ...(b.vision ?? {}) }, stock: { ...cur.stock } };
+  const next = { ...cur, ...(b.outputDir ? { outputDir: b.outputDir } : {}), tts: { ...cur.tts, ...(b.tts ?? {}) }, vision: { ...(cur.vision ?? {}), ...(b.vision ?? {}) }, text: { ...(cur.text ?? {}), ...(b.text ?? {}) }, stock: { ...cur.stock } };
   if (typeof b.pexelsKey === 'string' && b.pexelsKey && !b.pexelsKey.includes('…')) next.stock.pexelsKey = b.pexelsKey.trim();
   if (typeof b.pixabayKey === 'string' && b.pixabayKey && !b.pixabayKey.includes('…')) next.stock.pixabayKey = b.pixabayKey.trim();
   writeConfig(next); res.json({ ok: true });
@@ -45,7 +45,10 @@ kaipian.post('/new', async (req, res, next) => {
     const { run } = await import('agency-orchestrator');
     const cfg = readConfig();
     const inputs = { topic: String(b.topic).trim(), duration: b.duration || '60秒', tone: b.tone || '科普讲解' };
-    const r = await run(path.join(root, 'templates', 'koubo-kepu.yaml'), inputs, { quiet: true, outputDir: path.join(cfg.outputDir, '.ao-runs') });
+    // 侧栏选的模型要真的用上：不传 llmOverride 的话 AO 会用它自己的默认供应商，
+    // 用户在界面里选了 agnes 却跑去调 deepseek，报"缺 key"时一头雾水
+    const over = cfg.text?.provider ? { llmOverride: { provider: cfg.text.provider, ...(cfg.text.model ? { model: cfg.text.model } : {}) } } : {};
+    const r = await run(path.join(root, 'templates', 'koubo-kepu.yaml'), inputs, { quiet: true, outputDir: path.join(cfg.outputDir, '.ao-runs'), ...over });
     if (!r.success) return res.status(502).json({ error: '脚本生成失败：' + r.steps.filter((s) => s.status === 'failed').map((s) => `${s.id}: ${s.error}`).join('；') });
     const project = buildKouboProject(r, { topic: inputs.topic, inputs, defaults: { voice: b.voice || cfg.tts?.voice, captionPreset: b.captions || 'douyin', visualSource: b.source || 'stock', localDirs: b.localDir ? [path.resolve(String(b.localDir))] : [], bgm: b.bgm ? path.resolve(String(b.bgm)) : null } });
     fs.mkdirSync(projDir(project.id), { recursive: true });
@@ -141,7 +144,8 @@ kaipian.get('/providers/text', async (_req, res, next) => {
       models: KNOWN_TEXT_MODELS[p.id] ?? [],
       vision: VISION_CAPABLE.includes(p.id),
     }));
-    res.json({ providers: list, vision: readConfig().vision ?? { provider: '', model: '' } });
+    const c = readConfig();
+    res.json({ providers: list, vision: c.vision ?? { provider: '', model: '' }, text: c.text ?? { provider: '', model: '' } });
   } catch (e) { next(e); }
 });
 

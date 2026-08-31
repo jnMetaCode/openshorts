@@ -6,7 +6,7 @@ import { spawnSync } from 'node:child_process';
 import { readConfig } from './config.mjs';
 import { sourcesAvailability } from './sources/availability.mjs';
 import { ffmpegCaps } from './media/ffmpeg.mjs';
-import { proxyFromEnv, proxyInstalled } from './net/proxy.mjs';
+import { proxyFromEnv, installProxy } from './net/proxy.mjs';
 
 const has = (cmd) => spawnSync(process.platform === 'win32' ? 'where' : 'which', [cmd], { stdio: 'ignore' }).status === 0;
 function chineseFont() {
@@ -36,7 +36,7 @@ export async function doctor() {
   const ul = ulimit(); if (ul != null) add(ul >= 2048 ? 'ok' : 'warn', `文件句柄上限 ulimit -n = ${ul}${ul < 2048 ? '（批量出片可能 "too many open files"，先 `ulimit -n 4096`）' : ''}`);
   // 代理：Node 的 fetch 默认不认 HTTPS_PROXY，配了却没生效时所有下载都会以 ECONNRESET 失败
   const px = proxyFromEnv();
-  if (px) add(proxyInstalled() ? 'ok' : 'warn', proxyInstalled() ? `走代理 ${px.url}（${px.via}）` : `检测到 ${px.via}=${px.url}，但代理没装上——联网功能可能失败`);
+  if (px) { const r = await installProxy(); add(r?.installed ? 'ok' : 'warn', r?.installed ? `走代理 ${px.url}（${px.via}，回环地址直连）` : `检测到 ${px.via}=${px.url}，但代理没装上——联网功能可能失败`); }
   else add('ok', '未设代理（直连）');
   const mem = Math.round(os.totalmem() / 1024 ** 3); add('ok', `内存 ${mem} GB · ${os.cpus().length} 核 · ${process.platform}/${process.arch}`);
   const cfg = readConfig(); try { fs.mkdirSync(cfg.outputDir, { recursive: true }); fs.accessSync(cfg.outputDir, fs.constants.W_OK); add('ok', `输出目录可写：${cfg.outputDir}`); } catch { add('fail', `输出目录不可写：${cfg.outputDir}（在 ~/.openshorts/config.json 改 outputDir）`); }

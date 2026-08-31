@@ -21,7 +21,9 @@ import {corsOptions, createOriginGuard, createActionGuard, resolveAllowedOrigins
 import {renderWaveform} from '../scripts/lib/audio.mjs';
 import {kaipian} from './kaipian.mjs';
 import { installProxy } from '../src/net/proxy.mjs';
-installProxy();   // Node 的 fetch 不认 HTTPS_PROXY，不装的话代理后的机器所有联网功能都会 ECONNRESET
+await installProxy();   // Node 的 fetch 不认 HTTPS_PROXY，不装的话代理后的机器所有联网功能都会 ECONNRESET
+import {applyAoKeysToEnv} from '../src/config.mjs';
+await applyAoKeysToEnv();   // AO 的库函数 run() 只认环境变量，不读 Studio 存的 key 文件
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const projectsDir = path.join(root, 'projects');

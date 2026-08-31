@@ -11,7 +11,11 @@ import fs from 'node:fs';
 // 先装代理再做任何联网的事：Node 的 fetch 不认 HTTPS_PROXY，不装的话在设了代理的机器上
 // 所有下载/检索都会以 ECONNRESET 失败，而且报错看不出是自己没走代理
 const { installProxy } = await import('../src/net/proxy.mjs');
-installProxy();
+await installProxy();
+// AO 的库函数 run() 只认环境变量，不读 Studio 存的 key 文件——不补这一步，
+// 界面里存好并验证通过的 key 到"写脚本"时会报"缺少 API Key"
+const { applyAoKeysToEnv } = await import('../src/config.mjs');
+await applyAoKeysToEnv();
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const [cmd = 'open', ...rest] = process.argv.slice(2);
@@ -66,7 +70,7 @@ switch (cmd) {
     const inputs = { topic: opt.topic, duration: opt.duration || '60秒', tone: opt.tone || '科普讲解' };
     console.log(`✍️  正在写脚本（${inputs.duration} · ${inputs.tone}）…`);
     let res;
-    try { res = await run(wf, inputs, { quiet: true, outputDir: path.join(cfg.outputDir, '.ao-runs'), ...(opt.provider ? { llmOverride: { provider: opt.provider, model: opt.model } } : {}) }); }
+    try { res = await run(wf, inputs, { quiet: true, outputDir: path.join(cfg.outputDir, '.ao-runs'), ...(() => { const pv = opt.provider || cfg.text?.provider; const md = opt.model || (opt.provider ? undefined : cfg.text?.model); return pv ? { llmOverride: { provider: pv, ...(md ? { model: md } : {}) } } : {}; })() }); }
     catch (e) {
       // 最常见的是没配文本模型 key：一句话说清怎么配，不吐堆栈
       console.error(`\n⛔ ${e.message.split('\n')[0]}`);

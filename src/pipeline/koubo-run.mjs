@@ -170,13 +170,22 @@ export async function runKoubo(project, { outDir, log = () => {}, fetchImpl = fe
           const getFile = async (c) => { try { return await materialize(c, { fetchImpl }); } catch (e) { notes.push(`候选 ${c.id} 取不到：${e.message.slice(0, 80)}`); return null; } };
           const ranked = await rankCandidates(cands.slice(0, 3), shot.visualIntent || shot.query, { connector: judge.connector, cfg: judge.cfg, log, fetchImpl, getFile });
           log(`🔍 ${shot.id} 候选 ${ranked.map((r) => `${r.id.split(':')[0]}=${r.score ?? '-'}`).join(' ')}`);
+          // 开了把关却一条都没判成（视觉接口抽了 / 都取不到画面证据）时，别默默拿一条没判过的顶上——
+          // 用户开把关就是不想要"没人看过的画面"。本机能出图就交给它画，画不了才退而求其次用未判的。
+          // 真机验证：六镜里正是这个漏洞留下了唯一一个坏镜头（一只猫趴在古董收银机旁边）。
+          const usable = ranked.filter((r) => !r.rejected);
+          const allUnjudged = usable.length > 0 && usable.every((r) => r.unjudged);
+          const pool = allUnjudged && localGen ? [] : usable;
+          if (allUnjudged && localGen) notes.push(`镜头 ${shot.id} 的候选一条都没判成（看图接口没响应），改用本机出图，不拿没判过的顶上`);
           // 按分数从高到低试着下载：中选那条下不动（超大 / 404）就顺位试下一条，不必重新打分
-          for (const cand of ranked.filter((r) => !r.rejected)) {
-            if (cand.unjudged) notes.push(`镜头 ${shot.id} 用了没能打分的候选 ${cand.id}（取不到画面证据）`);
+          for (const cand of pool) {
+            if (cand.unjudged) notes.push(`镜头 ${shot.id} 用了没能打分的候选 ${cand.id}（本机也出不了图）`);
             try { clip = await materialize(cand, { fetchImpl }); chosen = cand; log(`  → 选 ${cand.id}${cand.why ? `（${cand.why}）` : ''}`); break; }
             catch (e) { notes.push(`候选 ${cand.id} 取不到：${e.message.slice(0, 80)}`); }
           }
-          if (!chosen) notes.push(`镜头 ${shot.id} 的 ${ranked.length} 条候选都不贴合画面意图或都取不到（${ranked.map((r) => `${r.score}`).join('/')}），退纯色底`);
+          // 这里只说"没选出来"，不要预告后果——后面还有本地出图这一步，
+          // 真退到纯色底时那一步自己会写 note。写死"退纯色底"会跟日志对不上。
+          if (!chosen) notes.push(`镜头 ${shot.id} 的 ${ranked.length} 条候选都没过看图把关或都取不到（分数 ${ranked.map((r) => r.score ?? '-').join('/')}，及格线 6）`);
         } else if (cands.length) {
           // 不看图时也别在第一条上吊死：第一条下不动（超大 / 超时 / 404）就顺位试下一条，别直接掉进纯色底
           const got = await materializeFirst(cands, { fetchImpl, onError: (c, e) => notes.push(`候选 ${c.id} 取不到：${e.message.slice(0, 80)}`) });

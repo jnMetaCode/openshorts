@@ -1,39 +1,49 @@
 /**
  * 让 Node 的 fetch 认代理环境变量。
  *
- * 这是个坑得离谱的默认行为：curl / git / pip 都认 `HTTPS_PROXY`，**Node 的 fetch 不认**
- * （`NODE_USE_ENV_PROXY` 要 Node 24+，22 上无效）。所以在设了代理的机器上，
- * 命令行里 curl 得通的地址，OpenShorts 里一律 ECONNRESET——而且报错长得像对面把你墙了，
- * 完全看不出是自己没走代理。真机上就是这么误判的：先以为 Openverse 有 WAF 在 TLS 层拦 Node，
- * 加上代理之后一次就通了。
+ * 为什么需要：curl / git / pip 都认 `HTTPS_PROXY`，**Node 的 fetch 不认**
+ * （`NODE_USE_ENV_PROXY` 要 Node 24+，22 上无效）。在设了代理的机器上，命令行里 curl 得通的地址，
+ * OpenShorts 里一律 ECONNRESET——报错还长得像对面把你墙了。影响面是全部联网功能：
+ * 素材检索、ffmpeg 安装、本地模型下载、抓正文。
  *
- * 影响面是全部联网功能：素材检索、ffmpeg 安装、本地模型下载、封面抓取。
- * 对需要代理才能连 HuggingFace / GitHub 的用户来说，不修等于整个"免费路径"都用不了。
- *
- * undici 的 EnvHttpProxyAgent 的语义跟 curl 一致（认 HTTP_PROXY / HTTPS_PROXY / NO_PROXY，
- * 大小写都认），所以这里不自己解析规则，交给它。
+ * **直接用 AO 的实现，不要自己写。** 第一版我用了 undici 的 `EnvHttpProxyAgent`，
+ * 单测和素材检索都正常，却把 AO 的**流式**响应打断了（"streaming terminated，已收到 0 字符"，
+ * 重试五次全挂，而同一把 key 同一个代理下 curl 流式完全正常）——写脚本这一步因此彻底不能用。
+ * AO 的 `installEnvProxy` 是按 origin 分流的：回环地址（Ollama / ComfyUI / 本机服务）直连，
+ * 命中 `no_proxy` 的直连，其余走 ProxyAgent，并且带 `AO_NO_PROXY=1` 逃生开关。
+ * 它自己的注释里也点名了 `EnvHttpProxyAgent` 会忽略显式传入的代理地址这个坑。
+ * 两边都调 `setGlobalDispatcher` 只会互相打架，所以这里只做转发。
  */
-import { EnvHttpProxyAgent, setGlobalDispatcher } from 'undici';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const VARS = ['HTTPS_PROXY', 'https_proxy', 'HTTP_PROXY', 'http_proxy', 'ALL_PROXY', 'all_proxy'];
 
-/** 环境里配的代理（没有返回 null）——只用来显示，实际匹配规则交给 undici */
+/** 环境里配的代理（没有返回 null）——只用来在 doctor 里显示，匹配规则交给 AO */
 export function proxyFromEnv(env = process.env) {
   for (const v of VARS) if (env[v]) return { via: v, url: env[v] };
   return null;
 }
 
-let installed = false;
+let result = null;
 
 /**
- * 装上代理调度器。没配代理时什么都不做（不改变原有行为）。
- * 幂等：多次调用只装一次。返回装了什么，给 doctor 和日志用。
+ * 装上代理调度器（转发给 AO 的实现，它是幂等的）。没配代理时什么都不做。
+ * 返回 { via, url, installed }，给 doctor 和日志用；AO 不可用时降级为不代理而不是报错。
  */
-export function installProxy(env = process.env) {
+export async function installProxy(env = process.env) {
   const p = proxyFromEnv(env);
-  if (!p || installed) return p ? { ...p, installed } : null;
-  try { setGlobalDispatcher(new EnvHttpProxyAgent()); installed = true; return { ...p, installed: true }; }
-  catch (e) { return { ...p, installed: false, error: e.message }; }
+  if (!p) { result = null; return null; }
+  if (result) return result;
+  try {
+    const main = fileURLToPath(import.meta.resolve('agency-orchestrator'));
+    const { installEnvProxy } = await import(path.join(path.dirname(main), 'utils', 'env-proxy.js'));
+    const r = await installEnvProxy(env);
+    result = { ...p, installed: !!r?.installed, reason: r?.reason };
+  } catch (e) {
+    result = { ...p, installed: false, error: e.message };
+  }
+  return result;
 }
 
-export const proxyInstalled = () => installed;
+export const proxyInstalled = () => !!result?.installed;
