@@ -35,10 +35,29 @@ export async function hasFilter(name) {
  * 默认就是 6.x，等于整条片没声音还查不出来。ffmpeg 8 上恰好正常，所以只在别人机器上炸——真机踩到的。
  * -t 已经框死时长，-shortest 也就不需要了。
  */
-export async function renderSegment({ clip, audio, durationSec, w = 1080, h = 1920, fps = 30, out, clipVolume = 0, signal }) {
-  const vchain = `[0:v]scale=${w}:${h}:force_original_aspect_ratio=increase,crop=${w}:${h},fps=${fps},format=yuv420p[v]`;
+export async function renderSegment({ clip, audio, durationSec, w = 1080, h = 1920, fps = 30, out, clipVolume = 0, signal, kind = 'video', panReverse = false }) {
+  const isImage = kind === 'image';
+  // 视频直接裁满屏：视频的取景本来就以主体为中心，加上画面在动，裁掉边角不碍事。
+  //
+  // 图片不能这么裁。真机试过：一张横构图的猫在纸箱里，裁 9:16 正好把猫脸切在框外，剩下半只身子。
+  // 素材库里的照片主体在哪儿是没法预知的，所以改用短视频里常见的做法——完整图居中放，
+  // 背后垫一层自己的放大虚化版：主体一定不丢，留白也不显廉价。
+  //
+  // 动效放在背景上：完整的前景一动就会露边，而背景怎么飘都看不出来。幅度绕中心各走 6%，
+  // 方向按镜次交替，连着几镜不会像幻灯片。（用 crop 的时间表达式而不是 zoompan：
+  // zoompan 的缩放按帧量化会抖，而 crop/scale/gblur/overlay 都是核心滤镜，任何构建都有。）
+  const D = durationSec.toFixed(2);
+  const sign = panReverse ? -1 : 1;
+  const pan = (span, out) => `(${span})/2 + ${sign}*min((${span})/2, ${out}*0.06)*(2*min(1,t/${D}) - 1)`;
+  const bgW = Math.round(w * 1.12); const bgH = Math.round(h * 1.12);
+  const vchain = isImage
+    ? `[0:v]split[bg][fg];`
+      + `[bg]scale=${bgW}:${bgH}:force_original_aspect_ratio=increase,crop=${w}:${h}:x='${pan('iw-ow', 'ow')}':y='${pan('ih-oh', 'oh')}',gblur=sigma=${Math.round(w / 24)},eq=brightness=-0.08[bgb];`
+      + `[fg]scale=${w}:${h}:force_original_aspect_ratio=decrease[fgs];`
+      + `[bgb][fgs]overlay=(W-w)/2:(H-h)/2,fps=${fps},format=yuv420p[v]`
+    : `[0:v]scale=${w}:${h}:force_original_aspect_ratio=increase,crop=${w}:${h},fps=${fps},format=yuv420p[v]`;
   const achain = clipVolume > 0 ? `[0:a]volume=${clipVolume}[c];[1:a][c]amix=inputs=2:duration=first[a]` : `[1:a]anull[a]`;
-  const args = ['-stream_loop', '-1', '-i', clip, '-i', audio, '-t', String(durationSec),
+  const args = [...(isImage ? ['-loop', '1'] : ['-stream_loop', '-1']), '-i', clip, '-i', audio, '-t', String(durationSec),
     '-filter_complex', `${vchain};${achain}`,
     '-map', '[v]', '-map', '[a]', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '20', '-c:a', 'aac', '-b:a', '160k', out];
   await ff(args, `渲染分段 ${path.basename(out)}`, signal);

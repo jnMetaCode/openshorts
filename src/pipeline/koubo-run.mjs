@@ -68,7 +68,7 @@ async function prefetchAudio(project, { work, log, synthesizeImpl, concurrency =
   });
   await Promise.all(workers);
 }
-const segmentFingerprint = (shot, project, audioFp) => fp(audioFp, shot.visual?.file ?? null, project.output.w, project.output.h, project.output.fps);
+const segmentFingerprint = (shot, project, audioFp) => fp(audioFp, shot.visual?.file ?? null, shot.visual?.kind ?? 'video', project.output.w, project.output.h, project.output.fps);
 
 /** 看图排序用的连接器：config.vision.{provider,model}（或 project.vision）；key 从 AO 保存的 key / 环境变量来 */
 async function visionJudge(vision, log) {
@@ -181,16 +181,17 @@ export async function runKoubo(project, { outDir, log = () => {}, fetchImpl = fe
       notes.push(`镜头 ${shot.id} 没找到素材（${shot.query}），用了纯色底`);
       log(`⬛ ${shot.id} 无素材 → 纯色底`);
     } else if (chosen) {
-      shot.visual = { source: chosen.source === 'local-folder' ? 'local-folder' : 'stock', provider: chosen.source, file: clip, candidateId: chosen.id, license: chosen.license, author: chosen.author, page: chosen.page ?? null, cost: { kind: 'free' } };
-      project.provenance.push({ shot: shot.id, source: chosen.source, id: chosen.id, license: chosen.license, author: chosen.author, page: chosen.page ?? null });
-      log(`🎞 ${shot.id} 素材 ${chosen.source} ${chosen.id}${chosen.author ? ` · ${chosen.author}` : ''}`);
+      shot.visual = { source: chosen.source === 'local-folder' ? 'local-folder' : 'stock', provider: chosen.source, kind: chosen.kind ?? 'video', file: clip, candidateId: chosen.id, license: chosen.license, author: chosen.author, page: chosen.page ?? null, cost: { kind: 'free' } };
+      project.provenance.push({ shot: shot.id, source: chosen.source, id: chosen.id, kind: chosen.kind ?? 'video', license: chosen.license, author: chosen.author, page: chosen.page ?? null });
+      log(`${chosen.kind === 'image' ? '🖼' : '🎞'} ${shot.id} 素材 ${chosen.source} ${chosen.id}${chosen.author ? ` · ${chosen.author}` : ''}`);
     }
 
     // 3) 分段渲染（指纹要在画面定下来之后算——退纯色底 / 选中素材都会改 shot.visual）
     const segOut = path.join(work, `${shot.id}.mp4`);
     const sFp = segmentFingerprint(shot, project, aFp);
     if (cache.segmentFingerprint === sFp && fs.existsSync(segOut)) log(`↺ ${shot.id} 复用分段`);
-    else await renderSegment({ clip, audio, durationSec, w, h, fps, out: segOut, clipVolume: 0, signal });
+    else await renderSegment({ clip, audio, durationSec, w, h, fps, out: segOut, clipVolume: 0, signal,
+      kind: shot.visual?.kind ?? 'video', panReverse: project.shots.indexOf(shot) % 2 === 1 });
     segFiles.push(segOut); shot.status = 'ready'; cursorMs += Math.round(durationSec * 1000);
     shot.render = { audioFingerprint: aFp, segmentFingerprint: sFp, segment: segOut, durationSec, words };
     save();

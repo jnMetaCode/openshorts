@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 process.env.OPENSHORTS_HOME = fs.mkdtempSync(path.join(os.tmpdir(), 'os-home-'));   // 测试不碰真实 ~/.openshorts（缓存会污染断言）
-const { searchLocal, searchPexels, searchWikimedia, findCandidates, StockRateLimit, StockTooLarge, relaxQueries, cacheTier, materialize, materializeFirst, wikimediaTranscoded } = await import('../src/sources/stock.mjs');
+const { searchLocal, searchPexels, searchWikimedia, findCandidates, StockRateLimit, StockTooLarge, relaxQueries, cacheTier, materialize, materializeFirst, wikimediaTranscoded, searchWikimediaImages, commonsThumbWidth } = await import('../src/sources/stock.mjs');
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'os-stock-'));
 fs.writeFileSync(path.join(dir, 'cat_cardboard_box.mp4'), 'x');
@@ -116,4 +116,26 @@ test('Wikimedia 候选带上时长与缩略图；太长的整部纪录片在下�
   assert.equal(r[0].thumb, 'https://x/t.jpg');
   assert.ok(r[0].url.includes('/transcoded/'));
   assert.ok(r[0].fallbackUrl && !r[0].fallbackUrl.includes('/transcoded/'), '原地址要留着兜底');
+});
+
+test('Commons 图片源：只要能用的位图、比例别太极端，按标题命中词数排序', async () => {
+  const page = (id, title, mime, w, h) => ({ pageid: id, title, imageinfo: [{ url: `https://upload.wikimedia.org/wikipedia/commons/a/ab/${title.replace('File:', '')}`, thumburl: `https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/X.jpg/2400px-X.jpg`, thumbwidth: 2400, thumbheight: 1600, mime, width: w, height: h, extmetadata: { LicenseShortName: { value: 'CC BY 2.0' }, Artist: { value: '<a href="#">Somebody</a>' } } }] });
+  const fetchImpl = async () => ({ ok: true, status: 200, json: async () => ({ query: { pages: {
+    1: page(1, 'File:Cat in a cardboard box.jpg', 'image/jpeg', 3000, 2000),   // 两个词都命中
+    2: page(2, 'File:A cat.jpg', 'image/jpeg', 3000, 2000),                    // 命中一个
+    3: page(3, 'File:Cat box diagram.svg', 'image/svg+xml', 3000, 2000),       // svg，ffmpeg 会翻车
+    4: page(4, 'File:Cat box panorama.jpg', 'image/jpeg', 8000, 900),          // 8.9:1 的细横条，裁 9:16 没法看
+    5: page(5, 'File:Cat box tiny.jpg', 'image/jpeg', 320, 240),               // 太小，推拉会糊
+  } } }) });
+  const r = await searchWikimediaImages('cat box', { fetchImpl, limit: 5 });
+  assert.deepEqual(r.map((c) => c.id), ['wikimedia-img:1', 'wikimedia-img:2'], 'svg / 细横条 / 太小的都该挡掉，两词全中的排第一');
+  assert.equal(r[0].kind, 'image');
+  assert.equal(r[0].author, 'Somebody', 'Artist 里的 HTML 要剥掉');
+  assert.ok(r[0].url.includes('2400px-'), '下的是派生图，不是 6000×4000 的原图');
+  assert.ok(r[0].thumb.includes('640px-'), '排序用小的那份');
+});
+
+test('Commons 缩略图换宽度', () => {
+  assert.equal(commonsThumbWidth('https://x/thumb/a/ab/N.jpg/2400px-N.jpg', 640), 'https://x/thumb/a/ab/N.jpg/640px-N.jpg');
+  assert.equal(commonsThumbWidth(null, 640), null);
 });

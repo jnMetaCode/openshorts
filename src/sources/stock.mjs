@@ -30,7 +30,7 @@ export function searchLocal(query, { dirs = [], limit = 3 } = {}) {
     }
   }
   return hits.sort((a, b) => b.score - a.score).slice(0, limit).map((h) => ({
-    id: `local:${hash(h.file)}`, source: 'local-folder', file: h.file, url: null, width: null, height: null, duration: null,
+    id: `local:${hash(h.file)}`, source: 'local-folder', kind: 'video', file: h.file, url: null, width: null, height: null, duration: null,
     license: 'user-owned', author: null, score: h.score,
   }));
 }
@@ -46,7 +46,7 @@ export async function searchPexels(query, { key, limit = 3, orientation = 'portr
   return (j.videos ?? []).filter((v) => (v.duration ?? 0) >= minDuration).slice(0, limit).map((v) => {
     const files = (v.video_files ?? []).filter((f) => f.file_type === 'video/mp4').sort((a, b) => (b.height ?? 0) - (a.height ?? 0));
     const best = files.find((f) => (f.height ?? 0) <= 1920 && (f.height ?? 0) >= 720) ?? files[0];
-    return { id: `pexels:${v.id}`, source: 'pexels', file: null, url: best?.link ?? null, thumb: v.image ?? null, width: best?.width ?? v.width, height: best?.height ?? v.height, duration: v.duration, license: 'Pexels License', author: v.user?.name ?? null, authorUrl: v.user?.url ?? null, page: v.url };
+    return { id: `pexels:${v.id}`, source: 'pexels', kind: 'video', file: null, url: best?.link ?? null, thumb: v.image ?? null, width: best?.width ?? v.width, height: best?.height ?? v.height, duration: v.duration, license: 'Pexels License', author: v.user?.name ?? null, authorUrl: v.user?.url ?? null, page: v.url };
   });
 }
 
@@ -60,7 +60,7 @@ export async function searchPixabay(query, { key, limit = 3, minDuration = 0, fe
   const j = await r.json();
   return (j.hits ?? []).filter((v) => (v.duration ?? 0) >= minDuration).slice(0, limit).map((v) => {
     const f = v.videos?.large ?? v.videos?.medium ?? v.videos?.small;
-    return { id: `pixabay:${v.id}`, source: 'pixabay', file: null, url: f?.url ?? null, thumb: f?.thumbnail ?? (v.picture_id ? `https://i.vimeocdn.com/video/${v.picture_id}_640x360.jpg` : null), width: f?.width, height: f?.height, duration: v.duration, license: 'Pixabay Content License', author: v.user ?? null, page: v.pageURL };
+    return { id: `pixabay:${v.id}`, source: 'pixabay', kind: 'video', file: null, url: f?.url ?? null, thumb: f?.thumbnail ?? (v.picture_id ? `https://i.vimeocdn.com/video/${v.picture_id}_640x360.jpg` : null), width: f?.width, height: f?.height, duration: v.duration, license: 'Pixabay Content License', author: v.user ?? null, page: v.pageURL };
   });
 }
 
@@ -118,12 +118,59 @@ export async function searchWikimedia(query, { limit = 3, minDuration = 0, maxDu
     return !d || (d >= minDuration && d <= maxDuration);
   }).sort((a, b) => titleScore(b) - titleScore(a)).slice(0, limit).map((p) => {
     const ii = p.imageinfo[0]; const em = ii.extmetadata ?? {}; const strip = (h) => String(h ?? '').replace(/<[^>]+>/g, '').trim();
-    return { id: `wikimedia:${p.pageid}`, source: 'wikimedia', file: null,
+    return { id: `wikimedia:${p.pageid}`, source: 'wikimedia', kind: 'video', file: null,
       url: wikimediaTranscoded(ii.url, ii.height) ?? ii.url, fallbackUrl: ii.url, thumb: ii.thumburl ?? null,
       width: ii.width, height: ii.height, duration: Number(ii.duration ?? 0) || null, bytes: Number(ii.size ?? 0) || null,
       license: strip(em.LicenseShortName?.value) || 'CC（见页面）', licenseUrl: em.LicenseUrl?.value ?? null, author: strip(em.Artist?.value) || null,
       page: ii.descriptionurl ?? `https://commons.wikimedia.org/?curid=${p.pageid}`, title: p.title };
   });
+}
+
+/** Commons 缩略图地址换个宽度：.../thumb/a/ab/N.jpg/2400px-N.jpg → 640px-N.jpg（MediaWiki 按需生成） */
+export const commonsThumbWidth = (url, px) => (url ? String(url).replace(/\/(\d+)px-/, `/${px}px-`) : null);
+
+/**
+ * Commons 的**图片**（同样不要 key，CC / 公有领域，需署名）。口播线的免 key 主力画面来源。
+ *
+ * 为什么图片比视频靠谱：同一个检索接口，Commons 的图片库大得多、命中也准得多。真机对比同一批词——
+ * 图片：cat sleeping → "Sleeping cat on her back"；city night traffic → "Night-time traffic at Admiralty"；
+ * 视频：cat box → "Wasp eating cat food"（标题里有 cat 就过了，配给了"猫为什么总爱钻纸箱"）。
+ * 静图交给合成那边做缓推缓拉，成片观感远好过一段不相干的视频。
+ *
+ * 下的是 2400px 的派生图（几百 KB），不是动辄 6000×4000 的原图；排序用 640px 的那份。
+ */
+export async function searchWikimediaImages(query, { limit = 3, fetchImpl = fetch } = {}) {
+  const u = new URL('https://commons.wikimedia.org/w/api.php');
+  Object.entries({ action: 'query', generator: 'search', gsrsearch: `filetype:bitmap ${query}`, gsrnamespace: '6',
+    gsrlimit: String(Math.max(limit * 3, 9)), prop: 'imageinfo', iiprop: 'url|size|mime|extmetadata',
+    iiextmetadatafilter: 'LicenseShortName|Artist|Credit|LicenseUrl', iiurlwidth: '2400',
+    format: 'json', origin: '*' }).forEach(([k, v]) => u.searchParams.set(k, v));
+  const r = await fetchImpl(u, { headers: { 'User-Agent': UA } });
+  if (r.status === 429) throw new StockRateLimit('Wikimedia 触发限速，稍后再试');
+  if (!r.ok) throw new Error(`Wikimedia ${r.status}`);
+  const j = await r.json();
+  const words = tokenize(query).filter((w) => w.length > 2);
+  const titleScore = (p) => (!words.length ? 1 : words.filter((w) => String(p.title).toLowerCase().includes(w)).length);
+  return Object.values(j.query?.pages ?? {})
+    .filter((p) => {
+      const ii = p.imageinfo?.[0];
+      // svg/tif 之类交给 ffmpeg 会翻车；竖长条、细横条的图裁 9:16 也不能看
+      if (!/^image\/(jpeg|png|webp)$/.test(ii?.mime ?? '') || titleScore(p) === 0) return false;
+      const ratio = (ii.width ?? 0) / (ii.height ?? 1);
+      return (ii.width ?? 0) >= 800 && ratio >= 0.4 && ratio <= 3.5;
+    })
+    .sort((a, b) => titleScore(b) - titleScore(a))
+    .slice(0, limit)
+    .map((p) => {
+      const ii = p.imageinfo[0]; const em = ii.extmetadata ?? {}; const strip = (h) => String(h ?? '').replace(/<[^>]+>/g, '').trim();
+      const big = ii.thumburl ?? ii.url;
+      return { id: `wikimedia-img:${p.pageid}`, source: 'wikimedia', kind: 'image', file: null,
+        url: big, fallbackUrl: ii.url, thumb: commonsThumbWidth(big, 640) ?? big,
+        width: ii.thumbwidth ?? ii.width, height: ii.thumbheight ?? ii.height, duration: null,
+        license: strip(em.LicenseShortName?.value) || 'CC（见页面）', licenseUrl: em.LicenseUrl?.value ?? null,
+        author: strip(em.Artist?.value) || null,
+        page: ii.descriptionurl ?? `https://commons.wikimedia.org/?curid=${p.pageid}`, title: p.title };
+    });
 }
 
 /** 检索词逐级放宽：全句 → 前 3 词 → 前 2 词 → 最长的 1 个词（Wikimedia 是字面匹配，长句必空；Pexels 也偏爱短词） */
@@ -147,8 +194,11 @@ export async function findCandidates(query, { localDirs = [], used = new Set(), 
   const cached = readCacheIndex(query, tier); if (cached) push(cached);
   if (out.length >= limit) return out.slice(0, limit);
   const errors = [];
-  // 有 key 的先用（画质/时长更可控），没 key 时 Wikimedia 兜底——所以"没注册任何 key"也能出第一条片
-  const chain = [[searchPexels, { key: config.stock?.pexelsKey }], [searchPixabay, { key: config.stock?.pixabayKey }], [searchWikimedia, {}]];
+  // 有 key 的视频源先用（画质/时长最可控）；没 key 时先试 Commons 的**图片**——同一个站，
+  // 图片库比视频库大得多也准得多（真机对比："cat sleeping" 图片给 Sleeping cat on her back，
+  // 视频却把 Wasp eating cat food 配给了"猫钻纸箱"）。一张贴合的静图 + 缓推，好过一段不相干的视频。
+  // 图片只取 2 条，给 Wikimedia 视频留一个位——让看图排序在"图 vs 视频"之间挑，而不是替它决定。
+  const chain = [[searchPexels, { key: config.stock?.pexelsKey }], [searchPixabay, { key: config.stock?.pixabayKey }], [searchWikimediaImages, { limit: 2 }], [searchWikimedia, {}]];
   for (const [fn, extra] of chain) {
     if (out.length >= limit) break;
     if ('key' in extra && !extra.key) continue;
@@ -170,7 +220,8 @@ export async function materialize(candidate, { fetchImpl = fetch, maxBytes = 256
   if (candidate.file) return candidate.file;
   if (!candidate.url) throw new Error(`候选 ${candidate.id} 没有可下载地址`);
   fs.mkdirSync(CACHE_DIR, { recursive: true });
-  const ext = (candidate.url.match(/\.(webm|ogv|ogg|mov|mp4|m4v)(\?|$)/i)?.[1] ?? 'mp4').toLowerCase();
+  const ext = (candidate.url.match(/\.(webm|ogv|ogg|mov|mp4|m4v|jpe?g|png|webp|gif)(\?|$)/i)?.[1]
+    ?? (candidate.kind === 'image' ? 'jpg' : 'mp4')).toLowerCase();
   const dest = path.join(CACHE_DIR, `${candidate.id.replace(/[^a-z0-9]+/gi, '_')}.${ext}`);
   if (fs.existsSync(dest) && fs.statSync(dest).size > 0) return dest;
   const ac = new AbortController();
