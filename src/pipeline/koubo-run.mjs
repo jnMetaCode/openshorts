@@ -189,10 +189,11 @@ export async function runKoubo(project, { outDir, log = () => {}, fetchImpl = fe
     // 用的是 query 而不是 visualIntent：模板里 query 本来就是"具体可检索的英文画面描述"，
     // 正好是文生图要的东西；visualIntent 是中文的，Flux 吃不好。
     if (!clip && localGen && shot.visual?.source !== 'solid') {
-      const q = shot.query || shot.visualIntent;
+      // 优先用模板专门写的出图提示词；没有就退回检索词（短，但总比没有强）
+      const q = shot.imagePrompt || shot.query || shot.visualIntent;
       const img = path.join(work, `${shot.id}-gen.png`);
       try {
-        const r = await localGen.gen(`${q}, photographic, natural lighting, sharp focus`, { out: img, width: 768, height: 1344, model: localGen.model, signal, log: (m) => log(`  ${m}`) });
+        const r = await localGen.gen(`${q}, photographic, natural lighting, sharp focus`, { out: img, model: localGen.model, signal, onLog: (m) => log(`  ${m}`) });
         clip = img;
         shot.visual = { source: 'local-image', provider: 'local-flux', kind: 'image', file: img, model: r.model, prompt: r.prompt, cost: { kind: 'free' } };
         project.provenance.push({ shot: shot.id, source: 'local-flux', id: r.model, kind: 'image', license: 'Apache-2.0（FLUX.1-schnell 本地生成）', author: null, page: 'https://huggingface.co/black-forest-labs/FLUX.1-schnell' });

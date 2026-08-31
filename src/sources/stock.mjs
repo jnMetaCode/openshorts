@@ -314,7 +314,10 @@ const hash = (s) => crypto.createHash('sha1').update(s).digest('hex').slice(0, 1
  * 缓存按"当前配了哪些素材库 key"分桶。否则会出现这种事：用户今天 0 key 跑了一遍（存的是 Wikimedia 结果），
  * 明天注册了 Pexels key，同样的检索词却在 7 天内一直命中旧缓存，说好的"配了 key 画面更好"根本没生效。
  */
-export function cacheTier(config) { return [config?.stock?.pexelsKey && 'px', config?.stock?.pixabayKey && 'pb'].filter(Boolean).join('-') || 'free'; }
+// 缓存里存的是整个候选对象（含格式化好的许可证文案等派生字段），所以候选的字段或格式一变，
+// 旧缓存就会把老样子带回来（真机上"CC CC0"修完又从缓存里冒出来一次）。改结构就把版本号 +1。
+const CACHE_VERSION = 2;
+export function cacheTier(config) { return `v${CACHE_VERSION}-${[config?.stock?.pexelsKey && 'px', config?.stock?.pixabayKey && 'pb'].filter(Boolean).join('-') || 'free'}`; }
 function cacheIndexFile(query, tier = 'free') { return path.join(CACHE_DIR, 'index', `${tier}-${hash(query.toLowerCase().trim())}.json`); }
 function readCacheIndex(query, tier) { try { const j = JSON.parse(fs.readFileSync(cacheIndexFile(query, tier), 'utf-8')); return Date.now() - j.at < 7 * 86400e3 ? j.items : null; } catch { return null; } }
 function writeCacheIndex(query, items, tier) { try { fs.mkdirSync(path.dirname(cacheIndexFile(query, tier)), { recursive: true }); fs.writeFileSync(cacheIndexFile(query, tier), JSON.stringify({ at: Date.now(), items })); } catch { /* 缓存失败不影响主流程 */ } }

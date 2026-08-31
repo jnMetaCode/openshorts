@@ -60,9 +60,10 @@ test('Wikimedia 相关性：标题不含任何查询实词的结果被丢弃', a
 
 
 test('缓存按"配了哪些 key"分桶：新配了 Pexels key 之后不能再吃 0-key 时代的旧缓存', async () => {
-  assert.equal(cacheTier({ stock: {} }), 'free');
-  assert.equal(cacheTier({ stock: { pexelsKey: 'k' } }), 'px');
-  assert.equal(cacheTier({ stock: { pexelsKey: 'k', pixabayKey: 'j' } }), 'px-pb');
+  assert.match(cacheTier({ stock: {} }), /^v\d+-free$/);
+  assert.match(cacheTier({ stock: { pexelsKey: 'k' } }), /^v\d+-px$/);
+  assert.match(cacheTier({ stock: { pexelsKey: 'k', pixabayKey: 'j' } }), /^v\d+-px-pb$/);
+  assert.notEqual(cacheTier({ stock: {} }), 'free', '带版本号：候选结构一变，旧缓存就该失效');
 
   const wiki = { query: { pages: { 1: { pageid: 1, title: 'File:Cat in box.webm', imageinfo: [{ url: 'https://x/a.webm', mime: 'video/webm', extmetadata: {} }] } } } };
   const noKey = await findCandidates('cat box', { config: { stock: {} }, fetchImpl: async () => ({ ok: true, status: 200, json: async () => wiki }) });

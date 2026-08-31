@@ -13,7 +13,14 @@ export async function downloadWithResume(url, dest, { onProgress = () => {}, fet
   const headers = { 'User-Agent': 'OpenShorts/2.0' }; if (have > 0) headers.Range = `bytes=${have}-`;
   const r = await fetchImpl(url, { headers, redirect: 'follow', signal });
   if (r.status === 416) { fs.renameSync(part, dest); onProgress({ done: true, bytes: have }); return dest; }
-  if (!r.ok && r.status !== 206) throw new Error(`下载失败 HTTP ${r.status}：${url}`);
+  if (!r.ok && r.status !== 206) {
+    // 401/403 在 HuggingFace 上基本都是"这个仓库要先登录并接受条款"（gated），
+    // 而不是网络问题——直接说清楚，别让人对着一个裸状态码猜
+    const gated = (r.status === 401 || r.status === 403) && /huggingface\.co/.test(String(url));
+    throw new Error(gated
+      ? `下载失败 HTTP ${r.status}：这个模型仓库需要登录并接受条款（gated），换一个未设门的镜像，或手动下好放进模型目录。${url}`
+      : `下载失败 HTTP ${r.status}：${url}`);
+  }
   if (r.status === 200 && have > 0) { have = 0; fs.rmSync(part, { force: true }); }   // 服务端不支持 Range，从头来
   const total = (r.status === 206 ? have : 0) + Number(r.headers.get('content-length') || 0);
   const out = fs.createWriteStream(part, { flags: r.status === 206 ? 'a' : 'w' });

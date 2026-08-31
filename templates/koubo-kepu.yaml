@@ -31,10 +31,12 @@ steps:
          {"id": "s1", "text": "这一段要念的口播原文（口语化，1–2 句，8 秒内念完）",
           "visualIntent": "这一段画面想给观众看什么（中文，一句）",
           "query": "english stock footage query, concrete nouns, 3-6 words",
+          "imagePrompt": "english text-to-image prompt: one concrete scene, subject + setting + lighting, 10-20 words",
           "emphasis": ["要在字幕里高亮的 1–2 个关键词"]}
        ],
        "outro": "收尾一句（结论 + 关注/行动引导）"}
       规则：segments 3–5 段（钩子与收尾不算在内，它们各自也会作为一段配画面）；每段一个画面意图；query 必须是能在素材库检索到的具体画面（如 "cat inside cardboard box close up"），不要抽象词（如 "psychology"）；
+      imagePrompt 与 query 的用途不同：query 是去素材库按关键词检索用的（越短越好），imagePrompt 是在检索不到时交给本机文生图模型画的，要写成一个完整可画的场景（主体 + 环境 + 光线），别写抽象概念；
       口播总字数按语速 4.5 字/秒控制在目标时长内；全文不含影视 IP、明星姓名、真人肖像描述。
     assert:
       contains: ["\"segments\"", "\"hook\"", "\"outro\""]

@@ -16,14 +16,17 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { execFile } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { downloadWithResume } from './download.mjs';
 import { OPENSHORTS_HOME } from '../config.mjs';
 
 const HF = 'https://huggingface.co';
 const CLIP_L = ['clip_l.safetensors', `${HF}/comfyanonymous/flux_text_encoders/resolve/main/clip_l.safetensors`];
-const AE = ['ae.safetensors', `${HF}/black-forest-labs/FLUX.1-schnell/resolve/main/ae.safetensors`];
+// VAE 不从 black-forest-labs/FLUX.1-schnell 拿：那个仓库是 gated 的，未登录下载直接 401
+// （许可证是 Apache-2.0，但 HF 上仍然要求先登录并接受条款）——对"免 key 免登录"的路线是硬伤。
+// second-state 的 GGUF 仓库未设门、同为 Apache-2.0，文件一模一样。
+const AE = ['ae.safetensors', `${HF}/second-state/FLUX.1-schnell-GGUF/resolve/main/ae.safetensors`];
 
 /** 档位。sizeGB 是四个文件加起来的下载量，minMemGB 是跑得动的最低内存。 */
 export const SD_IMAGE_MODELS = [
@@ -95,10 +98,13 @@ export async function installSdImage({ model = 'flux-schnell-q4', onLog = () => 
 }
 
 /**
- * 出一张图。Flux-schnell 是蒸馏过的 4 步模型：cfg 必须给 1（给默认的 7 会糊成一团），
- * 步数 4 就够，再多只是白等。
+ * 出一张图。Flux-schnell 是蒸馏过的 4 步模型：cfg 必须给 1（给默认的 7 会糊成一团），步数 4 就够。
+ *
+ * 默认 576×1024 而不是 768×1344：真机（M2 Max，Q2 档，Metal）实测 768×1344 要 113 秒、
+ * 576×1024 只要 68 秒，而这张图是给字幕当背景的，放到 1080×1920 里差别看不出来。
+ * 一条片通常只有一两镜落到本地出图，省下的是分钟级的等待。
  */
-export async function generateImage(prompt, { out, width = 768, height = 1344, model, steps = 4, seed = -1, signal, onLog = () => {}, timeoutMs = 15 * 60_000 } = {}) {
+export async function generateImage(prompt, { out, width = 576, height = 1024, model, steps = 4, seed = -1, signal, onLog = () => {}, timeoutMs = 15 * 60_000 } = {}) {
   const status = await sdImageStatus();
   if (!status.cliFound) throw new Error(`没装 sd-cli（本地出图/出片都要它）：${status.cli}`);
   const tier = pickImageModel(status, model);
@@ -111,12 +117,22 @@ export async function generateImage(prompt, { out, width = 768, height = 1344, m
     '-p', prompt, '-W', String(width), '-H', String(height), '--steps', String(steps), '--cfg-scale', '1.0', '--sampling-method', 'euler', '--seed', String(seed), '-o', out];
   onLog(`本地出图 ${width}×${height} · ${tier.label} · ${steps} 步`);
   const t0 = Date.now();
+  // 用 spawn 不用 execFile：sd-cli 一跑几分钟、进度一行行往 stderr 打，execFile 会把它全缓存下来，
+  // 超过 maxBuffer 就直接把子进程杀掉——那是个只在"图出得慢"时才发作的坑。这里只留最后几行做报错用。
   await new Promise((resolve, reject) => {
-    const child = execFile(status.cli, args, { signal, timeout: timeoutMs, maxBuffer: 32 << 20 }, (err) => {
-      if (err) return reject(new Error(err.killed || err.signal ? `本地出图超时/被取消（${Math.round(timeoutMs / 60000)} 分钟）` : `本地出图失败：${String(err.stderr || err.message).split('\n').filter(Boolean).slice(-2).join(' | ').slice(0, 300)}`));
-      resolve();
+    const child = spawn(status.cli, args, { stdio: ['ignore', 'ignore', 'pipe'] });
+    const tail = [];
+    const timer = setTimeout(() => { child.kill('SIGKILL'); reject(new Error(`本地出图超时（${Math.round(timeoutMs / 60000)} 分钟）`)); }, timeoutMs);
+    const onAbort = () => { child.kill('SIGTERM'); reject(new Error('本地出图已取消')); };
+    signal?.addEventListener('abort', onAbort, { once: true });
+    child.stderr.setEncoding('utf-8');
+    child.stderr.on('data', (d) => { for (const line of String(d).split('\n')) { const t = line.trim(); if (t) { tail.push(t); if (tail.length > 12) tail.shift(); } } });
+    child.on('error', (e) => { clearTimeout(timer); reject(new Error(`跑不起来 sd-cli：${e.message}`)); });
+    child.on('close', (code) => {
+      clearTimeout(timer); signal?.removeEventListener?.('abort', onAbort);
+      if (code === 0) return resolve();
+      reject(new Error(`本地出图失败（退出码 ${code}）：${tail.slice(-3).join(' | ').slice(0, 300)}`));
     });
-    child.stderr?.on('data', () => {});   // sd-cli 把进度打在 stderr，不吞会把 maxBuffer 撑爆
   });
   if (!fs.existsSync(out) || !fs.statSync(out).size) throw new Error('本地出图跑完了但没产出文件');
   onLog(`出图完成 ${(Date.now() - t0) / 1000 | 0}s → ${path.basename(out)}`);
