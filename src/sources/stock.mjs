@@ -98,16 +98,25 @@ export async function searchWikimedia(query, { limit = 3, minDuration = 0, maxDu
   if (!r.ok) throw new Error(`Wikimedia ${r.status}`);
   const j = await r.json();
   const pages = Object.values(j.query?.pages ?? {});
-  // Wikimedia 的全文检索会命中描述里的任意词（"cardboard spectrometer"），要求标题里至少含一个查询实词，否则宁可空着让上层换词/降级
+  // Wikimedia 的全文检索会命中描述里的任意词（"cardboard spectrometer"），所以要按标题再筛一道。
+  // 光"含任意一个查询词"不够：查 "cat box" 时 "Wasp eating cat food" 命中 cat 就过了，
+  // 真机就这么把一段黄蜂吃猫粮的片子配到了"猫为什么总爱钻纸箱"上。
+  // 改成按命中词数排序：两个词都命中的排前面。但要清楚它的天花板——"Wasp eating cat food" 和
+  // "Lotti playing in a box" 各命中一个词，标题匹配根本分不出哪个才是"猫钻纸箱"。
+  // 真正能分辨的是看图排序；没配 vision 模型时这条片的画面就是没人把过关，出片时会如实说。
   const words = tokenize(query).filter((w) => w.length > 2);
-  const relevant = (p) => !words.length || words.some((w) => String(p.title).toLowerCase().includes(w));
+  const titleScore = (p) => {
+    if (!words.length) return 1;
+    const t = String(p.title).toLowerCase();
+    return words.filter((w) => t.includes(w)).length;
+  };
   return pages.filter((p) => {
-    const ii = p.imageinfo?.[0]; if (!/^video\//.test(ii?.mime ?? '') || !relevant(p)) return false;
+    const ii = p.imageinfo?.[0]; if (!/^video\//.test(ii?.mime ?? '') || titleScore(p) === 0) return false;
     // imageinfo 一直返回 duration，之前没读——所以 minDuration 对 Wikimedia 一直是空转，
     // 也没法在下载前把整部纪录片挡掉（我们只要三四秒）
     const d = Number(ii.duration ?? 0);
     return !d || (d >= minDuration && d <= maxDuration);
-  }).slice(0, limit).map((p) => {
+  }).sort((a, b) => titleScore(b) - titleScore(a)).slice(0, limit).map((p) => {
     const ii = p.imageinfo[0]; const em = ii.extmetadata ?? {}; const strip = (h) => String(h ?? '').replace(/<[^>]+>/g, '').trim();
     return { id: `wikimedia:${p.pageid}`, source: 'wikimedia', file: null,
       url: wikimediaTranscoded(ii.url, ii.height) ?? ii.url, fallbackUrl: ii.url, thumb: ii.thumburl ?? null,

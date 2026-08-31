@@ -82,7 +82,8 @@ async function visionJudge(vision, log) {
 }
 
 export async function runKoubo(project, { outDir, log = () => {}, fetchImpl = fetch, config, vision, signal, only = null, synthesizeImpl = synthesize } = {}) {
-  const judge = await visionJudge(vision ?? project.vision ?? config?.vision, log);
+  const wantVision = vision ?? project.vision ?? config?.vision;
+  const judge = await visionJudge(wantVision, log);
   const dir = outDir ?? path.join(process.env.HOME || '.', 'OpenShorts', project.id);
   const work = path.join(dir, 'work'); fs.mkdirSync(work, { recursive: true });
   const notes = []; const used = new Set(); const segFiles = []; const shotWords = []; let cursorMs = 0;
@@ -90,6 +91,12 @@ export async function runKoubo(project, { outDir, log = () => {}, fetchImpl = fe
   // 每镜跑完就把项目写回盘：中途 Ctrl-C / TTS 挂掉时，已配好音、已选好素材的镜头下次不用重来
   const projectFile = path.join(dir, 'project.json');
   const save = () => { try { fs.writeFileSync(projectFile, JSON.stringify(project, null, 2)); } catch { /* 落盘失败不该拖垮出片 */ } };
+
+  // 没有看图把关时，画面只靠检索词的字面匹配——真机上"Wasp eating cat food"就这么配到了
+  // "猫为什么总爱钻纸箱"上。技术链路再绿也得说清这一条：没人看过这些画面。
+  const stockShots = project.shots.filter((s) => s.visual?.source !== 'solid');
+  if (!judge && stockShots.length) log('⚠️ 没配看图模型，画面只按检索词字面匹配，没有人（也没有模型）看过——出片后自己过一遍');
+  project.vision = { ...(wantVision ?? {}), used: !!judge };
 
   const abortIfCancelled = () => { if (signal?.aborted) { save(); throw new Error('已取消（进度已存盘，重跑会接着来）'); } };
 

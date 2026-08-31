@@ -42,5 +42,10 @@ export async function checkKoubo(project, { file = project.final?.file, burnedCa
   add('ai-label', /AI-generated|AI 生成/.test(String(p.format?.tags?.comment ?? '')) ? 'pass' : 'warn', p.format?.tags?.comment ? '元数据含 AI 生成标识' : '元数据无 AI 标识');
   add('shots', project.shots.every((s) => s.status === 'ready') ? 'pass' : 'warn', `${project.shots.filter((s) => s.status === 'ready').length}/${project.shots.length} 镜头就绪`);
   const solid = project.shots.filter((s) => s.visual?.source === 'solid').length; if (solid) add('solid', 'warn', `${solid} 个镜头是纯色底（没找到素材）`);
+  // 画面有没有被看过，是这条片能不能直接发的关键事实之一——技术项全绿不等于画面对
+  const stockShots = project.shots.filter((s) => s.visual?.source && s.visual.source !== 'solid').length;
+  if (stockShots) add('vision', project.vision?.used ? 'pass' : 'warn', project.vision?.used
+    ? `${stockShots} 个镜头的画面经过看图排序把关`
+    : `${stockShots} 个镜头的画面只按检索词字面匹配选的，没经过看图把关（配一个能看图的模型：config.vision 或 --vision-provider），发之前自己过一遍`);
   return { pass: !items.some((i) => i.status === 'fail'), warnings: items.filter((i) => i.status === 'warn').length, items };
 }
