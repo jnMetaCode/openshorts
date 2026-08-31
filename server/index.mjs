@@ -17,7 +17,7 @@ import {activatePromptVersion, addPromptVersion, applyAssetMatches} from '../sha
 import {listPlanners, planStoryboard} from './lib/planner.mjs';
 import {attachGenerationTrace, retimeProjectFromNarration, retimeScene, reviewAssets} from '../shared/review.mjs';
 import {runAsr, transcriptToCaptions} from './lib/asr.mjs';
-import {corsOptions, createOriginGuard, resolveAllowedOrigins} from './lib/origin-guard.mjs';
+import {corsOptions, createOriginGuard, createActionGuard, resolveAllowedOrigins} from './lib/origin-guard.mjs';
 import {renderWaveform} from '../scripts/lib/audio.mjs';
 import {kaipian} from './kaipian.mjs';
 import { installProxy } from '../src/net/proxy.mjs';
@@ -60,6 +60,7 @@ const bundleUpload = multer({dest: path.join(dataDir, 'imports'), limits: {fileS
 const allowedOrigins = resolveAllowedOrigins({port: Number(process.env.PORT ?? 4174), configured: process.env.OPENSHORTS_ALLOWED_ORIGINS});
 app.use(cors(corsOptions(allowedOrigins)));
 app.use(createOriginGuard(allowedOrigins));
+app.use(createActionGuard(allowedOrigins));   // SSE 接口只能是 GET，但它们会出片/下模型/花钱，同样得拦跨站
 app.use(express.json({limit: '5mb'}));
 app.use('/out', express.static(outDir));
 app.use('/uploads', express.static(uploadsDir));

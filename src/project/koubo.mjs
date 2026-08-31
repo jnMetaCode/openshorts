@@ -18,7 +18,7 @@ export function buildKouboProject(aoResult, { id, topic, inputs = {}, output = {
   const shots = [];
   const src = defaults.visualSource === 'solid' ? 'solid' : null;   // 用户选"只用纯色底"时镜头直接标 solid，run 阶段不去找素材
   if (script.hook) shots.push(shot('hook', script.hook, segs[0]?.visualIntent ?? '', segs[0]?.query ?? '', segs[0]?.emphasis ?? [], src));
-  for (const s of segs) shots.push(shot(s.id || `s${shots.length + 1}`, s.text, s.visualIntent, s.query, s.emphasis ?? [], src));
+  for (const s of segs) shots.push(shot(safeId(s.id, shots.length + 1), s.text, s.visualIntent, s.query, s.emphasis ?? [], src));
   if (script.outro) shots.push(shot('outro', script.outro, segs[segs.length - 1]?.visualIntent ?? '', segs[segs.length - 1]?.query ?? '', [], src));
   return {
     schemaVersion: 2,
@@ -38,5 +38,7 @@ export function buildKouboProject(aoResult, { id, topic, inputs = {}, output = {
     ao: { file: aoResult.file ?? null, success: !!aoResult.success, totalTokens: aoResult.totalTokens ?? null },
   };
 }
+/** 镜头 id 会直接拼成文件名（work/<id>.mp3 等），而它来自模型输出——不能原样信 */
+const safeId = (id, i) => String(id ?? '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 40) || `s${i}`;
 const shot = (id, text, visualIntent, query, emphasis, source = null) => ({ id, text: String(text ?? '').trim(), visualIntent: visualIntent ?? '', query: query ?? '', emphasis: Array.isArray(emphasis) ? emphasis : [], visual: { source, provider: null, file: null, candidateId: null, cost: { kind: 'free' } }, audio: null, durationSec: null, status: 'planned' });
 const slug = (s) => String(s).toLowerCase().replace(/[^a-z0-9一-鿿]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'koubo';

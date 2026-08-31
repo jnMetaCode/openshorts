@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createOriginGuard, defaultAllowedOrigins, isAllowedOrigin, resolveAllowedOrigins} from '../server/lib/origin-guard.mjs';
+import {createOriginGuard, defaultAllowedOrigins, isAllowedOrigin, resolveAllowedOrigins, createActionGuard} from '../server/lib/origin-guard.mjs';
 
 const request = ({method = 'POST', origin}) => ({method, get: (name) => (name.toLowerCase() === 'origin' ? origin : undefined)});
 const response = () => {
@@ -65,4 +65,41 @@ test('所有会改状态的方法都受保护', () => {
 
 test('显式配置 * 可以退回旧的全开行为', () => {
   assert.equal(run(createOriginGuard(['*']), request({origin: 'http://evil.example'})).passed, true);
+});
+
+/**
+ * v2 的接口——出片、下 27 GB 模型、跑短剧（会用你配好的 key 调云端视频供应商，真花钱）——
+ * 全是 GET，因为 EventSource 只支持 GET。而上面那条 guard 只管非安全方法，于是本文件开头
+ * 描述的威胁模型对它们完全没生效：开着 Studio 时访问的任何网页，一个 <img src="…/local/install">
+ * 就能触发。CORS 拦不住（只让浏览器读不到响应，请求照样执行），<img> 连 Origin 都不带。
+ */
+test('会花钱/写盘的 GET 接口，跨站触发要拦（靠 Sec-Fetch-Site，<img> 不带 Origin）', () => {
+  const guard = createActionGuard(['http://127.0.0.1:4174']);
+  const run = (path, headers = {}) => {
+    const req = {path, method: 'GET', get: (h) => headers[h.toLowerCase()]};
+    let status = null, body = null;
+    const res = {status(s) { status = s; return this; }, json(b) { body = b; return this; }};
+    let passed = false;
+    guard(req, res, () => { passed = true; });
+    return {passed, status, body};
+  };
+
+  // 恶意网页里的 <img src="http://127.0.0.1:4174/api/kaipian/local/install?what=all&agree=1">
+  assert.equal(run('/api/kaipian/local/install', {'sec-fetch-site': 'cross-site'}).passed, false);
+  assert.equal(run('/api/kaipian/local/install', {'sec-fetch-site': 'cross-site'}).status, 403);
+  assert.equal(run('/api/kaipian/drama/run', {'sec-fetch-site': 'cross-site'}).passed, false, '这个会花钱，尤其不能漏');
+  assert.equal(run('/api/kaipian/projects/abc/run', {'sec-fetch-site': 'same-site'}).passed, false);
+
+  // 界面自己的 EventSource：同源
+  assert.equal(run('/api/kaipian/projects/abc/run', {'sec-fetch-site': 'same-origin'}).passed, true);
+  // 直接在地址栏打开：导航
+  assert.equal(run('/api/kaipian/ffmpeg/install', {'sec-fetch-site': 'none'}).passed, true);
+  // curl / CLI / 脚本：不带 Sec-Fetch-*，不能误伤
+  assert.equal(run('/api/kaipian/projects/abc/batch', {}).passed, true);
+  // 跨站但带了不在白名单里的 Origin，一样拦
+  assert.equal(run('/api/kaipian/projects/abc/run', {origin: 'https://evil.example'}).passed, false);
+
+  // 只读接口不受影响
+  assert.equal(run('/api/kaipian/projects', {'sec-fetch-site': 'cross-site'}).passed, true);
+  assert.equal(run('/api/kaipian/sources', {'sec-fetch-site': 'cross-site'}).passed, true);
 });

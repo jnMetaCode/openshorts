@@ -11,7 +11,11 @@ export function planVariants({ voices = [], captions = [], rates = [] }, base) {
   const cs = captions.length ? captions : [base.captions?.preset ?? 'douyin'];
   const rs = rates.length ? rates : [base.voice?.rate ?? 1.0];
   const out = [];
-  for (const v of vs) for (const c of cs) for (const r of rs) out.push({ id: `${v.replace(/^zh-CN-|Neural$/g, '')}-${c}${r !== 1 ? `-x${r}` : ''}`, voice: v, captions: c, rate: Number(r) });
+  // id 会当目录名用，而音色/字幕预设是用户从命令行传进来的——不能原样拼路径。
+  // 点号也不能留：留了 ".." 就还能往上跳；语速本来就是数字，小数点换成下划线。
+  const clean = (x) => String(x).replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 40) || 'v';
+  const rateTag = (r) => String(Number(r)).replace('.', '_');
+  for (const v of vs) for (const c of cs) for (const r of rs) out.push({ id: `${clean(v.replace(/^zh-CN-|Neural$/g, ''))}-${clean(c)}${Number(r) !== 1 ? `-x${rateTag(r)}` : ''}`, voice: v, captions: c, rate: Number(r) });
   return out;
 }
 
