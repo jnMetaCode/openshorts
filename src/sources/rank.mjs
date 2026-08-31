@@ -79,7 +79,7 @@ export function parseScores(text, n) {
  * 模型自己批注「有猫但为木箱非纸箱，无保温效果视觉表现」的素材——分数刚好卡在阈值上。
  * 不及格的镜头会往下走本地出图，宁可自己画也别放一张不对的。
  */
-export async function rankCandidates(candidates, intent, { connector, cfg, threshold = 6, log = () => {}, fetchImpl = fetch, getFile = null }) {
+export async function rankCandidates(candidates, intent, { connector, cfg, threshold = 6, fillThreshold = 4, log = () => {}, fetchImpl = fetch, getFile = null }) {
   // 只有一条候选也要过关："唯一候选"恰恰是最容易混进标题卡/无关画面的情况，
   // 以前这里直接放行，真机就漏过了一整镜英文标题卡。
   if (!connector || !candidates.length) return candidates.map((c) => ({ ...c, score: null }));
@@ -102,7 +102,11 @@ export async function rankCandidates(candidates, intent, { connector, cfg, thres
   // 跟"取不到画面证据"是同一件事，上层要能看见并写进 notes
   if (!scores) return candidates.map((c) => ({ ...c, score: null, unjudged: true }));
   const ranked = usable.map((x, k) => ({ ...x.c, score: scores[k].score, why: scores[k].why })).sort((a, b) => b.score - a.score);
+  // 主画面必须过 threshold；但一镜有十几秒时要切成几段，补位那几段可以放宽到 fillThreshold——
+  // 盯着一张图看 11 秒，比看 3 秒稍逊一点的相关画面更糟。低于 fillThreshold 的才真的判退。
+  for (const c of ranked) if (c.score < threshold && c.score >= fillThreshold) c.fillOnly = true;
   const rest = candidates.filter((c) => !usable.some((x) => x.c.id === c.id)).map((c) => ({ ...c, score: null, unjudged: true }));
   if (rest.length) log(`⚠️ ${rest.length} 条候选取不到画面证据，没能打分：${rest.map((c) => c.id).join('、')}`);
-  return [...ranked.filter((c) => c.score >= threshold), ...rest, ...ranked.filter((c) => c.score < threshold).map((c) => ({ ...c, rejected: true }))];
+  return [...ranked.filter((c) => c.score >= threshold), ...rest,
+    ...ranked.filter((c) => c.score < threshold).map((c) => ({ ...c, rejected: !c.fillOnly, fillOnly: !!c.fillOnly }))];
 }

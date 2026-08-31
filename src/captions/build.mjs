@@ -7,6 +7,41 @@ export const STYLE_PRESETS = {
   boxed:  { name: '黑底白字',     font: 'PingFang SC', size: 56, color: '&H00FFFFFF', outline: '&H00000000', outlineW: 0, shadow: 0, bold: 1, marginV: 240, box: true, highlight: '&H00FFE066' },
 };
 
+/**
+ * 把 #RRGGBB 转成 ASS 的 &HAABBGGRR（ASS 是 BGR 序，而且高位是"透明度"不是不透明度）。
+ * 界面上给用户的是常规十六进制色，这层转换不该让用户知道。
+ */
+export function assColor(hex, alpha = 0) {
+  const m = String(hex).trim().match(/^#?([0-9a-f]{6})$/i);
+  if (!m) return String(hex).startsWith('&H') ? String(hex) : '&H00FFFFFF';
+  const [r, g, b] = [0, 2, 4].map((i) => m[1].slice(i, i + 2).toUpperCase());
+  return `&H${alpha.toString(16).padStart(2, '0').toUpperCase()}${b}${g}${r}`;
+}
+
+/** 字幕位置 → ASS 的 Alignment（2 底部 / 5 居中 / 8 顶部，都是水平居中） */
+export const ALIGN = { bottom: 2, middle: 5, top: 8 };
+
+/**
+ * 预设 + 用户覆盖。同类项目（MoneyPrinterTurbo）把字体/位置/颜色/大小/描边/背景六项都放出来，
+ * 是因为各平台的字幕风格差别很大、创作者对这个很敏感；我们原来只有三套写死的预设。
+ * 覆盖项用界面友好的形式（#RRGGBB、bottom/middle/top），在这里转成 ASS 的写法。
+ */
+export function resolveStyle(preset = 'douyin', style = {}) {
+  const base = STYLE_PRESETS[preset] ?? STYLE_PRESETS.douyin;
+  const out = { ...base, align: ALIGN.bottom };
+  if (style.font) out.font = String(style.font);
+  if (style.size) out.size = Math.max(12, Math.min(200, Number(style.size)));
+  if (style.color) out.color = assColor(style.color);
+  if (style.highlight) out.highlight = assColor(style.highlight);
+  if (style.outline) out.outline = assColor(style.outline);
+  if (style.outlineW !== undefined) out.outlineW = Math.max(0, Math.min(12, Number(style.outlineW)));
+  if (style.marginV !== undefined) out.marginV = Math.max(0, Math.min(900, Number(style.marginV)));
+  if (style.bold !== undefined) out.bold = style.bold ? 1 : 0;
+  if (style.box !== undefined) out.box = !!style.box;
+  if (style.position && ALIGN[style.position]) out.align = ALIGN[style.position];
+  return out;
+}
+
 const PUNCT = /[，。！？；：、,.!?;:…—]/;
 
 /**
@@ -62,11 +97,11 @@ export function toSRT(cues, { maxChars = 16 } = {}) {
  * 样式预设的字号/描边/边距都是按 1080 宽定的，而 PlayResX 直接写成实际宽度，
  * 于是 540 宽的项目会用 64px 字（相当于 1080 下的 128px）——字直接顶出画外。按宽度等比缩放。
  */
-export function toASS(cues, { preset = 'douyin', w = 1080, h = 1920, emphasis = [], maxChars = 16 } = {}) {
-  const p = STYLE_PRESETS[preset] ?? STYLE_PRESETS.douyin;
+export function toASS(cues, { preset = 'douyin', w = 1080, h = 1920, emphasis = [], maxChars = 16, style = {} } = {}) {
+  const p = resolveStyle(preset, style);
   const k = w / 1080;
   const px = (n) => Math.max(1, Math.round(n * k));
-  const head = `[Script Info]\nScriptType: v4.00+\nPlayResX: ${w}\nPlayResY: ${h}\nWrapStyle: 0\n\n[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\nStyle: Default,${p.font},${px(p.size)},${p.color},${p.color},${p.outline},&H80000000,${p.bold},0,0,0,100,100,0,0,${p.box ? 3 : 1},${px(p.outlineW)},${px(p.shadow)},2,${px(60)},${px(60)},${px(p.marginV)},1\n\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n`;
+  const head = `[Script Info]\nScriptType: v4.00+\nPlayResX: ${w}\nPlayResY: ${h}\nWrapStyle: 0\n\n[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\nStyle: Default,${p.font},${px(p.size)},${p.color},${p.color},${p.outline},&H80000000,${p.bold},0,0,0,100,100,0,0,${p.box ? 3 : 1},${px(p.outlineW)},${px(p.shadow)},${p.align},${px(60)},${px(60)},${px(p.marginV)},1\n\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n`;
   const lines = cues.map((c) => {
     let text = wrap(c.text, maxChars).replace(/\n/g, '\\N');
     for (const kw of emphasis) if (kw && text.includes(kw)) text = text.split(kw).join(`{\\c${p.highlight}}${kw}{\\c${p.color}}`);

@@ -100,3 +100,33 @@ test('图片取景：横图放大到看得清，但放大倍数有上限；竖�
     assert.ok(L.cropW <= W && L.cropH <= H, '裁出来不能比画面还大');
   }
 });
+
+/**
+ * 一镜切几段。真机洋葱片一镜有 7–12 秒，而短视频惯例是 2–4 秒换一次画面（MPT 默认 3 秒）。
+ * 素材尺寸**必须故意用不一样的**：concat 要求各输入 SAR 一致，而 scale 为了保持显示比例会改 SAR。
+ * 第一版测试用了两张同尺寸图，SAR 恰好一样所以过了，真机第一次切镜头就报
+ * "Failed to inject frame into filter network"。
+ */
+test('一镜切成多段：不同尺寸的素材也能拼，时长和音轨都对', { skip: !hasFfmpeg && '无 ffmpeg' }, async () => {
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'os-cut-'));
+  const mk = (name, size, color) => { const f = path.join(d, name); spawnSync('ffmpeg', ['-v', 'error', '-y', '-f', 'lavfi', '-i', `color=c=${color}:size=${size}:d=1`, '-frames:v', '1', f]); return f; };
+  const parts = [
+    { clip: mk('a.png', '1024x683', 'red'), kind: 'image' },     // 3:2 横
+    { clip: mk('b.png', '1200x1200', 'green'), kind: 'image' },  // 方
+    { clip: mk('c.png', '800x1200', 'blue'), kind: 'image' },    // 2:3 竖
+  ];
+  const audio = path.join(d, 'a.m4a');
+  spawnSync('ffmpeg', ['-v', 'error', '-y', '-f', 'lavfi', '-i', 'sine=frequency=440:duration=9', '-c:a', 'aac', audio]);
+
+  const out = path.join(d, 'multi.mp4');
+  await renderSegment({ audio, durationSec: 9, w: 270, h: 480, fps: 12, out, parts });
+  assert.ok(Math.abs((await probeDuration(out)) - 9) < 0.3, '三段加起来等于配音时长');
+  assert.ok(await audioPackets(out) > 0);
+
+  // 只有一条素材时不切，走原来的单段路径（行为不能变）
+  const one = path.join(d, 'one.mp4');
+  await renderSegment({ clip: parts[0].clip, kind: 'image', audio, durationSec: 4, w: 270, h: 480, fps: 12, out: one });
+  assert.ok(Math.abs((await probeDuration(one)) - 4) < 0.3);
+  assert.ok(await audioPackets(one) > 0);
+  fs.rmSync(d, { recursive: true, force: true });
+});

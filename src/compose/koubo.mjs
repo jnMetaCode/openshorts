@@ -90,11 +90,26 @@ export function imageLayout(iw, ih, w = 1080, h = 1920, { maxZoom = 1.45, minFil
  * 默认就是 6.x，等于整条片没声音还查不出来。ffmpeg 8 上恰好正常，所以只在别人机器上炸——真机踩到的。
  * -t 已经框死时长，-shortest 也就不需要了。
  */
-export async function renderSegment({ clip, audio, durationSec, w = 1080, h = 1920, fps = 30, out, clipVolume = 0, signal, kind = 'video', panReverse = false }) {
-  const isImage = kind === 'image';
-  // 先量一下这张图多大，取景的比例在 JS 里算好——比在滤镜表达式里推可读得多，也能单测
-  const size = isImage ? await probeSize(clip) : null;
-  const L = size ? imageLayout(size.w, size.h, w, h) : null;
+/**
+ * 把一段配音配上**若干个**画面。
+ *
+ * 为什么要"若干个"：一镜的口播常常有 10 秒以上（真机洋葱片六镜是 7/10/9/12/11/11 秒），
+ * 而短视频的节奏惯例是 2–4 秒换一次画面——MPT 的默认值就是 3 秒。一个画面挂 11 秒，
+ * 在手机上是很难看下去的。候选本来就取了 3 条、也都打过分，以前只用第一名，另外两条打完分就扔了，
+ * 正好拿来切镜头。只有一条候选时就不切（不硬凑），行为和以前完全一样。
+ */
+export async function renderSegment({ clip, audio, durationSec, w = 1080, h = 1920, fps = 30, out, clipVolume = 0, signal, kind = 'video', panReverse = false, parts = null }) {
+  const list = parts?.length ? parts : [{ clip, kind, panReverse }];
+  const each = durationSec / list.length;
+  const prepared = [];
+  for (const [i, p] of list.entries()) {
+    const isImg = (p.kind ?? 'video') === 'image';
+    const size = isImg ? await probeSize(p.clip) : null;
+    prepared.push({ ...p, isImage: isImg, L: size ? imageLayout(size.w, size.h, w, h) : null,
+      panReverse: p.panReverse ?? (i % 2 === 1), dur: each, seekSec: p.seekSec ?? 0 });
+  }
+  const isImage = prepared[0].isImage;
+  const L = prepared[0].L;
   // 视频直接裁满屏：视频的取景本来就以主体为中心，加上画面在动，裁掉边角不碍事。
   //
   // 图片不能这么裁。真机试过：一张横构图的猫在纸箱里，裁 9:16 正好把猫脸切在框外，剩下半只身子。
@@ -104,21 +119,36 @@ export async function renderSegment({ clip, audio, durationSec, w = 1080, h = 19
   // 动效放在背景上：完整的前景一动就会露边，而背景怎么飘都看不出来。幅度绕中心各走 6%，
   // 方向按镜次交替，连着几镜不会像幻灯片。（用 crop 的时间表达式而不是 zoompan：
   // zoompan 的缩放按帧量化会抖，而 crop/scale/gblur/overlay 都是核心滤镜，任何构建都有。）
-  const D = durationSec.toFixed(2);
-  const sign = panReverse ? -1 : 1;
-  const pan = (span, out) => `(${span})/2 + ${sign}*min((${span})/2, ${out}*0.06)*(2*min(1,t/${D}) - 1)`;
   const bgW = Math.round(w * 1.12); const bgH = Math.round(h * 1.12);
-  const vchain = isImage
-    ? `[0:v]split[bg][fg];`
-      + `[bg]scale=${bgW}:${bgH}:force_original_aspect_ratio=increase,crop=${w}:${h}:x='${pan('iw-ow', 'ow')}':y='${pan('ih-oh', 'oh')}',gblur=sigma=${Math.round(w / 24)},eq=brightness=-0.08[bgb];`
-      + (L
-        ? `[fg]scale=${L.scaleW}:${L.scaleH},crop=${L.cropW}:${L.cropH}:${Math.round((L.scaleW - L.cropW) / 2)}:${Math.round((L.scaleH - L.cropH) / 2)}[fgs];`
-        : `[fg]scale=${w}:${h}:force_original_aspect_ratio=decrease[fgs];`)
-      + `[bgb][fgs]overlay=${L ? `${L.x}:${L.y}` : '(W-w)/2:(H-h)/2'},fps=${fps},format=yuv420p[v]`
-    : `[0:v]scale=${w}:${h}:force_original_aspect_ratio=increase,crop=${w}:${h},fps=${fps},format=yuv420p[v]`;
-  const achain = clipVolume > 0 ? `[0:a]volume=${clipVolume}[c];[1:a][c]amix=inputs=2:duration=first[a]` : `[1:a]anull[a]`;
-  const args = [...(isImage ? ['-loop', '1'] : ['-stream_loop', '-1']), '-i', clip, '-i', audio, '-t', String(durationSec),
-    '-filter_complex', `${vchain};${achain}`,
+  const chainFor = (p, i) => {
+    const D = p.dur.toFixed(2);
+    const sign = p.panReverse ? -1 : 1;
+    const pan = (span, o) => `(${span})/2 + ${sign}*min((${span})/2, ${o}*0.06)*(2*min(1,t/${D}) - 1)`;
+    // setsar=1 不能省：concat 要求各输入的像素宽高比一致，而 scale 为了保持显示比例会改 SAR，
+    // 两张来源尺寸不同的图拼起来就报 "Failed to inject frame into filter network"。
+    // （合成测试里两张图尺寸一样，SAR 也就一样，所以测不出来——真机第一次切镜头就炸了。）
+    const tail = `setsar=1,trim=duration=${D},setpts=PTS-STARTPTS`;
+    if (!p.isImage) return `[${i}:v]scale=${w}:${h}:force_original_aspect_ratio=increase,crop=${w}:${h},fps=${fps},format=yuv420p,${tail}[v${i}]`;
+    return `[${i}:v]split[bg${i}][fg${i}];`
+      + `[bg${i}]scale=${bgW}:${bgH}:force_original_aspect_ratio=increase,crop=${w}:${h}:x='${pan('iw-ow', 'ow')}':y='${pan('ih-oh', 'oh')}',gblur=sigma=${Math.round(w / 24)},eq=brightness=-0.08[bgb${i}];`
+      + (p.L
+        ? `[fg${i}]scale=${p.L.scaleW}:${p.L.scaleH},crop=${p.L.cropW}:${p.L.cropH}:${Math.round((p.L.scaleW - p.L.cropW) / 2)}:${Math.round((p.L.scaleH - p.L.cropH) / 2)}[fgs${i}];`
+        : `[fg${i}]scale=${w}:${h}:force_original_aspect_ratio=decrease[fgs${i}];`)
+      + `[bgb${i}][fgs${i}]overlay=${p.L ? `${p.L.x}:${p.L.y}` : '(W-w)/2:(H-h)/2'},fps=${fps},format=yuv420p,${tail}[v${i}]`;
+  };
+  const chains = prepared.map(chainFor);
+  const joined = prepared.length > 1
+    ? `${prepared.map((_, i) => `[v${i}]`).join('')}concat=n=${prepared.length}:v=1:a=0[v]`
+    : `[v0]null[v]`;
+  const ai = prepared.length;                                   // 配音是最后一个输入
+  const achain = clipVolume > 0 ? `[0:a]volume=${clipVolume}[c];[${ai}:a][c]amix=inputs=2:duration=first[a]` : `[${ai}:a]anull[a]`;
+  const inputs = prepared.flatMap((p) => [
+    ...(p.isImage ? ['-loop', '1'] : ['-stream_loop', '-1']),
+    ...(p.seekSec > 0 ? ['-ss', String(p.seekSec)] : []),
+    '-i', p.clip,
+  ]);
+  const args = [...inputs, '-i', audio, '-t', String(durationSec),
+    '-filter_complex', `${[...chains, joined, achain].join(';')}`,
     '-map', '[v]', '-map', '[a]', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '20', '-c:a', 'aac', '-b:a', '160k', out];
   await ff(args, `渲染分段 ${path.basename(out)}`, signal);
   // 出过"退出码 0 但没有声音"的事，所以这里当场验一次，别让无声片一路跑到成片

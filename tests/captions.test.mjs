@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildCues, estimateWords, toSRT, toASS, STYLE_PRESETS, alignPunctuation } from '../src/captions/build.mjs';
+import { buildCues, estimateWords, toSRT, toASS, STYLE_PRESETS, alignPunctuation, assColor, resolveStyle } from '../src/captions/build.mjs';
 
 const words = [['你',100,200],['有没有',213,625],['发现，',638,1125],['猫',1438,1588],['为什么',1600,2000],['总爱',2010,2300],['钻',2310,2400],['纸箱？',2410,2900],['这',3200,3300],['不是',3310,3500],['任性，',3510,3900],['是',4000,4100],['刻在',4110,4400],['基因',4410,4700],['里的',4710,4900],['安全感。',4910,5600]].map(([text,startMs,endMs])=>({text,startMs,endMs}));
 
@@ -57,4 +57,27 @@ test('wrap 用调用方给的 maxChars，不再写死 16', () => {
   assert.ok(toSRT(cues, { maxChars: 8 }).includes('\n'), 'maxChars=8 时长句要断行');
   const ass = toASS(cues, { maxChars: 8 });
   assert.ok(ass.includes('\\N'), 'ASS 里也按同一个 maxChars 断');
+});
+
+/** 字幕六项可调（字体/位置/颜色/大小/描边/背景）——同类项目把这几项都放出来，我们原来只有 3 套写死的预设 */
+test('字幕样式可覆盖预设；#RRGGBB 要转成 ASS 的 BGR 色序', () => {
+  assert.equal(assColor('#FFD700'), '&H0000D7FF', 'ASS 是 BGR 序，不是 RGB');
+  assert.equal(assColor('#000000'), '&H00000000');
+  assert.equal(assColor('&H0000E5FF'), '&H0000E5FF', '已经是 ASS 写法的原样放行');
+  assert.equal(assColor('乱写'), '&H00FFFFFF', '解析不了就退白色，别把滤镜写崩');
+
+  const base = resolveStyle('douyin');
+  assert.equal(base.align, 2, '默认底部');
+  const s = resolveStyle('douyin', { font: 'Noto Sans SC', size: 72, color: '#FFFFFF', outlineW: 5, position: 'middle', box: true, bold: false });
+  assert.equal(s.font, 'Noto Sans SC'); assert.equal(s.size, 72);
+  assert.equal(s.color, '&H00FFFFFF'); assert.equal(s.outlineW, 5);
+  assert.equal(s.align, 5, '中部'); assert.equal(s.box, true); assert.equal(s.bold, 0);
+
+  // 越界的值要夹住，别让用户把字号写成 9999 把片子毁了
+  assert.equal(resolveStyle('douyin', { size: 9999 }).size, 200);
+  assert.equal(resolveStyle('douyin', { outlineW: -3 }).outlineW, 0);
+
+  const ass = toASS([{ startMs: 0, endMs: 1000, text: '测试', words: [] }], { preset: 'douyin', style: { position: 'top', color: '#FF0000' } });
+  assert.match(ass, /^Style: Default,[^,]+,\d+,&H000000FF,/m, '主色用上了自定义值');
+  assert.match(ass, /,8,\d+,\d+,\d+,1$/m, '顶部对齐是 8');
 });

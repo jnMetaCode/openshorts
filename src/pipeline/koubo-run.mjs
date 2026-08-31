@@ -69,7 +69,9 @@ async function prefetchAudio(project, { work, log, synthesizeImpl, concurrency =
   });
   await Promise.all(workers);
 }
-const segmentFingerprint = (shot, project, audioFp) => fp(audioFp, shot.visual?.file ?? null, shot.visual?.kind ?? 'video', project.output.w, project.output.h, project.output.fps);
+const segmentFingerprint = (shot, project, audioFp) => fp(audioFp, shot.visual?.file ?? null, shot.visual?.kind ?? 'video',
+  (shot.visual?.parts ?? []).map((p) => p.file),          // 切成几段、用了哪几条素材，变了就得重渲
+  project.output.w, project.output.h, project.output.fps);
 
 /** 看图排序用的连接器：config.vision.{provider,model}（或 project.vision）；key 从 AO 保存的 key / 环境变量来 */
 async function visionJudge(vision, log) {
@@ -159,6 +161,7 @@ export async function runKoubo(project, { outDir, log = () => {}, fetchImpl = fe
     // 「重出这一镜」= 把已选的素材丢掉重新找一遍（文案没改的话配音上面已经复用了，不花时间也不花钱）
     if (redo && shot.visual?.source !== 'solid') shot.visual = { ...shot.visual, source: null, file: null, candidateId: null };
     let clip = shot.visual.file; let chosen = null;
+    const extras = [];                     // 这一镜可用的全部候选（含中选那条），够长的镜头会用它们切成几段
     if (!clip && shot.visual.source !== 'solid') {
       try {
         let cands = await findCandidates(shot.query || shot.visualIntent, { localDirs: project.defaults.localDirs, used, minDuration: 0, fetchImpl, ...(config ? { config } : {}) });
@@ -176,15 +179,21 @@ export async function runKoubo(project, { outDir, log = () => {}, fetchImpl = fe
           // 开了把关却一条都没判成（视觉接口抽了 / 都取不到画面证据）时，别默默拿一条没判过的顶上——
           // 用户开把关就是不想要"没人看过的画面"。本机能出图就交给它画，画不了才退而求其次用未判的。
           // 真机验证：六镜里正是这个漏洞留下了唯一一个坏镜头（一只猫趴在古董收银机旁边）。
-          const usable = ranked.filter((r) => !r.rejected);
+          const usable = ranked.filter((r) => !r.rejected && !r.fillOnly);
           const allUnjudged = usable.length > 0 && usable.every((r) => r.unjudged);
-          const pool = allUnjudged && localGen ? [] : usable;
+          // 补位的排在主画面之后：主画面用高分那条，后面几段才轮到勉强及格的
+          const pool = allUnjudged && localGen ? [] : [...usable, ...ranked.filter((r) => r.fillOnly)];
           if (allUnjudged && localGen) notes.push(`镜头 ${shot.id} 的候选一条都没判成（看图接口没响应），改用本机出图，不拿没判过的顶上`);
-          // 按分数从高到低试着下载：中选那条下不动（超大 / 404）就顺位试下一条，不必重新打分
+          // 按分数从高到低试着下载。以前只取第一名，另外两条打完分就扔了——
+          // 而一镜的口播常有 10 秒以上，正好用它们切成 2–3 段（见 cutEverySec）。
           for (const cand of pool) {
             if (cand.unjudged) notes.push(`镜头 ${shot.id} 用了没能打分的候选 ${cand.id}（本机也出不了图）`);
-            try { clip = await materialize(cand, { fetchImpl }); chosen = cand; log(`  → 选 ${cand.id}${cand.why ? `（${cand.why}）` : ''}`); break; }
-            catch (e) { notes.push(`候选 ${cand.id} 取不到：${e.message.slice(0, 80)}`); }
+            try {
+              const f = await materialize(cand, { fetchImpl });
+              // fillOnly 的分数不够当主画面，只能用来补切镜头的后几段
+              if (!chosen && !cand.fillOnly) { chosen = cand; clip = f; log(`  → 选 ${cand.id}${cand.why ? `（${cand.why}）` : ''}`); }
+              extras.push({ ...cand, file: f });
+            } catch (e) { notes.push(`候选 ${cand.id} 取不到：${e.message.slice(0, 80)}`); }
           }
           // 这里只说"没选出来"，不要预告后果——后面还有本地出图这一步，
           // 真退到纯色底时那一步自己会写 note。写死"退纯色底"会跟日志对不上。
@@ -192,7 +201,7 @@ export async function runKoubo(project, { outDir, log = () => {}, fetchImpl = fe
         } else if (cands.length) {
           // 不看图时也别在第一条上吊死：第一条下不动（超大 / 超时 / 404）就顺位试下一条，别直接掉进纯色底
           const got = await materializeFirst(cands, { fetchImpl, onError: (c, e) => notes.push(`候选 ${c.id} 取不到：${e.message.slice(0, 80)}`) });
-          if (got) { chosen = got.candidate; clip = got.file; }
+          if (got) { chosen = got.candidate; clip = got.file; extras.push({ ...got.candidate, file: got.file }); }
         }
         if (chosen) used.add(chosen.id);
       } catch (e) { notes.push(`镜头 ${shot.id} 素材库：${e.message}`); }
@@ -225,14 +234,28 @@ export async function runKoubo(project, { outDir, log = () => {}, fetchImpl = fe
       log(`${chosen.kind === 'image' ? '🖼' : '🎞'} ${shot.id} 素材 ${chosen.source} ${chosen.id}${chosen.author ? ` · ${chosen.author}` : ''}`);
     }
 
-    // 3) 分段渲染（指纹要在画面定下来之后算——退纯色底 / 选中素材都会改 shot.visual）
+    // 3) 分段渲染
+    // 一镜口播常有 10 秒以上，一个画面挂那么久在手机上很难看（短视频惯例 2–4 秒一换，MPT 默认 3 秒）。
+    // 用这一镜已有的候选切成几段；只有一条素材时不硬凑，行为跟以前一样。
+    const cutEvery = Number(shot.cutEverySec ?? project.defaults?.cutEverySec ?? 4);
+    const pool2 = extras.length ? extras : (shot.visual?.file ? [{ file: shot.visual.file, kind: shot.visual.kind ?? 'video', id: shot.visual.candidateId }] : []);
+    const want = cutEvery > 0 ? Math.max(1, Math.round(durationSec / cutEvery)) : 1;
+    const n = Math.max(1, Math.min(want, pool2.length));
+    const parts = n > 1 ? pool2.slice(0, n).map((c) => ({ clip: c.file, kind: c.kind ?? 'video' })) : null;
+    if (parts) {
+      const fills = pool2.slice(1, n).filter((c) => c.fillOnly).length;
+      log(`✂️ ${shot.id} ${durationSec.toFixed(1)}s 切成 ${n} 段（每段约 ${(durationSec / n).toFixed(1)}s${fills ? `，其中 ${fills} 段是勉强及格的补位` : ''}）`);
+      // 一镜用了几条素材，就得给几条署名——CC BY-SA 要求的
+      for (const c of pool2.slice(1, n)) if (c.id && c.id !== chosen?.id) project.provenance.push({ shot: shot.id, source: c.source ?? shot.visual?.provider, id: c.id, kind: c.kind ?? 'video', license: c.license, author: c.author, page: c.page ?? null });
+      shot.visual = { ...shot.visual, parts: pool2.slice(0, n).map((c) => ({ file: c.file, kind: c.kind ?? 'video', id: c.id })) };
+    } else if (shot.visual?.parts) { const { parts: _drop, ...rest } = shot.visual; shot.visual = rest; }
     const sFp = segmentFingerprint(shot, project, aFp);
     // 同上：上次渲好的分段还在就直接用，不管它在哪个目录
     const priorSeg = cache.segmentFingerprint === sFp && cache.segment && fs.existsSync(cache.segment) ? cache.segment : null;
     const segOut = priorSeg ?? path.join(work, `${shot.id}.mp4`);
     if (priorSeg || (cache.segmentFingerprint === sFp && fs.existsSync(segOut))) log(`↺ ${shot.id} 复用分段`);
     else await renderSegment({ clip, audio, durationSec, w, h, fps, out: segOut, clipVolume: 0, signal,
-      kind: shot.visual?.kind ?? 'video', panReverse: project.shots.indexOf(shot) % 2 === 1 });
+      kind: shot.visual?.kind ?? 'video', panReverse: project.shots.indexOf(shot) % 2 === 1, parts });
     segFiles.push(segOut); shot.status = 'ready'; cursorMs += Math.round(durationSec * 1000);
     shot.render = { audioFingerprint: aFp, segmentFingerprint: sFp, segment: segOut, durationSec, words };
     save();
