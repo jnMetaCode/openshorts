@@ -19,7 +19,7 @@ test('档位表：四个文件、地址都指向可商用许可的仓库', () =>
 });
 
 test('没装 sd-cli / 没下模型时，状态如实说缺什么，不假装可用', async () => {
-  const st = await m.sdImageStatus();
+  const st = await m.sdImageStatus({ memGB: 32 });   // 固定内存：CI 的 macOS runner 只有 7 GB
   assert.equal(st.cliFound, false);
   assert.equal(st.ok, false);
   assert.equal(st.ready, null);
@@ -32,21 +32,28 @@ test('0 字节的壳不算"已装"——下载中断会留下它，只查 exists
   fs.mkdirSync(dir, { recursive: true });
   const q2 = m.SD_IMAGE_MODELS.find((x) => x.id === 'flux-schnell-q2');
   for (const [n] of m.modelFiles(q2)) fs.writeFileSync(path.join(dir, n), '');   // 空壳
-  let st = await m.sdImageStatus();
+  let st = await m.sdImageStatus({ memGB: 32 });
   assert.equal(st.models.find((x) => x.id === 'flux-schnell-q2').present, false, '0 字节文件必须算缺失');
 
   for (const [n] of m.modelFiles(q2)) fs.writeFileSync(path.join(dir, n), Buffer.alloc(2048));
-  st = await m.sdImageStatus();
+  st = await m.sdImageStatus({ memGB: 32 });
   assert.equal(st.models.find((x) => x.id === 'flux-schnell-q2').present, true);
 });
 
 test('挑档位：装好且跑得动的优先；指定了就按指定的来', async () => {
-  const st = await m.sdImageStatus();
+  const st = await m.sdImageStatus({ memGB: 32 });
   assert.equal(m.pickImageModel(st)?.id, 'flux-schnell-q2', '上一条测试把 q2 装成"有内容"了，该选它');
   assert.equal(m.pickImageModel(st, 'flux-schnell-q4')?.id, 'flux-schnell-q4');
   assert.equal(m.pickImageModel(st, '不存在'), null);
   const lowMem = { models: st.models.map((x) => ({ ...x, usable: false })) };
   assert.equal(m.pickImageModel(lowMem), null, '内存都不够时返回 null，而不是硬选一个跑不动的');
+
+  // 内存不够的机器上（CI 的 macOS runner 就是 7 GB），理由要说内存而不是缺文件
+  const small = await m.sdImageStatus({ memGB: 7 });
+  assert.equal(small.ok, false);
+  assert.ok(small.models.every((x) => !x.usable));
+  assert.match(small.models[0].reason, /需要 ≥ \d+ GB 内存（本机 7 GB）/);
+  assert.equal(m.pickImageModel(small), null, '一档都跑不动时不该硬推一个');
 });
 
 test('模型没下全就出图 → 报清楚缺什么、该跑哪条命令，不是一句底层报错', async () => {

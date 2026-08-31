@@ -46,9 +46,32 @@ export const exportProjectBundle = async ({project, publicDir, output}) => {
     await fs.writeFile(path.join(temp, 'manifest.json'), `${JSON.stringify({format: 'openshorts-project', version: 1, projectId: project.id, assets, exportedAt: new Date().toISOString()}, null, 2)}\n`);
     await fs.mkdir(path.dirname(output), {recursive: true});
     await fs.rm(output, {force: true});
-    await run('zip', ['-q', '-r', output, '.'], {cwd: temp});
+    await zipCreate(output, temp);
     return {output, assets: assets.length};
   } finally { await fs.rm(temp, {recursive: true, force: true}); }
+};
+
+/**
+ * Windows 上没有 zip / unzip，只有 tar（Win10+ 自带 bsdtar，能读写 zip）。
+ * 这段一直无条件用 zip/unzip——CI 只跑 ubuntu，所以从来没暴露过；
+ * 三平台 CI 一开就是 `spawn zip ENOENT`。
+ */
+const WIN = process.platform === 'win32';
+const zipCreate = (output, cwd) => (WIN
+  ? run('tar', ['-a', '-c', '-f', output, '.'], {cwd})
+  : run('zip', ['-q', '-r', output, '.'], {cwd}));
+const zipList = async (archive) => {
+  if (!WIN) { const {stdout} = await run('unzip', ['-Z1', archive], {maxBuffer: 10 * 1024 * 1024}); return stdout.split(/\r?\n/).filter(Boolean); }
+  const {stdout} = await run('tar', ['-tf', archive], {maxBuffer: 10 * 1024 * 1024});
+  // bsdtar 列目录时会带结尾的 /，也会有 ./ 前缀，抹平成 unzip 的样子
+  return stdout.split(/\r?\n/).map((x) => x.replace(/^\.\//, '').replace(/\/$/, '')).filter(Boolean);
+};
+const zipExtract = (archive, dest) => (WIN ? run('tar', ['-xf', archive, '-C', dest]) : run('unzip', ['-q', archive, '-d', dest]));
+/** 解压后总大小。unzip -Z -t 一行就报；tar 没有等价物，只能逐条加。 */
+const zipUncompressed = async (archive) => {
+  if (!WIN) { const {stdout} = await run('unzip', ['-Z', '-t', archive]); return Number(stdout.match(/(\d+) bytes uncompressed/)?.[1] ?? 0); }
+  const {stdout} = await run('tar', ['-tvf', archive], {maxBuffer: 10 * 1024 * 1024});
+  return stdout.split(/\r?\n/).reduce((n, line) => n + (Number(line.trim().split(/\s+/)[2]) || 0), 0);
 };
 
 const replaceAssetPaths = (project, replacements) => {
@@ -63,17 +86,15 @@ const replaceAssetPaths = (project, replacements) => {
 };
 
 export const importProjectBundle = async ({archive, publicDir, namespace}) => {
-  const {stdout} = await run('unzip', ['-Z1', archive], {maxBuffer: 10 * 1024 * 1024});
-  const entries = stdout.split(/\r?\n/).filter(Boolean);
+  const entries = await zipList(archive);
   const errors = validateArchiveEntries(entries); if (errors.length) throw new Error(errors.join('\n'));
   if (entries.length > 5000) throw new Error('项目包文件数量超过 5000');
-  const {stdout: totals} = await run('unzip', ['-Z', '-t', archive]);
-  const uncompressed = Number(totals.match(/(\d+) bytes uncompressed/)?.[1] ?? 0);
+  const uncompressed = await zipUncompressed(archive);
   if (uncompressed > 1024 * 1024 * 1024) throw new Error('项目包解压后超过 1GB');
   if (!entries.includes('project.json')) throw new Error('压缩包缺少 project.json');
   const temp = await fs.mkdtemp(path.join(os.tmpdir(), 'openshorts-import-'));
   try {
-    await run('unzip', ['-q', archive, '-d', temp]);
+    await zipExtract(archive, temp);
     const project = JSON.parse(await fs.readFile(path.join(temp, 'project.json'), 'utf8'));
     const replacements = new Map(); let index = 0;
     for (const src of collectAssetPaths(project)) {

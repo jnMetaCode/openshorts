@@ -69,10 +69,11 @@ export async function sdImagePaths() {
   return { cli: path.join(OPENSHORTS_HOME, 'bin', `sd-cli${process.platform === 'win32' ? '.exe' : ''}`), modelsDir: path.join(OPENSHORTS_HOME, 'models') };
 }
 
-export async function sdImageStatus() {
+/** memGB 可注入：测试不该依赖跑在什么机器上（CI 的 macOS runner 只有 7 GB，比最低档还低） */
+export async function sdImageStatus({ memGB: memOverride } = {}) {
   const { cli, modelsDir } = await sdImagePaths();
   const cliFound = fs.existsSync(cli);
-  const memGB = Math.round(os.totalmem() / 1024 ** 3);
+  const memGB = memOverride ?? Math.round(os.totalmem() / 1024 ** 3);
   const models = SD_IMAGE_MODELS.map((m) => {
     // 要看大小不能只看存在：下载中断会留下 0 字节的壳，只查 existsSync 会把它当"已装"
     // （本机的 H3 模型目录就是这样——4 个 0 字节文件，AO 的状态里报 present:true）

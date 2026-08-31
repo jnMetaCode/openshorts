@@ -1,5 +1,20 @@
 # Changelog
 
+## [2.0.0-alpha.20] - 2026-08-31 · 三平台 CI 第一次跑，Windows 上两个真 bug 浮出来
+
+CI 扩到 ubuntu / macOS / windows 之后第一次真跑：ubuntu 与 docker 通过，**另外两个平台各挂两条**。
+这正是加三平台的目的——今天一半的问题都是平台差异，在开发机上怎么测都测不到。
+
+- **Windows 上 `spawn zip ENOENT`。** v1 的项目打包 `project-package.mjs` 无条件用 `zip` / `unzip`，
+  而 Windows 只有 `tar`（Win10+ 自带 bsdtar，能读写 zip）。发布包那边早就针对 Windows 用了 tar，
+  这里一直没改——因为 CI 只跑 ubuntu，从没暴露过。打包 / 列表 / 解压 / 算解压后大小四处都补上了。
+- **Windows 上归档路径带反斜杠。** `release-manifest` 的 `relative` 是"归档里的逻辑路径"，
+  用 `path.relative` 在 Windows 上给出 `a\b`，打进包里会变成一个名字里带反斜杠的文件。
+  归档路径一律用正斜杠。
+- **我新写的两条测试假设了机器内存够。** CI 的 macOS runner 只有 7 GB，低于本机出图最低档的 12 GB，
+  于是状态返回的是「需要 ≥ 12 GB 内存」而不是「缺 4 个模型文件」。给 `sdImageStatus` 加了可注入的
+  `memGB`，测试不再依赖跑在什么机器上，并补了一条"低内存机器上该说什么"的用例。
+
 ## [2.0.0-alpha.19] - 2026-08-31 · 干净环境装一遍，撞出三个只在"别人机器"上发生的问题
 
 把包 `npm pack` 出来装进一个空目录当普通依赖跑（就是别人 `npm i openshorts` 的样子）。

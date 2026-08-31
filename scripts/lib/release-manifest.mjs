@@ -17,7 +17,9 @@ export const collectReleaseFiles = ({root, projectPath, storyPath, timingsPath, 
   for (const src of publicSources) files.add(path.resolve(root, 'public', src.replace(/^\//, '')));
   const rootPrefix = `${path.resolve(root)}${path.sep}`;
   for (const file of files) if (!file.startsWith(rootPrefix)) throw new Error(`发布文件越出项目目录：${file}`);
-  return [...files].sort().map((file) => ({absolute: file, relative: path.relative(root, file)}));
+  // relative 是"归档里的路径"，不是本机路径——Windows 上 path.relative 给出 a\\b，
+  // 打进包里会变成一个名字带反斜杠的文件。归档路径一律用正斜杠。
+  return [...files].sort().map((file) => ({absolute: file, relative: path.relative(root, file).split(path.sep).join('/')}));
 };
 
 export const sha256File = (file) => new Promise((resolve, reject) => {
