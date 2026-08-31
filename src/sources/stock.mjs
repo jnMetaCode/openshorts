@@ -46,7 +46,7 @@ export async function searchPexels(query, { key, limit = 3, orientation = 'portr
   return (j.videos ?? []).filter((v) => (v.duration ?? 0) >= minDuration).slice(0, limit).map((v) => {
     const files = (v.video_files ?? []).filter((f) => f.file_type === 'video/mp4').sort((a, b) => (b.height ?? 0) - (a.height ?? 0));
     const best = files.find((f) => (f.height ?? 0) <= 1920 && (f.height ?? 0) >= 720) ?? files[0];
-    return { id: `pexels:${v.id}`, source: 'pexels', file: null, url: best?.link ?? null, width: best?.width ?? v.width, height: best?.height ?? v.height, duration: v.duration, license: 'Pexels License', author: v.user?.name ?? null, authorUrl: v.user?.url ?? null, page: v.url };
+    return { id: `pexels:${v.id}`, source: 'pexels', file: null, url: best?.link ?? null, thumb: v.image ?? null, width: best?.width ?? v.width, height: best?.height ?? v.height, duration: v.duration, license: 'Pexels License', author: v.user?.name ?? null, authorUrl: v.user?.url ?? null, page: v.url };
   });
 }
 
@@ -60,17 +60,39 @@ export async function searchPixabay(query, { key, limit = 3, minDuration = 0, fe
   const j = await r.json();
   return (j.hits ?? []).filter((v) => (v.duration ?? 0) >= minDuration).slice(0, limit).map((v) => {
     const f = v.videos?.large ?? v.videos?.medium ?? v.videos?.small;
-    return { id: `pixabay:${v.id}`, source: 'pixabay', file: null, url: f?.url ?? null, width: f?.width, height: f?.height, duration: v.duration, license: 'Pixabay Content License', author: v.user ?? null, page: v.pageURL };
+    return { id: `pixabay:${v.id}`, source: 'pixabay', file: null, url: f?.url ?? null, thumb: f?.thumbnail ?? (v.picture_id ? `https://i.vimeocdn.com/video/${v.picture_id}_640x360.jpg` : null), width: f?.width, height: f?.height, duration: v.duration, license: 'Pixabay Content License', author: v.user ?? null, page: v.pageURL };
   });
+}
+
+/**
+ * Commons 的转码版地址。原图 .../commons/1/17/NAME.webm 对应
+ * .../commons/transcoded/1/17/NAME.webm/NAME.webm.720p.vp9.webm。
+ *
+ * 为什么非要用它：Commons 上一段 75 秒的猫视频原文件 50 MB，而我们只截其中三四秒；
+ * 看图排序每镜还要下 3 条候选，6 镜就是 1 GB 起步。转码版同一条只有 7.6 MB。
+ * 竖屏成片是从横屏素材里裁中间那条 9:16，所以别取太低：按源高度挑 1080p / 720p / 480p。
+ * 老文件不一定有转码版（Commons 按需生成），所以同时留着原地址兜底。
+ */
+export function wikimediaTranscoded(url, height) {
+  const m = String(url).split('?')[0].match(/^(https:\/\/upload\.wikimedia\.org\/wikipedia\/commons)\/([0-9a-f])\/([0-9a-f]{2})\/(.+)$/i);
+  if (!m) return null;
+  const [, base, a, b, name] = m;
+  // 源本身就比 480p 还小时不存在转码版（Commons 只往下转不往上转），直接用原文件
+  const target = [1080, 720, 480].find((h) => h <= (height || 0));
+  return target ? `${base}/transcoded/${a}/${b}/${name}/${name}.${target}p.vp9.webm` : null;
 }
 
 /**
  * Wikimedia Commons（不要 key！CC / 公有领域，需署名）：真正零配置的免费素材源。
  * 检索 `filetype:video`，多为 webm/ogv，ffmpeg 都能吃；署名信息进 provenance（CC BY-SA 要求）。
  */
-export async function searchWikimedia(query, { limit = 3, fetchImpl = fetch } = {}) {
+export async function searchWikimedia(query, { limit = 3, minDuration = 0, maxDuration = 1800, fetchImpl = fetch } = {}) {
   const u = new URL('https://commons.wikimedia.org/w/api.php');
-  Object.entries({ action: 'query', generator: 'search', gsrsearch: `filetype:video ${query}`, gsrnamespace: '6', gsrlimit: String(Math.max(limit * 3, 9)), prop: 'imageinfo', iiprop: 'url|size|mime|extmetadata', iiextmetadatafilter: 'LicenseShortName|Artist|Credit|LicenseUrl', format: 'json', origin: '*' }).forEach(([k, v]) => u.searchParams.set(k, v));
+  Object.entries({ action: 'query', generator: 'search', gsrsearch: `filetype:video ${query}`, gsrnamespace: '6', gsrlimit: String(Math.max(limit * 3, 9)), prop: 'imageinfo', iiprop: 'url|size|mime|extmetadata', iiextmetadatafilter: 'LicenseShortName|Artist|Credit|LicenseUrl',
+    // 顺带要一张缩略图给看图排序用：seek=10 是为了躲开片头标题卡（真机被一段 1920 年代动画的标题卡坑过），
+    // 一次调用拿到，不额外往返；短于 10 秒的片子 MediaWiki 会自己回落到首帧
+    iiurlwidth: '640', iiurlparam: 'seek=10',
+    format: 'json', origin: '*' }).forEach(([k, v]) => u.searchParams.set(k, v));
   const r = await fetchImpl(u, { headers: { 'User-Agent': UA } });
   if (r.status === 429) throw new StockRateLimit('Wikimedia 触发限速，稍后再试');
   if (!r.ok) throw new Error(`Wikimedia ${r.status}`);
@@ -79,9 +101,19 @@ export async function searchWikimedia(query, { limit = 3, fetchImpl = fetch } = 
   // Wikimedia 的全文检索会命中描述里的任意词（"cardboard spectrometer"），要求标题里至少含一个查询实词，否则宁可空着让上层换词/降级
   const words = tokenize(query).filter((w) => w.length > 2);
   const relevant = (p) => !words.length || words.some((w) => String(p.title).toLowerCase().includes(w));
-  return pages.filter((p) => /^video\//.test(p.imageinfo?.[0]?.mime ?? '') && relevant(p)).slice(0, limit).map((p) => {
+  return pages.filter((p) => {
+    const ii = p.imageinfo?.[0]; if (!/^video\//.test(ii?.mime ?? '') || !relevant(p)) return false;
+    // imageinfo 一直返回 duration，之前没读——所以 minDuration 对 Wikimedia 一直是空转，
+    // 也没法在下载前把整部纪录片挡掉（我们只要三四秒）
+    const d = Number(ii.duration ?? 0);
+    return !d || (d >= minDuration && d <= maxDuration);
+  }).slice(0, limit).map((p) => {
     const ii = p.imageinfo[0]; const em = ii.extmetadata ?? {}; const strip = (h) => String(h ?? '').replace(/<[^>]+>/g, '').trim();
-    return { id: `wikimedia:${p.pageid}`, source: 'wikimedia', file: null, url: ii.url, width: ii.width, height: ii.height, duration: null, license: strip(em.LicenseShortName?.value) || 'CC（见页面）', licenseUrl: em.LicenseUrl?.value ?? null, author: strip(em.Artist?.value) || null, page: ii.descriptionurl ?? `https://commons.wikimedia.org/?curid=${p.pageid}`, title: p.title };
+    return { id: `wikimedia:${p.pageid}`, source: 'wikimedia', file: null,
+      url: wikimediaTranscoded(ii.url, ii.height) ?? ii.url, fallbackUrl: ii.url, thumb: ii.thumburl ?? null,
+      width: ii.width, height: ii.height, duration: Number(ii.duration ?? 0) || null, bytes: Number(ii.size ?? 0) || null,
+      license: strip(em.LicenseShortName?.value) || 'CC（见页面）', licenseUrl: em.LicenseUrl?.value ?? null, author: strip(em.Artist?.value) || null,
+      page: ii.descriptionurl ?? `https://commons.wikimedia.org/?curid=${p.pageid}`, title: p.title };
   });
 }
 
@@ -136,7 +168,9 @@ export async function materialize(candidate, { fetchImpl = fetch, maxBytes = 256
   const timer = setTimeout(() => ac.abort(), timeoutMs);
   const part = `${dest}.${process.pid}.part`;
   try {
-    const r = await fetchImpl(candidate.url, { headers: { 'User-Agent': UA }, redirect: 'follow', signal: ac.signal });
+    // 首选转码版（小得多），Commons 没给这个文件生成过就回落到原文件
+    let r = await fetchImpl(candidate.url, { headers: { 'User-Agent': UA }, redirect: 'follow', signal: ac.signal });
+    if (!r.ok && candidate.fallbackUrl && candidate.fallbackUrl !== candidate.url) r = await fetchImpl(candidate.fallbackUrl, { headers: { 'User-Agent': UA }, redirect: 'follow', signal: ac.signal });
     if (!r.ok) throw new Error(`下载素材失败 ${r.status}：${candidate.url}`);
     const declared = Number(r.headers?.get?.('content-length') || 0);
     if (declared > maxBytes) throw new StockTooLarge(`候选 ${candidate.id} 有 ${(declared / 1048576).toFixed(0)} MB，超过 ${(maxBytes / 1048576).toFixed(0)} MB 上限，换下一条`);

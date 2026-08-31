@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs'; import os from 'node:os'; import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { parseScores, rankCandidates } from '../src/sources/rank.mjs';
+import { parseScores, rankCandidates, evidenceFrame } from '../src/sources/rank.mjs';
 const hasFfmpeg = spawnSync('ffmpeg', ['-version']).status === 0;
 
 test('parseScores 宽松解析，越界忽略，分数夹到 0–10', () => {
@@ -33,4 +33,21 @@ test('只有一条候选也要送去打分：唯一候选恰恰最容易混进�
   assert.equal(ranked[0].score, 1);
   assert.equal(ranked[0].rejected, true, '不及格的唯一候选要被判退，让上层退纯色底');
   fs.rmSync(d, { recursive: true, force: true });
+});
+
+test('证据帧优先用来源自带的缩略图（几十 KB），不为了看一眼画面去下整条片', async () => {
+  const jpg = Buffer.from('/9j/4AAQSkZJRg==', 'base64');
+  const asked = [];
+  const fetchImpl = async (u) => { asked.push(String(u)); return { ok: true, headers: { get: () => 'image/jpeg' }, arrayBuffer: async () => jpg }; };
+  const got = await evidenceFrame({ id: 'wikimedia:1', thumb: 'https://x/thumb.jpg', url: 'https://x/huge.webm' }, { fetchImpl });
+  assert.match(got, /^data:image\/jpeg;base64,/);
+  assert.deepEqual(asked, ['https://x/thumb.jpg'], '只该去拿缩略图，不该碰视频地址');
+});
+
+test('缩略图挂了就按需把片子下下来抽帧——不能让没打过分的候选混进成片', async () => {
+  const fetchImpl = async () => ({ ok: false, status: 404, headers: { get: () => null } });
+  let downloaded = null;
+  const got = await evidenceFrame({ id: 'wikimedia:2', thumb: 'https://x/gone.jpg' }, { fetchImpl, getFile: async (c) => { downloaded = c.id; return null; } });
+  assert.equal(downloaded, 'wikimedia:2', '缩略图取不到时必须回落到下载');
+  assert.equal(got, null, '连片子也拿不到才返回空');
 });

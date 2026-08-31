@@ -38,6 +38,31 @@ export async function frameOf(file, atSec = null) {
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 }
 
+/**
+ * 候选的"证据帧"：优先用来源自带的缩略图（Wikimedia 的 seek=10 缩略图 / Pexels 的 image /
+ * Pixabay 的 thumbnail），几十 KB 就够看清主体是什么；只有没有缩略图的候选才退回"下整条片再抽帧"。
+ * 这一步以前是把 3 条候选全下下来再扔掉 2 条——Commons 上一条 75 秒的猫视频原文件 50 MB，
+ * 6 镜就是 1 GB 起步，而我们只是要看一眼画面里是什么。
+ */
+export async function evidenceFrame(candidate, { fetchImpl = fetch, timeoutMs = 20_000, getFile = null } = {}) {
+  if (candidate.thumb) {
+    const ac = new AbortController(); const timer = setTimeout(() => ac.abort(), timeoutMs);
+    try {
+      const r = await fetchImpl(candidate.thumb, { headers: { 'User-Agent': 'OpenShorts/2.0' }, redirect: 'follow', signal: ac.signal });
+      if (r.ok) {
+        const mime = String(r.headers?.get?.('content-type') || 'image/jpeg').split(';')[0];
+        if (/^image\/(jpeg|png|webp|gif)$/.test(mime)) return `data:${mime};base64,${Buffer.from(await r.arrayBuffer()).toString('base64')}`;
+      }
+    } catch { /* 缩略图取不到就走下面的抽帧 */ }
+    finally { clearTimeout(timer); }
+  }
+  // 缩略图拿不到（来源没有 / 还没生成）就退回"下整条片再抽中段帧"——宁可慢一条，
+  // 也不能让一条没被打分的候选混进成片（"没证据"和"判过了"是两回事）
+  if (candidate.file) return frameOf(candidate.file);
+  if (getFile) { const f = await getFile(candidate); if (f) return frameOf(f); }
+  return null;
+}
+
 /** 解析回复里的 JSON 数组 [{i, score, why}] */
 export function parseScores(text, n) {
   const m = String(text).match(/\[[\s\S]*\]/); if (!m) return null;
@@ -48,12 +73,12 @@ export function parseScores(text, n) {
  * candidates: [{ id, file }]（已 materialize）；返回按分排序的 [{ ...cand, score, why }]。
  * connector: AO 的 LLMConnector（chat(system, user, cfg)）；cfg: { provider, model, api_key? }
  */
-export async function rankCandidates(candidates, intent, { connector, cfg, threshold = 4, log = () => {} }) {
+export async function rankCandidates(candidates, intent, { connector, cfg, threshold = 4, log = () => {}, fetchImpl = fetch, getFile = null }) {
   // 只有一条候选也要过关："唯一候选"恰恰是最容易混进标题卡/无关画面的情况，
   // 以前这里直接放行，真机就漏过了一整镜英文标题卡。
   if (!connector || !candidates.length) return candidates.map((c) => ({ ...c, score: null }));
   const frames = [];
-  for (const c of candidates) { try { frames.push(await frameOf(c.file)); } catch { frames.push(null); } }
+  for (const c of candidates) { try { frames.push(await evidenceFrame(c, { fetchImpl, getFile })); } catch { frames.push(null); } }
   const usable = candidates.map((c, i) => ({ c, i, f: frames[i] })).filter((x) => x.f);
   if (!usable.length) return candidates.map((c) => ({ ...c, score: null }));
   const zh = /[一-鿿]/.test(intent);
@@ -68,6 +93,7 @@ export async function rankCandidates(candidates, intent, { connector, cfg, thres
   }
   if (!scores) return candidates.map((c) => ({ ...c, score: null }));
   const ranked = usable.map((x, k) => ({ ...x.c, score: scores[k].score, why: scores[k].why })).sort((a, b) => b.score - a.score);
-  const rest = candidates.filter((c) => !usable.some((x) => x.c.id === c.id)).map((c) => ({ ...c, score: null }));
+  const rest = candidates.filter((c) => !usable.some((x) => x.c.id === c.id)).map((c) => ({ ...c, score: null, unjudged: true }));
+  if (rest.length) log(`⚠️ ${rest.length} 条候选取不到画面证据，没能打分：${rest.map((c) => c.id).join('、')}`);
   return [...ranked.filter((c) => c.score >= threshold), ...rest, ...ranked.filter((c) => c.score < threshold).map((c) => ({ ...c, rejected: true }))];
 }

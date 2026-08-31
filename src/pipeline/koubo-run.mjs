@@ -143,13 +143,21 @@ export async function runKoubo(project, { outDir, log = () => {}, fetchImpl = fe
         // 没有没用过的候选时，宁可复用一条也别落到纯色底（复用会在 notes 里说明）
         if (!cands.length && used.size) { cands = await findCandidates(shot.query || shot.visualIntent, { localDirs: project.defaults.localDirs, used: new Set(), minDuration: 0, fetchImpl, ...(config ? { config } : {}) }); if (cands.length) notes.push(`镜头 ${shot.id} 复用了已用过的素材 ${cands[0].id}（候选不够）`); }
         if (judge && cands.length) {
-          // 看图排序：把候选都拉下来抽一帧，让模型按画面意图打分；全部不及格 → 当没找到
-          const withFiles = [];
-          for (const c of cands.slice(0, 3)) { try { withFiles.push({ ...c, file: await materialize(c, { fetchImpl }) }); } catch (e) { notes.push(`候选 ${c.id} 下载失败：${e.message.slice(0, 80)}`); } }
-          const ranked = await rankCandidates(withFiles, shot.visualIntent || shot.query, { connector: judge.connector, cfg: judge.cfg, log });
-          const top = ranked[0];
-          if (top && !top.rejected) { chosen = top; clip = top.file; log(`🔍 ${shot.id} 候选 ${ranked.map((r) => `${r.id.split(':')[0]}=${r.score ?? '-'}`).join(' ')} → 选 ${top.id}${top.why ? `（${top.why}）` : ''}`); }
-          else { notes.push(`镜头 ${shot.id} 的 ${ranked.length} 条候选都不贴合画面意图（${ranked.map((r) => `${r.score}`).join('/')}），退纯色底`); }
+          // 看图排序：先拿各来源自带的缩略图（几十 KB）打分，**只有中选的那条才真下**——
+          // 以前是 3 条全下再扔掉 2 条，Commons 的原文件动辄几十 MB。
+          // 没有缩略图的候选才回落到"先下再抽帧"。
+          // 没有缩略图（或缩略图挂了）的候选，rankCandidates 会通过 getFile 按需把它下下来再抽帧，
+          // 保证每条候选都真的被判过——常见情况下这个回调一次都不会被调用
+          const getFile = async (c) => { try { return await materialize(c, { fetchImpl }); } catch (e) { notes.push(`候选 ${c.id} 取不到：${e.message.slice(0, 80)}`); return null; } };
+          const ranked = await rankCandidates(cands.slice(0, 3), shot.visualIntent || shot.query, { connector: judge.connector, cfg: judge.cfg, log, fetchImpl, getFile });
+          log(`🔍 ${shot.id} 候选 ${ranked.map((r) => `${r.id.split(':')[0]}=${r.score ?? '-'}`).join(' ')}`);
+          // 按分数从高到低试着下载：中选那条下不动（超大 / 404）就顺位试下一条，不必重新打分
+          for (const cand of ranked.filter((r) => !r.rejected)) {
+            if (cand.unjudged) notes.push(`镜头 ${shot.id} 用了没能打分的候选 ${cand.id}（取不到画面证据）`);
+            try { clip = await materialize(cand, { fetchImpl }); chosen = cand; log(`  → 选 ${cand.id}${cand.why ? `（${cand.why}）` : ''}`); break; }
+            catch (e) { notes.push(`候选 ${cand.id} 取不到：${e.message.slice(0, 80)}`); }
+          }
+          if (!chosen) notes.push(`镜头 ${shot.id} 的 ${ranked.length} 条候选都不贴合画面意图或都取不到（${ranked.map((r) => `${r.score}`).join('/')}），退纯色底`);
         } else if (cands.length) {
           // 不看图时也别在第一条上吊死：第一条下不动（超大 / 超时 / 404）就顺位试下一条，别直接掉进纯色底
           const got = await materializeFirst(cands, { fetchImpl, onError: (c, e) => notes.push(`候选 ${c.id} 取不到：${e.message.slice(0, 80)}`) });

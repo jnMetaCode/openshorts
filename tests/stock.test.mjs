@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 process.env.OPENSHORTS_HOME = fs.mkdtempSync(path.join(os.tmpdir(), 'os-home-'));   // 测试不碰真实 ~/.openshorts（缓存会污染断言）
-const { searchLocal, searchPexels, searchWikimedia, findCandidates, StockRateLimit, StockTooLarge, relaxQueries, cacheTier, materialize, materializeFirst } = await import('../src/sources/stock.mjs');
+const { searchLocal, searchPexels, searchWikimedia, findCandidates, StockRateLimit, StockTooLarge, relaxQueries, cacheTier, materialize, materializeFirst, wikimediaTranscoded } = await import('../src/sources/stock.mjs');
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'os-stock-'));
 fs.writeFileSync(path.join(dir, 'cat_cardboard_box.mp4'), 'x');
@@ -96,4 +96,24 @@ test('materializeFirst：第一条取不到就顺位试下一条，不直接掉�
   const got = await materializeFirst([{ id: 'a:1', url: 'https://x/bad.mp4' }, { id: 'a:2', url: 'https://x/good.mp4' }], { fetchImpl, onError: (c, e) => errs.push(c.id) });
   assert.equal(got.candidate.id, 'a:2');
   assert.deepEqual(errs, ['a:1']);
+});
+
+test('Wikimedia 用转码版而不是原文件（一段 75s 的猫视频原文件 50 MB，我们只截三四秒）', () => {
+  const orig = 'https://upload.wikimedia.org/wikipedia/commons/1/17/Lotti.webm';
+  assert.equal(wikimediaTranscoded(orig, 1080), 'https://upload.wikimedia.org/wikipedia/commons/transcoded/1/17/Lotti.webm/Lotti.webm.1080p.vp9.webm');
+  assert.equal(wikimediaTranscoded(orig, 720), 'https://upload.wikimedia.org/wikipedia/commons/transcoded/1/17/Lotti.webm/Lotti.webm.720p.vp9.webm');
+  assert.equal(wikimediaTranscoded(orig, 240), null, '源比 480p 还小时没有转码版，用原文件');
+  assert.equal(wikimediaTranscoded(orig + '?utm_source=x', 1080).includes('?'), false, '要先把跟踪参数去掉再拼路径');
+  assert.equal(wikimediaTranscoded('https://example.com/a.webm', 1080), null, '不是 Commons 的地址就别乱拼');
+});
+
+test('Wikimedia 候选带上时长与缩略图；太长的整部纪录片在下载前就挡掉', async () => {
+  const page = (id, title, duration) => ({ pageid: id, title, imageinfo: [{ url: `https://upload.wikimedia.org/wikipedia/commons/1/17/${title.replace('File:', '')}`, mime: 'video/webm', height: 1080, size: 5e6, duration, thumburl: 'https://x/t.jpg', extmetadata: {} }] });
+  const fetchImpl = async () => ({ ok: true, status: 200, json: async () => ({ query: { pages: { 1: page(1, 'File:Cat short.webm', 20), 2: page(2, 'File:Cat documentary.webm', 3600) } } }) });
+  const r = await searchWikimedia('cat', { fetchImpl, maxDuration: 1800 });
+  assert.deepEqual(r.map((c) => c.id), ['wikimedia:1'], '一小时的片子不该进候选');
+  assert.equal(r[0].duration, 20);
+  assert.equal(r[0].thumb, 'https://x/t.jpg');
+  assert.ok(r[0].url.includes('/transcoded/'));
+  assert.ok(r[0].fallbackUrl && !r[0].fallbackUrl.includes('/transcoded/'), '原地址要留着兜底');
 });
