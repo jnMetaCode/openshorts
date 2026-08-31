@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { readConfig, writeConfig, aoHome } from '../src/config.mjs';
 import { sourcesAvailability } from '../src/sources/availability.mjs';
 import { DEFAULT_VOICES, synthesize } from '../src/voice/edge-tts.mjs';
-import { buildKouboProject } from '../src/project/koubo.mjs';
+import { buildKouboProject, uniqueProjectId } from '../src/project/koubo.mjs';
 import { runKoubo } from '../src/pipeline/koubo-run.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -51,6 +51,7 @@ kaipian.post('/new', async (req, res, next) => {
     const r = await run(path.join(root, 'templates', 'koubo-kepu.yaml'), inputs, { quiet: true, outputDir: path.join(cfg.outputDir, '.ao-runs'), ...over });
     if (!r.success) return res.status(502).json({ error: '脚本生成失败：' + r.steps.filter((s) => s.status === 'failed').map((s) => `${s.id}: ${s.error}`).join('；') });
     const project = buildKouboProject(r, { topic: inputs.topic, inputs, defaults: { voice: b.voice || cfg.tts?.voice, captionPreset: b.captions || 'douyin', visualSource: b.source || 'stock', localDirs: b.localDir ? [path.resolve(String(b.localDir))] : [], bgm: b.bgm ? path.resolve(String(b.bgm)) : null } });
+    project.id = uniqueProjectId(cfg.outputDir, safe(project.id));   // 同话题再跑一次不该覆盖上一条片子
     fs.mkdirSync(projDir(project.id), { recursive: true });
     fs.writeFileSync(path.join(projDir(project.id), 'project.json'), JSON.stringify(project, null, 2));
     res.json(project);

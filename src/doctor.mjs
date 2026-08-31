@@ -41,6 +41,8 @@ export async function doctor() {
   const mem = Math.round(os.totalmem() / 1024 ** 3); add('ok', `内存 ${mem} GB · ${os.cpus().length} 核 · ${process.platform}/${process.arch}`);
   const cfg = readConfig(); try { fs.mkdirSync(cfg.outputDir, { recursive: true }); fs.accessSync(cfg.outputDir, fs.constants.W_OK); add('ok', `输出目录可写：${cfg.outputDir}`); } catch { add('fail', `输出目录不可写：${cfg.outputDir}（在 ~/.openshorts/config.json 改 outputDir）`); }
   add(has('whisper-cli') ? 'ok' : 'warn', has('whisper-cli') ? 'whisper.cpp 就绪（无词级时间戳时可对齐字幕）' : '未装 whisper.cpp（可选；Edge TTS 自带词级时间戳时不需要）');
+  try { const { cacheStats } = await import('./sources/stock.mjs'); const cs = cacheStats();
+    if (cs.files) add('ok', `素材缓存 ${cs.files} 个文件 · ${(cs.bytes / 1048576).toFixed(0)} MB（${cs.dir}，出片时自动清理 30 天未用的，上限 2 GB）`); } catch { /* 无缓存 */ }
   const src = sourcesAvailability();
   for (const [k, label] of [['stock', '素材库'], ['image', 'AI 配图'], ['local', '本地生成'], ['cloud', '云端出片']]) add(src[k].ok ? 'ok' : 'warn', `${label}：${src[k].reason}`);
   return items;

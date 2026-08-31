@@ -305,6 +305,43 @@ export const licenseLabel = (lic, ver) => {
   return `${/^(CC0|PDM)/.test(L) ? L : `CC ${L}`} ${ver ?? ''}`.trim();
 };
 
+
+/**
+ * 素材缓存的清理。以前只有**索引**有 7 天 TTL，下载下来的视频/图片**一个都不删**——
+ * 真机跑了一天测试就 90 MB，长期用会涨到几个 GB，而用户根本不知道它在哪、能不能删。
+ * 规则：先按年龄删（默认 30 天没用过的），还超上限就从最旧的开始删到上限以下。
+ * 只动缓存目录里的媒体文件，索引另算；删失败一律忽略（清理不该拖垮出片）。
+ */
+export function pruneCache({ maxBytes = 2 * 1024 ** 3, maxAgeDays = 30, now = Date.now() } = {}) {
+  let files = [];
+  try {
+    files = fs.readdirSync(CACHE_DIR)
+      .filter((n) => /\.(webm|ogv|ogg|mov|mp4|m4v|jpe?g|png|webp|gif)$/i.test(n))
+      .map((n) => { const p = path.join(CACHE_DIR, n); const st = fs.statSync(p); return { p, n, size: st.size, mtime: st.mtimeMs }; });
+  } catch { return { removed: 0, freed: 0, kept: 0, bytes: 0 }; }
+  const drop = (f) => { try { fs.rmSync(f.p, { force: true }); return true; } catch { return false; } };
+  let removed = 0, freed = 0;
+  const cutoff = now - maxAgeDays * 86400e3;
+  let live = [];
+  for (const f of files) { if (f.mtime < cutoff && drop(f)) { removed++; freed += f.size; } else live.push(f); }
+  let total = live.reduce((n, f) => n + f.size, 0);
+  live.sort((a, b) => a.mtime - b.mtime);              // 最旧的先删
+  while (total > maxBytes && live.length) {
+    const f = live.shift();
+    if (drop(f)) { removed++; freed += f.size; total -= f.size; }
+  }
+  return { removed, freed, kept: live.length, bytes: total };
+}
+
+/** 缓存现状（给 doctor 和界面看：多少个文件、占多大） */
+export function cacheStats() {
+  try {
+    const files = fs.readdirSync(CACHE_DIR).filter((n) => /\.[a-z0-9]+$/i.test(n));
+    const bytes = files.reduce((n, f) => { try { return n + fs.statSync(path.join(CACHE_DIR, f)).size; } catch { return n; } }, 0);
+    return { files: files.length, bytes, dir: CACHE_DIR };
+  } catch { return { files: 0, bytes: 0, dir: CACHE_DIR }; }
+}
+
 export class StockRateLimit extends Error {}
 export class StockTooLarge extends Error {}
 export const tokenize = (q) => String(q).toLowerCase().split(/[^a-z0-9\u4e00-\u9fff]+/).filter((w) => w.length > 1);

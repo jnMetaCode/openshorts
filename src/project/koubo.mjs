@@ -1,3 +1,5 @@
+import fsSync from 'node:fs';
+import pathSync from 'node:path';
 /**
  * 口播线项目 JSON（架构 §2）：由 AO 跑完「口播科普」模板的结果（segments_json / meta_json）构建。
  * 镜头 = 钩子 + 各段 + 收尾；每镜先只带文案与画面意图，画面/配音/字幕由 run 阶段填。纯函数。
@@ -43,4 +45,17 @@ const safeId = (id, i) => String(id ?? '').replace(/[^a-zA-Z0-9_-]/g, '').slice(
 // imagePrompt 单独存一份：query 是给素材库按关键词检索用的（越短越好），
 // 而落到本机文生图的恰恰是那些 query 太弱、检索不到的镜头——拿检索词去画画，画出来的就是关键词堆
 const shot = (id, text, visualIntent, query, emphasis, source = null, imagePrompt = '') => ({ id, text: String(text ?? '').trim(), visualIntent: visualIntent ?? '', query: query ?? '', imagePrompt: String(imagePrompt ?? '').trim(), emphasis: Array.isArray(emphasis) ? emphasis : [], visual: { source, provider: null, file: null, candidateId: null, cost: { kind: 'free' } }, audio: null, durationSec: null, status: 'planned' });
+/**
+ * 目录没被占就用干净的 id；被**别的**项目占了就加时间戳。
+ * 不加这一层的话，同一个话题跑第二次会直接覆盖前一个项目——连出好的成片一起没了。
+ * （短剧线的 id 本来就带时间戳，口播线一直漏着。）
+ */
+export function uniqueProjectId(outputDir, id, fsImpl) {
+  const fsm = fsImpl ?? fsSync;
+  // new 每次都是重新写的脚本，即使话题一样也是另一条片子——目录被占就换一个，不覆盖
+  if (!fsm.existsSync(pathSync.join(outputDir, id, 'project.json'))) return id;
+  const stamp = new Date().toISOString().slice(5, 16).replace(/[-:T]/g, '');
+  return `${id}-${stamp}`;
+}
+
 const slug = (s) => String(s).toLowerCase().replace(/[^a-z0-9一-鿿]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'koubo';

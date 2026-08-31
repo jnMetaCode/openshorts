@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildKouboProject, parseJsonLoose } from '../src/project/koubo.mjs';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { buildKouboProject, parseJsonLoose, uniqueProjectId } from '../src/project/koubo.mjs';
 
 const aoResult = { name: '口播科普', success: true, steps: [
   { id: 'script', status: 'completed', output: '好的，脚本如下：\n{"hook":"猫为什么总爱钻纸箱？","segments":[{"id":"s1","text":"第一段","visualIntent":"猫钻箱","query":"cat inside cardboard box","emphasis":["安全感"]},{"id":"s2","text":"第二段","visualIntent":"猫科动物伏击","query":"wild cat stalking grass"}],"outro":"关注我，下期讲狗。"}' },
@@ -27,4 +30,16 @@ test('选"只用纯色底"时每个镜头标 solid，run 不会去查素材库',
   assert.ok(p.shots.every((s) => s.visual.source === 'solid'));
   const q = buildKouboProject(aoResult, { topic: 'x' });
   assert.ok(q.shots.every((s) => s.visual.source === null));
+});
+
+test('同一个话题跑第二次不该覆盖上一条片子', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'os-uid-'));
+  assert.equal(uniqueProjectId(dir, '猫为什么钻纸箱'), '猫为什么钻纸箱', '目录空着就用干净的 id');
+
+  fs.mkdirSync(path.join(dir, '猫为什么钻纸箱'), { recursive: true });
+  fs.writeFileSync(path.join(dir, '猫为什么钻纸箱', 'project.json'), '{"id":"猫为什么钻纸箱"}');
+  const second = uniqueProjectId(dir, '猫为什么钻纸箱');
+  assert.notEqual(second, '猫为什么钻纸箱', 'new 每次都是新写的脚本，即使话题一样也是另一条片子');
+  assert.match(second, /^猫为什么钻纸箱-\d{8}$/);
+  fs.rmSync(dir, { recursive: true, force: true });
 });

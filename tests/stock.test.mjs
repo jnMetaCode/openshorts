@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 process.env.OPENSHORTS_HOME = fs.mkdtempSync(path.join(os.tmpdir(), 'os-home-'));   // 测试不碰真实 ~/.openshorts（缓存会污染断言）
-const { searchLocal, searchPexels, searchWikimedia, findCandidates, StockRateLimit, StockTooLarge, relaxQueries, cacheTier, materialize, materializeFirst, wikimediaTranscoded, searchWikimediaImages, commonsThumbWidth, searchOpenverse } = await import('../src/sources/stock.mjs');
+const { searchLocal, searchPexels, searchWikimedia, findCandidates, StockRateLimit, StockTooLarge, relaxQueries, cacheTier, materialize, materializeFirst, wikimediaTranscoded, searchWikimediaImages, commonsThumbWidth, searchOpenverse, pruneCache, cacheStats } = await import('../src/sources/stock.mjs');
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'os-stock-'));
 fs.writeFileSync(path.join(dir, 'cat_cardboard_box.mp4'), 'x');
@@ -170,4 +170,33 @@ test('取材顺序即优先级：图片源在前，中间给视频留一个位',
   const r = await findCandidates('otter raft', { config: { stock: {} }, fetchImpl });
   assert.deepEqual(r.map((c) => c.kind), ['image', 'image', 'video'], '两张图 + 一条视频：没开看图排序时排头的图中选，开了才有得挑');
   assert.equal(r.filter((c) => c.source === 'openverse').length, 2, '每个源自己的 limit 不能被外层总额顶掉');
+});
+
+test('素材缓存会清理：先删旧的，还超上限就从最旧的继续删', () => {
+  const dir = path.join(process.env.OPENSHORTS_HOME, 'cache', 'stock');
+  fs.mkdirSync(dir, { recursive: true });
+  const now = Date.now();
+  const mk = (name, sizeKb, ageDays) => {
+    const f = path.join(dir, name);
+    fs.writeFileSync(f, Buffer.alloc(sizeKb * 1024));
+    fs.utimesSync(f, new Date(now - ageDays * 86400e3), new Date(now - ageDays * 86400e3));
+  };
+  mk('a.webm', 100, 90);   // 太旧
+  mk('b.mp4', 100, 1);
+  mk('c.jpg', 100, 2);
+  mk('keep.json', 10, 90); // 索引之类的不归它管
+  fs.mkdirSync(path.join(dir, 'index'), { recursive: true });
+
+  let r = pruneCache({ maxBytes: 10 ** 9, maxAgeDays: 30, now });
+  assert.equal(r.removed, 1, '只有 90 天没用过的那个该删');
+  assert.ok(fs.existsSync(path.join(dir, 'keep.json')), '不是媒体文件的别碰');
+  assert.ok(fs.existsSync(path.join(dir, 'b.mp4')));
+
+  r = pruneCache({ maxBytes: 150 * 1024, maxAgeDays: 30, now });
+  assert.equal(r.removed, 1, '超上限就从最旧的开始删，删到上限以下为止');
+  assert.ok(r.bytes <= 150 * 1024);
+  assert.ok(fs.existsSync(path.join(dir, 'b.mp4')), '最新的那个留着');
+
+  const st = cacheStats();
+  assert.ok(st.files >= 1 && st.bytes > 0);
 });

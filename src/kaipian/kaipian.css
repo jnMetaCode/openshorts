@@ -65,3 +65,7 @@ body:has(.kp){overflow:auto}
 /* 成片播放器跟着滚动条粘住：右边内容很长，划到质检时左边还能看见片子 */
 .kp-final-grid{grid-template-columns:340px minmax(0,1fr)}
 .kp-final video{width:340px;position:sticky;top:12px}
+
+/* 项目列表：标题来自模型，同话题出几版会完全重名，第二行给 id + 时间 */
+.kp-aside .kp-projs li span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kp-aside .kp-projs li em{display:block;font-style:normal;color:#6d645b;font-size:10px;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

@@ -63,7 +63,7 @@ switch (cmd) {
     const opt = parseOpts(rest.slice(1));
     if (!opt.topic) { console.error('缺 --topic "话题或文案"'); process.exit(1); }
     const { run } = await import('agency-orchestrator');
-    const { buildKouboProject } = await import('../src/project/koubo.mjs');
+    const { buildKouboProject, uniqueProjectId } = await import('../src/project/koubo.mjs');
     const { readConfig } = await import('../src/config.mjs');
     const cfg = readConfig();
     const wf = path.join(root, 'templates', 'koubo-kepu.yaml');
@@ -79,6 +79,7 @@ switch (cmd) {
     }
     if (!res.success) { console.error('脚本步骤失败：', res.steps.filter((s) => s.status === 'failed').map((s) => `${s.id}: ${s.error}`).join('; ')); process.exit(1); }
     const project = buildKouboProject(res, { topic: opt.topic, inputs, defaults: { voice: opt.voice || cfg.tts?.voice, captionPreset: opt.captions || 'douyin', localDirs: opt['local-dir'] ? [path.resolve(opt['local-dir'])] : [], bgm: opt.bgm ? path.resolve(opt.bgm) : null } });
+    project.id = uniqueProjectId(cfg.outputDir, project.id);   // 同话题再跑一次不该覆盖上一条片子
     const dir = path.join(cfg.outputDir, project.id); fs.mkdirSync(dir, { recursive: true });
     const pf = path.join(dir, 'project.json'); fs.writeFileSync(pf, JSON.stringify(project, null, 2));
     console.log(`✓ 项目已建：${pf}\n  ${project.shots.length} 个镜头 · 标题候选：${project.publish.titles[0] ?? '（无）'}\n  下一步：openshorts run "${pf}"`);

@@ -7,7 +7,7 @@ import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { synthesize } from '../voice/edge-tts.mjs';
-import { findCandidates, materialize, materializeFirst } from '../sources/stock.mjs';
+import { findCandidates, materialize, materializeFirst, pruneCache } from '../sources/stock.mjs';
 import { buildCues, estimateWords, toSRT, toASS, alignPunctuation } from '../captions/build.mjs';
 import { renderSegment, concatSegments, finalize, probeDuration, hasFilter } from '../compose/koubo.mjs';
 import { checkKoubo } from '../quality/check.mjs';
@@ -252,6 +252,8 @@ export async function runKoubo(project, { outDir, log = () => {}, fetchImpl = fe
   project.final = { file: out, srt, cover: fs.existsSync(cover) ? cover : null, publish: publishTxt, durationSec: await probeDuration(out), notes };
   // 6) 自动质检（只报事实）
   try { project.final.quality = await checkKoubo(project, { burnedCaptions: await hasFilter('subtitles') }); log(`🔍 质检 ${project.final.quality.pass ? '通过' : '有问题'}，${project.final.quality.warnings} 条提醒`); } catch (e) { notes.push(`质检失败：${e.message}`); }
+  // 出完片顺手清一次缓存：它只涨不减，而用户既不知道它在哪也不知道能不能删
+  try { const r = pruneCache(); if (r.removed) log(`🧹 清理素材缓存：删了 ${r.removed} 个旧文件，腾出 ${(r.freed / 1048576).toFixed(0)} MB`); } catch { /* 清理失败不影响成片 */ }
   save();
   return project;
 }
