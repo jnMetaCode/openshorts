@@ -1,56 +1,87 @@
-# OpenShorts
+# OpenShorts · 开片
 
-![OpenShorts 演示](docs/assets/openshorts-hero.jpg)
+**文案进，成片出。** 一条本地优先的开源短视频生产线：给一个话题，它写脚本、找画面、配音、烧字幕、出成片和发布文案——
+**默认零成本跑通第一条**，花多少钱、等多久，运行前就告诉你。
 
-<p align="center"><img src="docs/assets/openshorts-demo.gif" width="800" alt="OpenShorts 自举演示：这条视频由它自己生成"></p>
+<p align="center"><img src="docs/cases/koubo-onion/onion-12s.gif" width="260" alt="《为什么切洋葱会流眼泪》——0 元 0 key 生成"></p>
+<p align="center"><sub>上面这条 60 秒的片子：0 元、0 个付费 key，6 镜里 2 镜是素材库没货时本机现画的 · <a href="docs/cases/koubo-onion/">看完整案例</a></sub></p>
 
-![License](https://img.shields.io/badge/license-MIT-green) ![Node](https://img.shields.io/badge/node-%E2%89%A520-brightgreen) ![Tests](https://img.shields.io/badge/tests-121%20passing-brightgreen) ![Format](https://img.shields.io/badge/format-9%3A16%20%7C%2016%3A9-blue)
+![License](https://img.shields.io/badge/license-MIT-green) ![Node](https://img.shields.io/badge/node-%E2%89%A520-brightgreen) ![Tests](https://img.shields.io/badge/tests-183%20passing-brightgreen) ![CI](https://img.shields.io/badge/CI-ubuntu%20%7C%20macOS%20%7C%20windows-brightgreen) ![Format](https://img.shields.io/badge/format-9%3A16%20%7C%2016%3A9-blue)
 
-> **v2 方向（2026-08-30 定案）**：OpenShorts · 开片 = **两条内容线（口播短视频 / AI 短剧）× 三种画面来源（素材库 / 本地 AI 生成 / 云端 API）**，编排与出片引擎复用 [agency-orchestrator](https://github.com/jnMetaCode/agency-orchestrator)。默认零成本跑通第一条片，花多少钱在运行前看见。需求 / 架构 / 计划 / 决策见 [`docs/v2/`](docs/v2/00-README.md)。下面的剪纸动画 / 信息板路线作为"图层动画"来源保留。
+```bash
+npx openshorts          # 起本地服务并打开浏览器（http://127.0.0.1:4174）
+```
 
-一条本地优先的开源短视频生产线：**文案进，成片出**。三条内容路线共用同一套 JSON 协议、Remotion 渲染与七道质量门禁——上面这条演示 GIF，就是它自己渲的。
+需要 Node.js 20+ 和 FFmpeg。**装完先跑一次 `openshorts doctor`**——它会告诉你这台机器现在能不能出片，以及缺什么。
 
-> **English**: OpenShorts is a local-first, open-source short-video production line — script in, finished video out. Three content routes (paper-cut story animation / info-board tech explainer / product demo) share one JSON protocol, a Remotion renderer with an FFmpeg fallback, per-story TTS + synthesized music, platform-safe burned subtitles, and a seven-gate QA pipeline (loudness −14 LUFS, true peak, caption safe-zones, asset provenance, Whisper content verification, SHA-256 release manifest). The demo GIF above was rendered by the pipeline itself.
+---
+
+## 长什么样
+
+四步走完一条片：**输入 → 来源与花费 → 预览与调整 → 出片与发布**。右侧常驻栏回答"我这台机器现在能干什么"，
+模型也在那里配（写脚本的模型、看图把关的模型，存之前会拿它真发一次请求验一下）。
+
+### ① 输入
+
+![输入](docs/assets/ui/input.png)
+
+给个话题，或直接粘一整段文案，也可以贴一个文章链接让它抓正文。目标时长和语气可选。
+
+### ③ 预览与调整——**每一镜都能改**
+
+![预览与调整](docs/assets/ui/edit.png)
+
+AI 拆出的每一镜都摊开给你：**口播文案**、**画面意图**、**英文检索词**，全都可以直接改。
+改完只重出那一镜——配音按"文案 + 音色 + 语速"的指纹复用，画面按素材指纹复用，没动过的镜头一秒都不重跑。
+
+### ④ 出片与发布
+
+![出片与发布](docs/assets/ui/final.png)
+
+成片、SRT、封面一次给全；标题点一下就复制；**每一条素材的作者与许可证都列出来**（CC BY-SA 要求的署名一条不少）；
+自动质检逐项报事实（分辨率 / 时长偏差 / 响度 / 字幕有没有烧进画面 / AI 标识 / 有几镜是本机生成的）；
+最后按平台规格打发布包——**不自动发布**，拖进后台由你决定。
 
 ## 为什么选开片（和 MoneyPrinterTurbo 们的区别）
 
 | 你关心的 | 开片 | 素材拼片类工具（如 MoneyPrinterTurbo） | 平台一键 AI 工具 |
 |---|---|---|---|
-| **第一条片要花多少钱、要配什么** | **0 元、0 个 key**：Wikimedia Commons 的 CC 图片（完整图 + 虚化垫底 + 缓推）与视频 + Edge TTS + 本机 ffmpeg；注册免费 Pexels key 后换成实拍视频，画面更好 | 要先注册素材库 key | 会员 / 积分 |
-| **画面从哪来** | 素材库 · 本地 AI（sd.cpp，草稿档不花钱）· 云端 AI（秘塔 / 火山 / Agnes …）· 图层动画，**同一条片可混用、一键切** | 只有素材库（近期加了一家云端） | 只有平台自家模型 |
-| **花钱之前知道要花多少** | 运行前按所选供应商 / 档位 / 秒数给数量级，确认后才跑 | 无 | 事后看余额 |
-| **谁来把关** | 看图验收员：审 AI 出的每一镜、给素材候选按"画面意图"打分（把量子图表从猫科普里踢出去）、成片自动质检（响度 / 时长 / 字幕 / AI 标识）。**看图把关要配一个能看图的模型**；没配时质检会明说"这些画面没人看过" | 无 | 人工 |
-| **改一镜要不要全重来** | 单镜重出：短剧按验收意见 / 提意见 / 换来源；口播改一句话只重出那一镜（配音按文案指纹复用，画面按素材指纹复用） | 全部重跑 | 重新生成 |
+| **第一条片要花多少钱、要配什么** | **0 元、0 个 key**：CC 图片（完整图 + 虚化垫底 + 缓推）与视频 + Edge TTS + 本机 ffmpeg；注册免费 Pexels key 后换成实拍视频，画面更好 | 要先注册素材库 key | 会员 / 积分 |
+| **素材库没货怎么办** | **本机现画一张**（FLUX.1-schnell，Apache-2.0 可商用，不花钱不联网）——洋葱、抽象概念这类题材素材库里本来就没有 | 只能凑合用不相干的 | 平台自家模型 |
+| **画面从哪来** | 素材库 · 本机出图 · 本地出片（sd.cpp）· 云端 AI（秘塔 / 火山 / Agnes …）· 图层动画，**同一条片可混用** | 只有素材库（近期加了一家云端） | 只有平台自家模型 |
+| **谁来把关** | 看图验收员：每条候选素材抽一帧按"画面意图"打 0–10 分，**≥6 才能当主画面，4–5 只能补切段，<4 判退**，不及格就回落到本机出图。没配看图模型时，质检会明说"这些画面没人看过" | 无 | 人工 |
+| **画面多久换一次** | 一镜切多段，**平均 4–6 秒一换**（不切时是 10 秒），切到的每一段都过了相关性门槛 | 随机拼接，不做相关性检查 | 黑盒 |
+| **花钱之前知道要花多少** | 运行前按所选供应商 / 档位 / 秒数给数量级；口播线钱恒为 0，`estimate` 报的是**要等多久** | 无 | 事后看余额 |
+| **改一镜要不要全重来** | 单镜重出：口播改一句话只重出那一镜；短剧按验收意见 / 提意见 / 换来源 | 全部重跑 | 重新生成 |
 | **脚本谁写** | 276 位专家角色分工（科普作者写稿、抖音策略师起标题、编剧拆三镜） | 一个通用 prompt | 黑盒 |
 | **数据在哪** | 本地优先：key 只存本机，产物在你硬盘，素材署名与 AI 标识写进发布文案 | 本地 | 云端 |
-| **怎么装** | `npx openshorts` 一行 / 桌面端 / Docker | Python 环境 / 整合包 | App |
+| **怎么装** | `npx openshorts` 一行 / Docker | Python 环境 / 整合包 | App |
 
 一句话：**别人给你一个出片按钮，开片给你一条能看见成本、能被审、能改单镜的生产线。**
 
 ## 成片示例
+
+**v2 · 开片**（由四步界面或 `openshorts` 命令行生成）
+
+| 成片 | 路线 | 时长 | 案例 |
+| --- | --- | --- | --- |
+| 《为什么切洋葱会流眼泪》 | 口播科普 · CC 素材 + **本机 FLUX 出图** · 看图把关 · 一镜切多段 · **0 元 0 key** | 60s | [docs/cases/koubo-onion](docs/cases/koubo-onion/) |
+| 《猫为什么总爱钻纸箱》 | 口播科普 · 免 key 素材 · Edge TTS（**早期版本**，字幕与画面都不如上面那条，留作对照） | 37s | [docs/cases/koubo-cat-box](docs/cases/koubo-cat-box/) |
+| 《深夜便利店》本地草稿档 | AI 短剧 · 本地 sd.cpp · MiniMax-H3 Q2 · **0 元** | 7s | [docs/cases/drama-convenience-store](docs/cases/drama-convenience-store/) |
+| 《深夜便利店》云端成片档 | AI 短剧 · Agnes agnes-video-2.5-flash | 13s | 同上（同一故事的草稿 vs 成片对照） |
+
+**v1 · 图层动画**（纸片剪纸风格，`npm run story -- <名字> render` 渲出，见文末）
 
 | 成片 | 路线 | 时长 | 内容源 |
 | --- | --- | --- | --- |
 | 《后羿射日》 | 故事片 · 纸片动画 | 62s | [content/nine-suns](content/nine-suns) |
 | 《三天荔枝道》 | 故事片 · 纸片动画 | 55s | [content/lychee-road](content/lychee-road) |
 | 《这条视频是它自己生成的》 | 产品演示 · 自举 | 48s | [content/openshorts-demo](content/openshorts-demo) |
-| 《为什么切洋葱会流眼泪》 | 口播科普 · CC 素材 + **本机 FLUX 出图** · 看图把关 · 一镜切多段 · **0 元 0 key** | 60s | [docs/cases/koubo-onion](docs/cases/koubo-onion/) |
-| 《猫为什么总爱钻纸箱》 | 口播科普 · Wikimedia 免 key 素材 · Edge TTS · 看图排序 · **0 元 0 key**（早期版本，画面与字幕都不如上面那条，保留作对照） | 37s | [docs/cases/koubo-cat-box](docs/cases/koubo-cat-box/) |
-| 《深夜便利店》本地草稿档 | AI 短剧 · 本地 sd.cpp · MiniMax-H3 Q2 · **0 元** | 7s | [docs/cases/drama-convenience-store](docs/cases/drama-convenience-store/) |
-| 《深夜便利店》云端成片档 | AI 短剧 · Agnes agnes-video-2.5-flash | 13s | 同上（同一故事的草稿 vs 成片对照） |
 
-前四条由 v1 `npm run story -- <名字> render` 渲出；AI 短剧两条由 v2「开片」界面生成，标注了出片方与模型（示例均由 OpenShorts 实际生成）。
+示例均由 OpenShorts 实际生成；案例页里连"哪一镜不够好、为什么"都如实标着。
 
-> 当前为 v1.0：覆盖文案分镜、分层素材、审核溯源、关键帧、旁白波形、本地 ASR 逐字字幕、Remotion 渲染和 FFmpeg 验收，并提供 Docker 与 CI。
-
-## 为什么这样做
-
-原方法论的真正价值不是某一条唐朝视频，而是四个可以产品化的约束：
-
-1. **先镜头，后素材**：每个镜头有独立时长、构图与素材清单。
-2. **叙事权重驱动运动**：`primary / secondary / tertiary` 不只是标签，它决定入场距离、缩放和漂浮幅度。
-3. **图层协议优先**：编辑器、播放器、CLI 和渲染器读取同一份 JSON，避免“预览和成片不是一个逻辑”。
-4. **人工验收是流水线节点**：生成模型、抠图和 TTS 可以替换，静态排版与成片检查不能省略。
+> v2 方向与设计文档见 [`docs/v2/`](docs/v2/00-README.md)（需求 / 架构 / 开发计划 / 决策记录 / 同类项目拆解）。
+> 编排与出片引擎复用 [agency-orchestrator](https://github.com/jnMetaCode/agency-orchestrator)。
 
 ## 快速开始（v2 · 开片）
 
@@ -66,8 +97,6 @@ npx openshorts
 > doctor 查到就照它说的跑一次 `openshorts install-ffmpeg`：装一份带 libass 的到 `~/.openshorts/bin`
 > （约 40 MB，只对开片生效，不动系统 ffmpeg）。界面第 2 步也有同一个按钮。
 
-界面四步：**输入**（话题 / 文案 / 故事）→ **来源与花费**（素材库 · AI 配图 · 本地生成 · 云端出片，花多少钱运行前看见）→ **预览与调整**（每镜文案与画面可改）→ **出片与发布**（mp4 + SRT + 封面 + 标题 / 标签 / 发布说明 + 质检报告）。
-
 命令行同一套能力：
 
 ```bash
@@ -76,14 +105,35 @@ openshorts install-ffmpeg                           # doctor 说缺 libass 时�
 openshorts new koubo-kepu --topic "猫为什么总爱钻纸箱" --voice zh-CN-YunxiNeural --local-dir ./素材
 openshorts run ~/OpenShorts/猫为什么总爱钻纸箱/project.json   # 0 元：Edge TTS + 素材库/本地素材 + 本机 ffmpeg
 openshorts run ~/OpenShorts/猫为什么总爱钻纸箱/project.json --only s2   # 只重出第 2 镜（换素材），其余复用
+openshorts install-image                             # 本机文生图模型（FLUX.1-schnell，Apache-2.0）：素材库没命中时现画一张
+openshorts estimate ~/OpenShorts/<项目>/project.json  # 要花多少钱、大概等多久
+openshorts export  ~/OpenShorts/<项目>/project.json --platform douyin   # 发布包（mp4+封面+SRT+文案），不自动发布
+openshorts batch   ~/OpenShorts/<项目>/project.json --captions douyin,clean   # 同脚本出多版
 openshorts drama --plan -i story="…" -i video_provider=local-sdcpp -i video_model=minimax-h3-q2   # AI 短剧：先看花费
 ```
 
 - 写脚本用你自己的文本模型 key（复用 [AO](https://github.com/jnMetaCode/agency-orchestrator) 的 `~/.ao` 配置或环境变量如 `DEEPSEEK_API_KEY`）；画面**不配 key 也能出**（Wikimedia Commons 的 CC 图片为主、视频为辅；图片检索比视频准得多，静图会加虚化垫底与缓推），配一把免费的 Pexels / Pixabay key 换成实拍视频会更好（界面一分钟引导）；配音默认 Edge TTS（免费）。产品不内置任何共享 key。
-- 本地 AI 出片：`openshorts doctor` 会告诉你这台机器能跑哪一档（24 GB 内存起，草稿画质），以及 sd-cli 与模型怎么装。
+- **本机出图**（口播线）：`openshorts install-image` 装 FLUX.1-schnell（6.4 / 10 GB 两档，Apache-2.0 可商用）。装了之后，素材库没命中的镜头会本机现画一张（M2 Max 实测约 57 秒），而不是退纯色底。
+- **本地出片**（短剧线）：`openshorts doctor` 会告诉你这台机器能跑哪一档（24 GB 内存起，草稿画质），以及 sd-cli 与模型怎么装。
 - 产物落在 `~/OpenShorts/<项目>/`；成片默认带 AI 生成标识；素材署名写进发布文案。
 
 v1 的图层动画编辑器仍在 `/editor`，用法见下文。
+
+---
+
+# v1 · 图层动画编辑器
+
+> 下面是 v1 的纸片剪纸 / 信息板路线，作为「图层动画」这一种画面来源保留。
+> 只想用开片出短视频的话，读到这里就够了。
+
+## v1 为什么这样做
+
+原方法论的真正价值不是某一条唐朝视频，而是四个可以产品化的约束：
+
+1. **先镜头，后素材**：每个镜头有独立时长、构图与素材清单。
+2. **叙事权重驱动运动**：`primary / secondary / tertiary` 不只是标签，它决定入场距离、缩放和漂浮幅度。
+3. **图层协议优先**：编辑器、播放器、CLI 和渲染器读取同一份 JSON，避免“预览和成片不是一个逻辑”。
+4. **人工验收是流水线节点**：生成模型、抠图和 TTS 可以替换，静态排版与成片检查不能省略。
 
 ## 快速开始（v1 · 图层动画）
 
