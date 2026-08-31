@@ -70,6 +70,7 @@ export function buildKouboProject(aoResult, { id, topic, inputs = {}, output = {
     publish: { titles: meta.titles ?? [], tags: meta.tags ?? [], note: meta.publishNote ?? '', aiLabel: true, aiLabelText: meta.aiLabel ?? '本视频含 AI 生成内容',
       ...(metaError ? { error: `标题/话题/发布说明没生成（${metaError}）——片子照常能出，发布信息要自己填` } : {}) },
     provenance: [],
+    scriptWarnings: scriptWarnings(shots),
     ao: { file: aoResult.file ?? null, success: !!aoResult.success, totalTokens: aoResult.totalTokens ?? null },
   };
 }
@@ -89,6 +90,20 @@ export function uniqueProjectId(outputDir, id, fsImpl) {
   if (!fsm.existsSync(pathSync.join(outputDir, id, 'project.json'))) return id;
   const stamp = new Date().toISOString().slice(5, 16).replace(/[-:T]/g, '');
   return `${id}-${stamp}`;
+}
+
+/**
+ * 口播文本的可朗读检查。模型偶尔会把英文单词当中文词用（真机：「次磺酸又迅速 rearrange」、
+ * 「学名叫 petrichor」），Edge TTS 会照着念出一个英文词，字幕上也是一串拉丁字母——
+ * 中文科普片里很出戏。缩写除外：AI / DNA / CT 这类本来就念字母，中文里也这么说。
+ */
+export function scriptWarnings(shots) {
+  const out = [];
+  for (const s of shots) {
+    const latin = [...new Set((String(s.text).match(/[A-Za-z]{2,}/g) ?? []).filter((w) => w !== w.toUpperCase()))];
+    if (latin.length) out.push(`镜头 ${s.id} 的口播里夹了英文单词「${latin.join('、')}」——配音会念出英文，字幕上也是拉丁字母`);
+  }
+  return out;
 }
 
 const slug = (s) => String(s).toLowerCase().replace(/[^a-z0-9一-鿿]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'koubo';

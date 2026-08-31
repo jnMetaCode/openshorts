@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { buildKouboProject, parseJsonLoose, uniqueProjectId, repairJson } from '../src/project/koubo.mjs';
+import { buildKouboProject, parseJsonLoose, uniqueProjectId, repairJson, scriptWarnings } from '../src/project/koubo.mjs';
 
 const aoResult = { name: '口播科普', success: true, steps: [
   { id: 'script', status: 'completed', output: '好的，脚本如下：\n{"hook":"猫为什么总爱钻纸箱？","segments":[{"id":"s1","text":"第一段","visualIntent":"猫钻箱","query":"cat inside cardboard box","emphasis":["安全感"]},{"id":"s2","text":"第二段","visualIntent":"猫科动物伏击","query":"wild cat stalking grass"}],"outro":"关注我，下期讲狗。"}' },
@@ -64,4 +64,24 @@ test('模型写坏的 JSON：字符串里没转义的引号要能修回来，正
   assert.throws(() => parseJsonLoose('{"a": }'), /解析不了/);
   assert.throws(() => parseJsonLoose('没有 JSON'), /没有 JSON 对象/);
   assert.throws(() => parseJsonLoose(''), /空输出/);
+});
+
+/**
+ * 模型偶尔把英文单词当中文词用（真机：「次磺酸又迅速 rearrange」「学名叫 petrichor」）。
+ * Edge TTS 会照着念出一个英文词（实测 575ms，跟中文词一样长），字幕上也是一串拉丁字母——
+ * 中文科普片里很出戏。缩写除外：AI / DNA / CT 中文里本来就念字母。
+ */
+test('口播文本的可朗读检查：夹在句子里的英文单词要报，缩写不报', () => {
+  assert.equal(scriptWarnings([{ id: 's1', text: '纯中文一句话' }]).length, 0);
+  assert.equal(scriptWarnings([{ id: 's1', text: 'AI 生成要标注，DNA 检测也一样，用 USB 传' }]).length, 0, '缩写中文里本来就念字母');
+
+  const w = scriptWarnings([{ id: 's2', text: '次磺酸又迅速 rearrange，变成丙烯硫醚' }]);
+  assert.equal(w.length, 1);
+  assert.match(w[0], /rearrange/);
+  assert.match(w[0], /镜头 s2/);
+
+  // 同一镜多个词合并成一条，不刷屏
+  const many = scriptWarnings([{ id: 's3', text: '叫 petrichor 也叫 geosmin，是 petrichor 的来源' }]);
+  assert.equal(many.length, 1);
+  assert.match(many[0], /petrichor、geosmin/, '去重且合并');
 });

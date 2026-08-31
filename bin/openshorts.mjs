@@ -105,6 +105,7 @@ switch (cmd) {
     const pf = path.join(dir, 'project.json'); fs.writeFileSync(pf, JSON.stringify(project, null, 2));
     console.log(`✓ 项目已建：${pf}\n  ${project.shots.length} 个镜头 · 标题候选：${project.publish.titles[0] ?? '（无）'}`);
     if (project.publish.error) console.log(`  ⚠️ ${project.publish.error}`);
+    for (const x of project.scriptWarnings ?? []) console.log(`  ⚠️ ${x}`);
     console.log(`  下一步：openshorts run "${pf}"`);
     break;
   }

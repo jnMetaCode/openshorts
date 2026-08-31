@@ -39,6 +39,7 @@ export async function checkKoubo(project, { file = project.final?.file, burnedCa
   // 短视频平台一律不认软字幕轨，观众看到的就是没有字——这是 fail，不是"提醒"
   add('captions', burnedCaptions ? 'pass' : 'fail', burnedCaptions ? '字幕已烧进画面' : sub ? '字幕只有软轨：抖音/视频号上传后不显示，纯色底的镜头会是空屏。跑 `openshorts install-ffmpeg` 后重出' : '没有字幕');
   // 发布信息缺失以前只能靠用户自己发现"标题是空的"
+  for (const [i, w] of (project.scriptWarnings ?? []).entries()) add(`script-${i}`, 'warn', w);
   if (project.publish?.error) add('publish-meta', 'warn', project.publish.error);
   else if (project.publish && !project.publish.titles?.length) add('publish-meta', 'warn', '没有标题候选，发布文案要自己填');
   add('cover', project.final?.cover && fs.existsSync(project.final.cover) ? 'pass' : 'warn', project.final?.cover ? '有封面' : '无封面');
