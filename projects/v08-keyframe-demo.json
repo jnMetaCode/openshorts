@@ -11,9 +11,9 @@
     "accent": "#a72d24",
     "subtitleBackground": "rgba(31,20,15,.84)"
   },
+  "soundtrackVolume": 0.18,
   "production": {
     "plannerVersion": 2,
-    "planner": "rules",
     "sourceText": "晨雾从长安城楼缓缓散开。宫门开启，使者捧着礼盒走入大殿。群臣俯身，盛唐气象在层层纸片之间展开。",
     "style": {
       "id": "tang-collage",
@@ -32,7 +32,6 @@
     "assetPlan": [
       {
         "id": "scene-01-background",
-        "sceneId": "scene-01",
         "role": "background",
         "name": "镜头 01背景底板",
         "prompt": "晨雾从长安城楼缓缓散开。宫门开启，使者捧着礼盒走入大殿。。水墨山脉与唐代宫殿，撕纸边缘、印章和网点装饰。只生成环境，不要主要人物。唐代服饰，古籍线描，复古纸片拼贴，白色剪纸描边，天然纸张纤维。主色：米白宣纸、朱砂红、鎏金、深墨。完整构图，无文字，无水印。",
@@ -41,6 +40,7 @@
           "覆盖完整画布",
           "边缘可延展"
         ],
+        "sceneId": "scene-01",
         "status": "planned",
         "promptVersions": [
           {
@@ -50,11 +50,11 @@
             "createdAt": "2026-07-27T15:27:46.719Z"
           }
         ],
-        "activePromptVersion": "pv-001"
+        "activePromptVersion": "pv-001",
+        "reviewHistory": []
       },
       {
         "id": "scene-01-primary",
-        "sceneId": "scene-01",
         "role": "primary",
         "name": "镜头 01主体",
         "prompt": "固定角色设定：主角，唐代青年，深青色圆领袍，黑色幞头，二十五岁。所有镜头保持同一人物身份、年龄、发型、服装配色和面部特征。晨雾从长安城楼缓缓散开。宫门开启，使者捧着礼盒走入大殿。。生成完整主体人物，全身不裁头、不裁手脚，正面或明确朝向，纯绿色背景。唐代服饰，古籍线描，复古纸片拼贴，白色剪纸描边，天然纸张纤维。主色：米白宣纸、朱砂红、鎏金、深墨。完整构图，无文字，无水印。",
@@ -64,6 +64,7 @@
           "白色剪纸描边",
           "无场景"
         ],
+        "sceneId": "scene-01",
         "status": "planned",
         "promptVersions": [
           {
@@ -73,11 +74,11 @@
             "createdAt": "2026-07-27T15:27:46.719Z"
           }
         ],
-        "activePromptVersion": "pv-001"
+        "activePromptVersion": "pv-001",
+        "reviewHistory": []
       },
       {
         "id": "scene-01-secondary",
-        "sceneId": "scene-01",
         "role": "secondary",
         "name": "镜头 01配角组",
         "prompt": "固定角色设定：主角，唐代青年，深青色圆领袍，黑色幞头，二十五岁。所有镜头保持同一人物身份、年龄、发型、服装配色和面部特征。晨雾从长安城楼缓缓散开。宫门开启，使者捧着礼盒走入大殿。。生成两名叙事配角素材表，人物彼此不重叠，完整全身，纯绿色背景。唐代服饰，古籍线描，复古纸片拼贴，白色剪纸描边，天然纸张纤维。主色：米白宣纸、朱砂红、鎏金、深墨。完整构图，无文字，无水印。",
@@ -86,6 +87,7 @@
           "人物不重叠",
           "明确朝向"
         ],
+        "sceneId": "scene-01",
         "status": "planned",
         "promptVersions": [
           {
@@ -95,11 +97,11 @@
             "createdAt": "2026-07-27T15:27:46.719Z"
           }
         ],
-        "activePromptVersion": "pv-001"
+        "activePromptVersion": "pv-001",
+        "reviewHistory": []
       },
       {
         "id": "scene-01-foreground",
-        "sceneId": "scene-01",
         "role": "foreground",
         "name": "镜头 01前景装饰",
         "prompt": "晨雾从长安城楼缓缓散开。宫门开启，使者捧着礼盒走入大殿。。生成撕纸、纸花、胶带或印章组成的横向前景装饰，透明或纯绿色背景。唐代服饰，古籍线描，复古纸片拼贴，白色剪纸描边，天然纸张纤维。主色：米白宣纸、朱砂红、鎏金、深墨。完整构图，无文字，无水印。",
@@ -108,6 +110,7 @@
           "适合遮挡画面底部",
           "无文字"
         ],
+        "sceneId": "scene-01",
         "status": "planned",
         "promptVersions": [
           {
@@ -117,11 +120,11 @@
             "createdAt": "2026-07-27T15:27:46.719Z"
           }
         ],
-        "activePromptVersion": "pv-001"
+        "activePromptVersion": "pv-001",
+        "reviewHistory": []
       },
       {
         "id": "scene-02-background",
-        "sceneId": "scene-02",
         "role": "background",
         "name": "镜头 02背景底板",
         "prompt": "群臣俯身，盛唐气象在层层纸片之间展开。。水墨山脉与唐代宫殿，撕纸边缘、印章和网点装饰。只生成环境，不要主要人物。唐代服饰，古籍线描，复古纸片拼贴，白色剪纸描边，天然纸张纤维。主色：米白宣纸、朱砂红、鎏金、深墨。完整构图，无文字，无水印。",
@@ -130,6 +133,7 @@
           "覆盖完整画布",
           "边缘可延展"
         ],
+        "sceneId": "scene-02",
         "status": "planned",
         "promptVersions": [
           {
@@ -139,11 +143,11 @@
             "createdAt": "2026-07-27T15:27:46.719Z"
           }
         ],
-        "activePromptVersion": "pv-001"
+        "activePromptVersion": "pv-001",
+        "reviewHistory": []
       },
       {
         "id": "scene-02-primary",
-        "sceneId": "scene-02",
         "role": "primary",
         "name": "镜头 02主体",
         "prompt": "固定角色设定：主角，唐代青年，深青色圆领袍，黑色幞头，二十五岁。所有镜头保持同一人物身份、年龄、发型、服装配色和面部特征。群臣俯身，盛唐气象在层层纸片之间展开。。生成完整主体人物，全身不裁头、不裁手脚，正面或明确朝向，纯绿色背景。唐代服饰，古籍线描，复古纸片拼贴，白色剪纸描边，天然纸张纤维。主色：米白宣纸、朱砂红、鎏金、深墨。完整构图，无文字，无水印。",
@@ -153,6 +157,7 @@
           "白色剪纸描边",
           "无场景"
         ],
+        "sceneId": "scene-02",
         "status": "planned",
         "promptVersions": [
           {
@@ -162,11 +167,11 @@
             "createdAt": "2026-07-27T15:27:46.719Z"
           }
         ],
-        "activePromptVersion": "pv-001"
+        "activePromptVersion": "pv-001",
+        "reviewHistory": []
       },
       {
         "id": "scene-02-secondary",
-        "sceneId": "scene-02",
         "role": "secondary",
         "name": "镜头 02配角组",
         "prompt": "固定角色设定：主角，唐代青年，深青色圆领袍，黑色幞头，二十五岁。所有镜头保持同一人物身份、年龄、发型、服装配色和面部特征。群臣俯身，盛唐气象在层层纸片之间展开。。生成两名叙事配角素材表，人物彼此不重叠，完整全身，纯绿色背景。唐代服饰，古籍线描，复古纸片拼贴，白色剪纸描边，天然纸张纤维。主色：米白宣纸、朱砂红、鎏金、深墨。完整构图，无文字，无水印。",
@@ -175,6 +180,7 @@
           "人物不重叠",
           "明确朝向"
         ],
+        "sceneId": "scene-02",
         "status": "planned",
         "promptVersions": [
           {
@@ -184,11 +190,11 @@
             "createdAt": "2026-07-27T15:27:46.719Z"
           }
         ],
-        "activePromptVersion": "pv-001"
+        "activePromptVersion": "pv-001",
+        "reviewHistory": []
       },
       {
         "id": "scene-02-foreground",
-        "sceneId": "scene-02",
         "role": "foreground",
         "name": "镜头 02前景装饰",
         "prompt": "群臣俯身，盛唐气象在层层纸片之间展开。。生成撕纸、纸花、胶带或印章组成的横向前景装饰，透明或纯绿色背景。唐代服饰，古籍线描，复古纸片拼贴，白色剪纸描边，天然纸张纤维。主色：米白宣纸、朱砂红、鎏金、深墨。完整构图，无文字，无水印。",
@@ -197,6 +203,7 @@
           "适合遮挡画面底部",
           "无文字"
         ],
+        "sceneId": "scene-02",
         "status": "planned",
         "promptVersions": [
           {
@@ -206,9 +213,11 @@
             "createdAt": "2026-07-27T15:27:46.719Z"
           }
         ],
-        "activePromptVersion": "pv-001"
+        "activePromptVersion": "pv-001",
+        "reviewHistory": []
       }
-    ]
+    ],
+    "planner": "rules"
   },
   "scenes": [
     {
@@ -221,6 +230,8 @@
         {
           "id": "scene-01-bg",
           "name": "背景底板",
+          "kind": "image",
+          "startFrom": 0,
           "src": "assets/sample/tang-bg.svg",
           "role": "background",
           "x": 0,
@@ -239,6 +250,8 @@
         {
           "id": "scene-01-rear",
           "name": "后排人物",
+          "kind": "image",
+          "startFrom": 0,
           "src": "assets/sample/ministers.svg",
           "role": "tertiary",
           "x": 1320,
@@ -276,6 +289,8 @@
         {
           "id": "scene-01-primary",
           "name": "主体人物",
+          "kind": "image",
+          "startFrom": 0,
           "src": "assets/sample/emperor.svg",
           "role": "primary",
           "x": 650,
@@ -313,6 +328,8 @@
         {
           "id": "scene-01-secondary",
           "name": "前排配角",
+          "kind": "image",
+          "startFrom": 0,
           "src": "assets/sample/attendant.svg",
           "role": "secondary",
           "x": 310,
@@ -350,6 +367,8 @@
         {
           "id": "scene-01-fg",
           "name": "前景装饰",
+          "kind": "image",
+          "startFrom": 0,
           "src": "assets/sample/foreground.svg",
           "role": "foreground",
           "x": 0,
@@ -389,14 +408,17 @@
         {
           "text": "晨雾从长安城楼缓缓散开。",
           "fromFrame": 0,
-          "toFrame": 87
+          "toFrame": 87,
+          "words": []
         },
         {
           "text": "宫门开启，使者捧着礼盒走入大殿。",
           "fromFrame": 87,
-          "toFrame": 203
+          "toFrame": 203,
+          "words": []
         }
-      ]
+      ],
+      "audioCues": []
     },
     {
       "id": "scene-02",
@@ -408,6 +430,8 @@
         {
           "id": "scene-02-bg",
           "name": "背景底板",
+          "kind": "image",
+          "startFrom": 0,
           "src": "assets/sample/red-bg.svg",
           "role": "background",
           "x": 0,
@@ -426,6 +450,8 @@
         {
           "id": "scene-02-rear",
           "name": "后排人物",
+          "kind": "image",
+          "startFrom": 0,
           "src": "assets/sample/ministers.svg",
           "role": "tertiary",
           "x": 1320,
@@ -463,6 +489,8 @@
         {
           "id": "scene-02-primary",
           "name": "主体人物",
+          "kind": "image",
+          "startFrom": 0,
           "src": "assets/sample/emperor.svg",
           "role": "primary",
           "x": 650,
@@ -500,6 +528,8 @@
         {
           "id": "scene-02-secondary",
           "name": "前排配角",
+          "kind": "image",
+          "startFrom": 0,
           "src": "assets/sample/attendant.svg",
           "role": "secondary",
           "x": 310,
@@ -537,6 +567,8 @@
         {
           "id": "scene-02-fg",
           "name": "前景装饰",
+          "kind": "image",
+          "startFrom": 0,
           "src": "assets/sample/foreground.svg",
           "role": "foreground",
           "x": 0,
@@ -576,9 +608,11 @@
         {
           "text": "群臣俯身，盛唐气象在层层纸片之间展开。",
           "fromFrame": 0,
-          "toFrame": 146
+          "toFrame": 146,
+          "words": []
         }
-      ]
+      ],
+      "audioCues": []
     }
   ]
 }

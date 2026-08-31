@@ -29,3 +29,28 @@ body:has(.kp){overflow:auto}
 .kp-shot-actions{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}.kp-shot-actions button,.kp-redo button{border:1px solid #4a3c30;border-radius:6px;padding:6px 8px;color:#d8cabc;background:#241e19;cursor:pointer;font-size:11px}.kp-redo{margin-top:8px;display:flex;flex-direction:column;gap:6px}.kp-redo textarea,.kp-redo select{width:100%;padding:6px 8px;background:#0f0d0b;border:1px solid #3a3028;border-radius:6px;color:#e3d5c7;font:inherit;font-size:11px}.kp-redo .primary{background:#a72d24;border-color:#ce4a3f;color:#fff2df}.kp-redo small{color:#6d645b;font-size:10px}
 .kp-check{display:flex;align-items:center;gap:8px;font-size:12px;color:#d7c5ae;margin:8px 0}.kp-check a{color:#e6b493}
 .kp-lang{border:1px solid #4a3c30;border-radius:6px;padding:5px 9px;background:#241e19;color:#d8cabc;font-size:11px;cursor:pointer}
+
+/* 宽屏上主区固定 980px、右边一大片全黑，白白浪费。给它一个常驻侧栏：
+   放"这台机器现在能干什么"和模型配置——这两样以前一个藏在第 2 步、一个只能改配置文件。 */
+.kp-shell{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:0;align-items:start}
+.kp-main{min-width:0}
+.kp-aside{position:sticky;top:12px;margin:12px 24px 12px 0;padding:14px 16px;background:#17130f;border:1px solid #382f27;border-radius:10px;font-size:12px}
+.kp-aside h4{margin:0 0 8px;font-size:12px;color:#f3dfca;font-weight:600}
+.kp-aside h4:not(:first-child){margin-top:16px;padding-top:14px;border-top:1px solid #2a2420}
+.kp-stat{display:flex;gap:8px;align-items:flex-start;padding:5px 0;color:#a99b8e;line-height:1.45}
+.kp-stat b{color:#d8cabc;font-weight:500;flex:0 0 62px}
+.kp-stat.bad b,.kp-stat.bad{color:#e0938b}
+.kp-stat.ok i{color:#a7c39f;font-style:normal}
+.kp-aside label{display:block;margin:8px 0 0;color:#a99b8e}
+.kp-aside select,.kp-aside input{width:100%;margin-top:4px;padding:7px 8px;background:#100e0c;border:1px solid #4a3c30;border-radius:6px;color:#e8dccf;font-size:12px}
+.kp-aside button{margin-top:9px;padding:7px 12px;border:1px solid #4a3c30;border-radius:6px;background:#241e19;color:#d8cabc;font-size:12px;cursor:pointer}
+.kp-aside button.primary{background:#a72d24;border-color:#a72d24;color:#fff}
+.kp-aside button:disabled{opacity:.5;cursor:default}
+.kp-aside .kp-hint{color:#6d645b;font-size:11px;line-height:1.5;margin:6px 0 0}
+.kp-aside .kp-projs{margin:0;padding:0;list-style:none}
+.kp-aside .kp-projs li{padding:6px 0;border-top:1px solid #221d19;color:#a99b8e;cursor:pointer}
+.kp-aside .kp-projs li:hover{color:#f3dfca}
+.kp-testres{margin-top:8px;padding:6px 8px;border-radius:6px;font-size:11px;line-height:1.4}
+.kp-testres.ok{background:#1d2a1b;color:#bcd7b4}
+.kp-testres.bad{background:#3a1f1c;color:#f3d6d2}
+@media (max-width:1280px){.kp-shell{grid-template-columns:1fr}.kp-aside{position:static;margin:12px 24px}}

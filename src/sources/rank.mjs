@@ -73,7 +73,13 @@ export function parseScores(text, n) {
  * candidates: [{ id, file }]（已 materialize）；返回按分排序的 [{ ...cand, score, why }]。
  * connector: AO 的 LLMConnector（chat(system, user, cfg)）；cfg: { provider, model, api_key? }
  */
-export async function rankCandidates(candidates, intent, { connector, cfg, threshold = 4, log = () => {}, fetchImpl = fetch, getFile = null }) {
+/**
+ * threshold 取 6，跟提示词里写的评分标准对齐：那里写的是"主体对得上给 6 分起"，
+ * 所以低于 6 按模型自己的定义就不算主体匹配。原来取 4 是拍的，真机上因此选中过一条
+ * 模型自己批注「有猫但为木箱非纸箱，无保温效果视觉表现」的素材——分数刚好卡在阈值上。
+ * 不及格的镜头会往下走本地出图，宁可自己画也别放一张不对的。
+ */
+export async function rankCandidates(candidates, intent, { connector, cfg, threshold = 6, log = () => {}, fetchImpl = fetch, getFile = null }) {
   // 只有一条候选也要过关："唯一候选"恰恰是最容易混进标题卡/无关画面的情况，
   // 以前这里直接放行，真机就漏过了一整镜英文标题卡。
   if (!connector || !candidates.length) return candidates.map((c) => ({ ...c, score: null }));
@@ -86,12 +92,15 @@ export async function rankCandidates(candidates, intent, { connector, cfg, thres
     ? [`你是短视频剪辑师。下面是同一段口播要配的画面意图，以及 ${usable.length} 条候选素材各一帧。给每条打分 0–10：画面主体、场景与意图是否匹配（主体对得上给 6 分起，完全无关 0–2 分，图表/文字/标题卡一律 ≤ 2）。`, `画面意图：${intent}`, ...usable.map((x, k) => `候选 ${k}：${x.f}`), '只输出 JSON 数组：[{"i":0,"score":7,"why":"一句话"}, …]']
     : [`You are a video editor. Below is the visual intent for one narration segment and one frame from each of ${usable.length} candidate clips. Score each 0–10 for how well subject/scene match the intent (subject matches → ≥6; unrelated → 0–2; charts/text/title cards ≤ 2).`, `Intent: ${intent}`, ...usable.map((x, k) => `Candidate ${k}: ${x.f}`), 'Output only a JSON array: [{"i":0,"score":7,"why":"…"}, …]']).join('\n');
   let scores = null;
-  // 推理模型（Agnes 2.0-flash）会先吐几百字思考再给 JSON：预算给足；网络抖一次就再试一次
-  for (let attempt = 0; attempt < 2 && !scores; attempt++) {
+  // 推理模型（Agnes 2.0-flash）会先吐几百字思考再给 JSON：预算给足。
+  // 接口偶尔会抽（真机上六镜里抽了一次），所以多试两次并退避——一次失败就等于这一镜没人把关。
+  for (let attempt = 1; attempt <= 3 && !scores; attempt++) {
     try { const r = await connector.chat(zh ? '只输出一行 JSON 数组，不要解释。' : 'Output one line of JSON only.', prompt, { ...cfg, max_tokens: 1500, temperature: 0 }); scores = parseScores(r.content, usable.length); }
-    catch (e) { if (attempt === 1) log(`素材排序不可用：${e.message.split('\n')[0].slice(0, 120)}`); }
+    catch (e) { if (attempt === 3) log(`素材排序不可用：${e.message.split('\n')[0].slice(0, 120)}`); else await new Promise((r) => setTimeout(r, 600 * attempt)); }
   }
-  if (!scores) return candidates.map((c) => ({ ...c, score: null }));
+  // 模型调不通时也要标 unjudged：否则"这一镜没被把关过"会悄悄溜过去，
+  // 跟"取不到画面证据"是同一件事，上层要能看见并写进 notes
+  if (!scores) return candidates.map((c) => ({ ...c, score: null, unjudged: true }));
   const ranked = usable.map((x, k) => ({ ...x.c, score: scores[k].score, why: scores[k].why })).sort((a, b) => b.score - a.score);
   const rest = candidates.filter((c) => !usable.some((x) => x.c.id === c.id)).map((c) => ({ ...c, score: null, unjudged: true }));
   if (rest.length) log(`⚠️ ${rest.length} 条候选取不到画面证据，没能打分：${rest.map((c) => c.id).join('、')}`);

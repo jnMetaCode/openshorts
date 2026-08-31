@@ -41,6 +41,10 @@ export const Kaipian = () => {
   const [tone, setTone] = useState('科普讲解');
   const [sources, setSources] = useState<Sources | null>(null);
   const [ff, setFf] = useState<{found: boolean; version: string; subtitles: boolean; drawtext: boolean; managed: boolean} | null>(null);
+  const [textProv, setTextProv] = useState<{providers: Array<{id: string; hasKey: boolean; fromEnv: boolean; envKey: string | null; models: string[]; vision: boolean}>; vision: {provider: string; model: string}} | null>(null);
+  const [mdl, setMdl] = useState({provider: '', model: '', apiKey: ''});
+  const [vis, setVis] = useState({provider: '', model: ''});
+  const [testRes, setTestRes] = useState<{ok: boolean; msg: string} | null>(null);
   const [gen, setGen] = useState<{ok: boolean; cliFound: boolean; memGB: number; license: string; ready: string | null; models: Array<{id: string; label: string; sizeGB: number; present: boolean; usable: boolean; reason: string}>} | null>(null);
   const [voices, setVoices] = useState<Voice[]>([]);
   const [voice, setVoice] = useState('zh-CN-XiaoxiaoNeural');
@@ -66,6 +70,7 @@ export const Kaipian = () => {
     api<any>('/api/kaipian/local/status').then(setLocalSt).catch(() => {});
     api<any>('/api/kaipian/ffmpeg').then(setFf).catch(() => {});
     api<any>('/api/kaipian/local-image').then(setGen).catch(() => {});
+    api<any>('/api/kaipian/providers/text').then((r) => { setTextProv(r); setVis({provider: r.vision?.provider ?? '', model: r.vision?.model ?? ''}); }).catch(() => {});
   };
   useEffect(() => {
     refresh().catch((e) => setError(String(e.message)));
@@ -143,6 +148,26 @@ export const Kaipian = () => {
     es.addEventListener('done', async (e: any) => { es.close(); setGen(JSON.parse(e.data)); setDl(null); await refresh(); });
     es.addEventListener('error', (e: any) => { try { setError(JSON.parse(e.data).m); } catch { setError('模型下载中断（支持断点续传，可重试）'); } es.close(); });
   };
+  // 存 key 之前先拿它真发一次请求：key 打错、余额没了、模型 id 不对，都在这里说清楚，别等出片时才炸
+  const testModel = async (provider: string, model: string, apiKey?: string) => {
+    if (!provider || !model) { setTestRes({ok: false, msg: '要先选供应商和模型'}); return false; }
+    setTestRes(null); setBusy('验证模型…');
+    try {
+      const r = await api<{ok: boolean; reply?: string; error?: string}>('/api/kaipian/ao-keys/test', {method: 'POST', body: JSON.stringify({provider, model, apiKey})});
+      setTestRes({ok: r.ok, msg: r.ok ? `通了，模型回了「${r.reply}」` : (r.error ?? '失败')});
+      return r.ok;
+    } catch (e: any) { setTestRes({ok: false, msg: e.message}); return false; } finally { setBusy(''); }
+  };
+  const saveTextModel = async () => {
+    if (!(await testModel(mdl.provider, mdl.model, mdl.apiKey))) return;
+    if (mdl.apiKey.trim()) await api('/api/kaipian/ao-keys', {method: 'POST', body: JSON.stringify({provider: mdl.provider, apiKey: mdl.apiKey.trim()})});
+    setMdl({...mdl, apiKey: ''}); await refresh();
+  };
+  const saveVision = async () => {
+    if (vis.provider && !(await testModel(vis.provider, vis.model))) return;
+    await api('/api/kaipian/config', {method: 'PUT', body: JSON.stringify({vision: vis})});
+    await refresh();
+  };
   const runBatch = () => {
     if (!project) return; setBatchResults([]); setLog([]); setBusy('批量出片中…'); setError('');
     const es = new EventSource(`/api/kaipian/projects/${encodeURIComponent(project.id)}/batch?voices=${encodeURIComponent(batchVoices.join(','))}&captions=${encodeURIComponent(batchCaptions.join(','))}`);
@@ -156,6 +181,59 @@ export const Kaipian = () => {
   const copy = (t: string) => navigator.clipboard?.writeText(t);
 
   const Steps = () => <ol className="kp-steps">{['输入', '来源与花费', '预览与调整', '出片与发布'].map((n0, i) => { const n = t(n0); return <li key={n0} className={step === i + 1 ? 'active' : step > i + 1 ? 'done' : ''}><span>{i + 1}</span>{n}</li>; })}</ol>;
+  /**
+   * 常驻侧栏。回答两个以前无处可看的问题：
+   * ①「我这台机器现在能干什么」——ffmpeg 能不能烧字幕、本机能不能出图、画面有没有人把关；
+   * ②「模型在哪儿配」——写脚本的文本模型以前只能去改 AO 密钥页或环境变量，
+   *   看图把关的模型更是只能改 ~/.openshorts/config.json 或加命令行参数，界面里完全没有入口。
+   *   而看图把关恰恰是决定"会不会把一口钟配进猫科普"的那个开关。
+   */
+  const Aside = () => {
+    const visionOn = !!(textProv?.vision?.provider && textProv?.vision?.model);
+    const row = (label: string, ok: boolean, text: string) =>
+      <div className={`kp-stat ${ok ? 'ok' : 'bad'}`}><b>{label}</b><span>{ok ? '✅ ' : '⛔ '}{text}</span></div>;
+    return <aside className="kp-aside">
+      <h4>{t('这台机器')}</h4>
+      {row('ffmpeg', !!ff?.subtitles, ff ? (ff.found ? (ff.subtitles ? `${ff.version} 可烧字幕` : '缺 libass，字幕烧不进画面') : '没找到') : '…')}
+      {ff && ff.found && !ff.subtitles && <button onClick={installFfmpeg} disabled={!!dl}>{t('装一份带 libass 的（40 MB）')}</button>}
+      {row(t('看图把关'), visionOn, visionOn ? `${textProv!.vision.provider} / ${textProv!.vision.model}` : '没开——画面只按检索词字面匹配')}
+      {row(t('本机出图'), !!gen?.ok, gen?.ok ? `${gen.ready} 就绪` : '没装模型，找不到素材时退纯色底')}
+      {row(t('文本模型'), !!aoStatus?.hasTextKey, aoStatus?.hasTextKey ? [...(aoStatus.saved ?? []), ...(aoStatus.envs ?? [])].join('、') : '没配，第 1 步写不了脚本')}
+      {row(t('素材源'), !!sources?.stock?.ok, sources?.stock?.tier === 'keyed' ? 'Pexels/Pixabay + CC 兜底' : 'CC 免 key（配 Pexels 更好）')}
+
+      <h4>{t('写脚本的模型')}</h4>
+      <label>{t('供应商')}
+        <select value={mdl.provider} onChange={(e) => setMdl({provider: e.target.value, model: (textProv?.providers.find((p) => p.id === e.target.value)?.models[0]) ?? '', apiKey: ''})}>
+          <option value="">{t('选一个…')}</option>
+          {(textProv?.providers ?? []).map((p) => <option key={p.id} value={p.id}>{p.id}{p.hasKey ? ' ✓' : ''}</option>)}
+        </select></label>
+      {mdl.provider && <>
+        <label>{t('模型')}<input list="kp-tm" value={mdl.model} onChange={(e) => setMdl({...mdl, model: e.target.value})} placeholder={t('模型 id（可手填）')}/></label>
+        <datalist id="kp-tm">{(textProv?.providers.find((p) => p.id === mdl.provider)?.models ?? []).map((m) => <option key={m} value={m}/>)}</datalist>
+        <label>{t('key')}<input type="password" value={mdl.apiKey} onChange={(e) => setMdl({...mdl, apiKey: e.target.value})}
+          placeholder={textProv?.providers.find((p) => p.id === mdl.provider)?.hasKey ? t('已存过，留空则沿用') : t('粘贴后保存')}/></label>
+        <button className="primary" onClick={saveTextModel} disabled={!!busy}>{t('验证并保存')}</button>
+      </>}
+
+      <h4>{t('看图把关的模型')}</h4>
+      <p className="kp-hint">{t('给每条候选素材抽一帧打分，不及格的退回本机出图。没开的话，画面只按检索词字面匹配——真机上"猫为什么钻纸箱"因此配过一口铜钟。只能选能看图的供应商。')}</p>
+      <label>{t('供应商')}
+        <select value={vis.provider} onChange={(e) => setVis({provider: e.target.value, model: (textProv?.providers.find((p) => p.id === e.target.value)?.models[0]) ?? ''})}>
+          <option value="">{t('不开')}</option>
+          {(textProv?.providers ?? []).filter((p) => p.vision).map((p) => <option key={p.id} value={p.id}>{p.id}{p.hasKey ? ' ✓' : ''}</option>)}
+        </select></label>
+      {vis.provider && <label>{t('模型')}<input list="kp-vm" value={vis.model} onChange={(e) => setVis({...vis, model: e.target.value})} placeholder={t('模型 id（可手填）')}/></label>}
+      <datalist id="kp-vm">{(textProv?.providers.find((p) => p.id === vis.provider)?.models ?? []).map((m) => <option key={m} value={m}/>)}</datalist>
+      <button className="primary" onClick={saveVision} disabled={!!busy}>{vis.provider ? t('验证并开启') : t('关闭看图把关')}</button>
+      {testRes && <div className={`kp-testres ${testRes.ok ? 'ok' : 'bad'}`}>{testRes.ok ? '✅ ' : '⛔ '}{testRes.msg}</div>}
+
+      {projects.length > 0 && <>
+        <h4>{t('项目')}</h4>
+        <ul className="kp-projs">{projects.slice(0, 8).map((p) => <li key={p.id} onClick={() => openProject(p.id).catch((e) => setError(e.message))}>{p.final ? '🎬' : '✍️'} {p.title || p.id}</li>)}</ul>
+      </>}
+    </aside>;
+  };
+
   const SrcCard = ({k, label, hint}: {k: keyof Omit<Sources, 'tools'>; label: string; hint: string}) => { const s = sources?.[k]; return <div className={`kp-src ${s?.ok ? 'ok' : 'off'}`}><b>{s?.ok ? '✅' : '⛔'} {label}</b><small>{s?.reason ?? '…'}</small><em>{hint}</em></div>; };
 
   return <div className="kp">
@@ -170,6 +248,7 @@ export const Kaipian = () => {
     <Steps/>
     {error && <div className="kp-error" onClick={() => setError('')}>{error} ×</div>}
     {busy && <div className="kp-busy">{busy}</div>}
+    <div className="kp-shell"><div className="kp-main">
 
     {step === 1 && <section className="kp-card">
       <div className="kp-lines">
@@ -359,6 +438,7 @@ export const Kaipian = () => {
         </div>
       </div>
     </section>}
+    </div><Aside/></div>
     <footer className="kp-foot">产物在 <code>{cfg?.outputDir ?? '~/OpenShorts'}</code> · key 只存本机 · 成片默认带 AI 生成标识 · <a href="https://github.com/jnMetaCode/openshorts" target="_blank" rel="noreferrer">GitHub</a></footer>
   </div>;
 };

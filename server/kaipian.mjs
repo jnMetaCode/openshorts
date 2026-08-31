@@ -97,6 +97,76 @@ kaipian.post('/projects/:id/cancel', (req, res) => {
   ac.abort(); res.json({ ok: true });
 });
 
+
+// ───────────── 模型设置（写脚本的文本模型 / 看图把关的视觉模型） ─────────────
+// 以前这两样只能去改文件：文本模型靠 AO 密钥页或环境变量，看图把关只能改 ~/.openshorts/config.json
+// 或加 --vision-provider。而看图把关恰恰是决定"会不会把一口钟配进猫科普"的那个开关——
+// 藏在配置文件里等于没有。
+const KEYS_FILE = () => path.join(aoHome(), '.local', 'web-keys.json');
+function readAoKeys() { try { return JSON.parse(fs.readFileSync(KEYS_FILE(), 'utf-8')); } catch { return {}; } }
+function writeAoKey(provider, apiKey) {
+  const keys = readAoKeys();
+  keys[provider] = { ...(keys[provider] ?? {}), apiKey };
+  fs.mkdirSync(path.dirname(KEYS_FILE()), { recursive: true });
+  fs.writeFileSync(KEYS_FILE(), JSON.stringify(keys, null, 2));
+  try { fs.chmodSync(KEYS_FILE(), 0o600); } catch { /* Windows 上没有 chmod 语义 */ }
+  return keys;
+}
+
+/** 能配 key 的供应商 + 常见模型名（模型 id 各家不通用，列的是核实过的，其余可手填） */
+const KNOWN_TEXT_MODELS = {
+  deepseek: ['deepseek-chat', 'deepseek-reasoner'],
+  openai: ['gpt-5', 'gpt-5-mini'],
+  agnes: ['agnes-2.0-flash', 'agnes-2.0-pro'],
+  moonshot: ['kimi-k2-turbo-preview'],
+  zhipu: ['glm-4.6'],
+  qwen: ['qwen3-max'],
+  volcengine: ['doubao-seed-1-6-250615'],
+  gemini: ['gemini-3-flash', 'gemini-3-pro'],
+  xai: ['grok-4'],
+};
+// 能看图的（看图把关只能用这些）——CLI 订阅类连接器会把图片剥掉，选了等于没开
+const VISION_CAPABLE = ['agnes', 'openai', 'gemini', 'zhipu', 'qwen', 'volcengine', 'moonshot', 'apimart', 'lanox'];
+
+kaipian.get('/providers/text', async (_req, res, next) => {
+  try {
+    const main = fileURLToPath(import.meta.resolve('agency-orchestrator'));
+    const api = await import(path.join(path.dirname(main), 'connectors', 'api-providers.js'));
+    const keys = readAoKeys();
+    const list = (api.API_PROVIDERS ?? []).map((p) => ({
+      id: p.id,
+      hasKey: !!(keys[p.id]?.apiKey || (p.envKey && process.env[p.envKey])),
+      fromEnv: !!(p.envKey && process.env[p.envKey]),
+      envKey: p.envKey ?? null,
+      models: KNOWN_TEXT_MODELS[p.id] ?? [],
+      vision: VISION_CAPABLE.includes(p.id),
+    }));
+    res.json({ providers: list, vision: readConfig().vision ?? { provider: '', model: '' } });
+  } catch (e) { next(e); }
+});
+
+kaipian.post('/ao-keys', (req, res) => {
+  const provider = String(req.body?.provider ?? '').trim();
+  const apiKey = String(req.body?.apiKey ?? '').trim();
+  if (!/^[a-z0-9-]{2,32}$/.test(provider)) return res.status(400).json({ error: '供应商 id 不合法' });
+  if (!apiKey || apiKey.includes('…')) return res.status(400).json({ error: '请粘贴完整的 key' });
+  writeAoKey(provider, apiKey);
+  res.json({ ok: true, saved: Object.keys(readAoKeys()).filter((k) => readAoKeys()[k]?.apiKey) });
+});
+
+/** 存之前先拿它真发一次请求：key 打错、余额没了、模型 id 不对，都在这里就说清楚，别等到出片时才炸 */
+kaipian.post('/ao-keys/test', async (req, res) => {
+  const { provider, model, apiKey } = req.body ?? {};
+  if (!provider || !model) return res.status(400).json({ error: '要选供应商和模型' });
+  try {
+    const { createConnector } = await import('agency-orchestrator');
+    const key = apiKey && !String(apiKey).includes('…') ? String(apiKey) : readAoKeys()[provider]?.apiKey;
+    const cfg = { provider, model, api_key: key || undefined, timeout: 60000, retry: 0 };
+    const r = await createConnector(cfg).chat('只回一个词', '说 ok', { ...cfg, max_tokens: 1500 });
+    res.json({ ok: true, reply: String(r.content ?? '').trim().slice(0, 60) });
+  } catch (e) { res.status(200).json({ ok: false, error: String(e.message).split('\n')[0].slice(0, 200) }); }
+});
+
 // 本地文生图（sd.cpp + FLUX.1-schnell，Apache-2.0 可商用）：素材库没命中时本机现画一张，不退纯色底
 import { sdImageStatus, installSdImage } from '../src/local/sd-image.mjs';
 kaipian.get('/local-image', async (_req, res, next) => { try { res.json(await sdImageStatus()); } catch (e) { next(e); } });
