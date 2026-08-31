@@ -338,6 +338,10 @@ npm run new -- sky-blue --topic="为什么天空是蓝的" --format=9:16
 
 ## 旁白音色
 
+> v1 的旁白脚本调的是 **Python 版 `edge-tts`**（`pip install edge-tts`），与 v2「开片」用的 Node 版是两套。
+> 只用开片的话不需要装它。端点偶尔会抖，某个音色没生成时重跑一次通常就好（脚本会逐个报，不会中断）。
+
+
 写在 `content/<故事名>/storyboard.json`：
 
 ```json
