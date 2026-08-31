@@ -152,10 +152,40 @@ switch (cmd) {
     break;
   }
   case 'estimate': {
-    const pf = rest[0]; const project = JSON.parse(fs.readFileSync(pf, 'utf-8'));
-    const free = project.shots.filter((s) => !s.visual?.cost || s.visual.cost.kind === 'free').length;
-    console.log(`镜头 ${project.shots.length} 个：素材库/本地/纯色 ${free} 个（不花钱）· 配音 Edge TTS（免费）· 合成本机 ffmpeg（免费）`);
-    if (free < project.shots.length) console.log(`  其余 ${project.shots.length - free} 个走 AI 出图/出片，按各家计费（数量级见 ao plan）`);
+    // 口播线的钱永远是 0，运行前真正想知道的是**要等多久**。
+    // 旧版按 shot.visual.cost 判断，而新项目压根还没有 visual，于是永远输出"全部不花钱"，等于没说。
+    // 下面的秒数是今天真机量的：6 镜纯检索 104s / 加看图把关 122s / 每镜本机出图约 57s。
+    const pf = rest[0]; if (!pf) { console.error('用法：openshorts estimate <project.json>'); process.exit(1); }
+    const project = JSON.parse(fs.readFileSync(pf, 'utf-8'));
+    const { readConfig: rc2 } = await import('../src/config.mjs'); const c2 = rc2();
+    const n = project.shots.length;
+    const paid = project.shots.filter((s) => s.visual?.cost && s.visual.cost.kind !== 'free').length;
+    const done = project.shots.filter((s) => s.render?.segment).length;
+    const visionOn = !!(c2.vision?.provider && c2.vision?.model);
+    let gen = null; try { const m = await import('../src/local/sd-image.mjs'); gen = await m.sdImageStatus(); } catch { /* 没装 */ }
+
+    console.log(`\n${project.title || project.id} · ${n} 个镜头${done ? `（已渲好 ${done} 个，重跑只补差的）` : ''}`);
+    if (project.line !== 'koubo') {
+      // 短剧线的画面来自云端出图/出片，钱和时间都由供应商决定——照搬口播线的算法只会算出错的数
+      console.log(`这是 AI 短剧线：画面走${project.tier === 'local' ? '本机出片（不花钱，每镜约 3–4 分钟）' : '云端出图/出片，按各家计费'}。`);
+      console.log(`本次输入：${project.inputs?.video_provider ?? '?'} / ${project.inputs?.video_model ?? '?'} · ${project.inputs?.video_duration ?? '?'} 秒一镜 · ${n} 镜${paid ? `（已出过 ${paid} 镜）` : ''}`);
+      console.log(`准确花费跑这条看：openshorts drama --plan -i story="…"（它会按供应商报价逐镜列出来）\n`);
+      break;
+    }
+    console.log(`花费：0 元 —— Edge TTS 免费、CC 素材免费、合成用本机 ffmpeg`);
+    const todo = n - done;                       // 已经渲好的镜头会按指纹复用，不重做
+    const perGen = 57;                           // 真机：FLUX Q2 576×1024 约 56–57 秒一张
+    if (!todo) {
+      console.log(`耗时：约 15 秒 —— 所有镜头都能复用，只需重新合成（改了文案 / 音色 / 画面的镜头会自动重做）`);
+    } else {
+      const base = Math.round((visionOn ? 20 : 17) * todo);
+      const mins = (sec) => (sec < 90 ? `${Math.round(sec)} 秒` : `${Math.round(sec / 60)} 分钟`);
+      console.log(`耗时：约 ${mins(base)}起（要跑 ${todo} 个镜头${done ? `，另外 ${done} 个复用` : ''}）`);
+      if (gen?.ok) console.log(`      素材库没命中的镜头会本机出图，每镜再加约 ${perGen} 秒（最坏 ${todo} 镜全画 ≈ ${mins(base + todo * perGen)}）`);
+      else console.log(`      素材库没命中的镜头会退纯色底（装了本机出图模型就能改成现画一张：openshorts install-image）`);
+    }
+    console.log(`看图把关：${visionOn ? `已开 ${c2.vision.provider}/${c2.vision.model} —— 不贴合的素材会被拦下，转本机出图` : '没开 —— 画面只按检索词字面匹配，可能配错（侧栏或 config.vision 里配）'}`);
+    console.log('');
     break;
   }
   case 'install-ffmpeg': {
@@ -221,7 +251,7 @@ switch (cmd) {
   run       出片：openshorts run <project.json> [--only s2,s3]（只重出这几镜，其余复用）
             [--no-local-image]（关掉"素材库没命中就本机出图"，直接退纯色底）
             [--vision-provider agnes --vision-model agnes-2.0-flash]（候选素材看图排序）
-  estimate  看这个项目要不要花钱
+  estimate  看这个项目要不要花钱、大概等多久（口播线钱恒为 0，真正的成本是时间）
   export    发布包：openshorts export <project.json> --platform douyin|shipinhao|bilibili|shorts（mp4+封面+SRT+文案，不自动发布）
   batch     批量：openshorts batch <project.json> --voices a,b [--captions douyin,clean] [--rates 1,1.1]`);
 }
