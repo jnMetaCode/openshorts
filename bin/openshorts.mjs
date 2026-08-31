@@ -41,9 +41,18 @@ switch (cmd) {
   case 'sources': {
     const { sourcesAvailability } = await import('../src/sources/availability.mjs');
     const a = sourcesAvailability();
-    const label = { stock: '素材库', image: 'AI 配图', local: '本地生成', cloud: '云端出片', layered: '图层动画' };
-    console.log('\n画面来源（这台机器）');
-    for (const k of Object.keys(label)) console.log(`  ${a[k].ok ? '✅' : '⛔'} ${label[k].padEnd(5, '　')} ${a[k].reason}`);
+    const { sdImageStatus } = await import('../src/local/sd-image.mjs');
+    const g = await sdImageStatus().catch(() => null);
+    const line = (ok, label, reason) => console.log(`  ${ok ? '✅' : '⛔'} ${label.padEnd(6, '　')} ${reason}`);
+    console.log('\n口播短视频的画面来源');
+    line(a.stock.ok, '素材库', a.stock.reason);
+    line(!!g?.ok, '本机出图', g?.ok ? `${g.models.find((m) => m.id === g.ready)?.label} 就绪（素材库没命中时顶上，不花钱）`
+      : g?.cliFound ? `模型没下（openshorts install-image，${g.models.find((m) => m.usable)?.sizeGB ?? '?'} GB，Apache-2.0 可商用）`
+      : '未装（openshorts install-image；不装的话找不到素材的镜头退纯色底）');
+    console.log('\nAI 短剧的画面来源');
+    line(a.image.ok, '云端出图', a.image.reason);
+    line(a.local.ok, '本机出片', a.local.reason);
+    line(a.cloud.ok, '云端出片', a.cloud.reason);
     console.log(`\n工具：ffmpeg ${a.tools.ffmpeg ? '✓' : '✗'} · whisper-cli ${a.tools.whisper ? '✓' : '✗'} · imagemagick ${a.tools.magick ? '✓' : '✗'}\n`);
     break;
   }
@@ -137,7 +146,9 @@ switch (cmd) {
     const pf = rest[0]; const o = parseOpts(rest.slice(1)); if (!pf) { console.error('用法：openshorts export <project.json> [--platform douyin]'); process.exit(1); }
     const { makePublishPack } = await import('../src/publish/pack.mjs');
     const r = makePublishPack(JSON.parse(fs.readFileSync(pf, 'utf-8')), { platform: o.platform || 'douyin' });
-    console.log(`✓ 发布包：${r.dir}${r.zip ? `\n  zip：${r.zip}` : ''}\n  ${r.files.join('、')}`); break;
+    console.log(`✓ 发布包：${r.dir}${r.zip ? `\n  zip：${r.zip}` : ''}\n  ${r.files.join('、')}`);
+    for (const x of r.warnings ?? []) console.log(`  ⚠️ ${x}`);
+    break;
   }
   case 'estimate': {
     const pf = rest[0]; const project = JSON.parse(fs.readFileSync(pf, 'utf-8'));

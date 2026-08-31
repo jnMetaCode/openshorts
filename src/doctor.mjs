@@ -44,7 +44,23 @@ export async function doctor() {
   try { const { cacheStats } = await import('./sources/stock.mjs'); const cs = cacheStats();
     if (cs.files) add('ok', `素材缓存 ${cs.files} 个文件 · ${(cs.bytes / 1048576).toFixed(0)} MB（${cs.dir}，出片时自动清理 30 天未用的，上限 2 GB）`); } catch { /* 无缓存 */ }
   const src = sourcesAvailability();
-  for (const [k, label] of [['stock', '素材库'], ['image', 'AI 配图'], ['local', '本地生成'], ['cloud', '云端出片']]) add(src[k].ok ? 'ok' : 'warn', `${label}：${src[k].reason}`);
+  add(src.stock.ok ? 'ok' : 'warn', `素材库：${src.stock.reason}`);
+  // 本机出图（口播线找不到素材时顶上）以前在体检里完全没有——用户不知道有这么个选项
+  try {
+    const { sdImageStatus } = await import('./local/sd-image.mjs');
+    const g = await sdImageStatus();
+    add(g.ok ? 'ok' : 'warn', g.ok ? `本机出图：${g.models.find((m) => m.id === g.ready)?.label} 就绪（素材库没命中时顶上，不花钱）`
+      : !g.cliFound ? '本机出图：未装 sd-cli（`openshorts install-image` 会提示怎么装；不装的话找不到素材的镜头退纯色底）'
+      : `本机出图：模型没下（\`openshorts install-image\`，${g.models.find((m) => m.usable)?.sizeGB ?? '?'} GB，Apache-2.0 可商用）`);
+  } catch { /* 模块不可用就跳过 */ }
+  add(src.image.ok ? 'ok' : 'warn', `云端出图（短剧线）：${src.image.reason}`);
+  add(src.local.ok ? 'ok' : 'warn', `本机出片（短剧线 H3）：${src.local.reason}`);
+  add(src.cloud.ok ? 'ok' : 'warn', `云端出片（短剧线）：${src.cloud.reason}`);
+
+  // 一句话结论：新用户看完十几行也答不上"我现在到底能不能出片"
+  const blockers = items.filter((i) => i.status === 'fail').map((i) => i.msg.split('：')[0].split('。')[0]);
+  items.unshift({ status: blockers.length ? 'fail' : 'ok',
+    msg: blockers.length ? `现在还出不了片：${blockers.join('；')}` : '现在就能出片（口播线 0 元 0 key；短剧线要配供应商 key）' });
   return items;
 }
 export function formatDoctor(items) { return items.map((i) => `  ${i.status === 'ok' ? '✅' : i.status === 'warn' ? '⚠️ ' : '⛔'} ${i.msg}`).join('\n'); }

@@ -32,7 +32,7 @@ export const Kaipian = () => {
   const [batchCaptions, setBatchCaptions] = useState<string[]>(['douyin']);
   const [batchResults, setBatchResults] = useState<Array<{id: string; ok: boolean; file?: string; durationSec?: number; error?: string}>>([]);
   const [platform, setPlatform] = useState('douyin');
-  const [pack, setPack] = useState<{dir: string; zipName: string | null; files: string[]} | null>(null);
+  const [pack, setPack] = useState<{dir: string; zipName: string | null; files: string[]; warnings?: string[]} | null>(null);
   const [providers, setProviders] = useState<{video: Array<{id: string; shape: string; hasKey: boolean; models: Array<{id: string; resolutions: string[]; durations: number[]; ratios: string[]}>}>; image: Array<{id: string; models: string[]}>} | null>(null);
   const [redo, setRedo] = useState<{shot: string; feedback: string; tier: 'same' | 'local' | 'cloud'} | null>(null);
   const [topic, setTopic] = useState('');
@@ -447,7 +447,8 @@ export const Kaipian = () => {
           {project.final.notes.length > 0 && <div className="kp-warn"><b>{t('提示')}</b><ul>{project.final.notes.map((n, i) => <li key={i}>{n}</li>)}</ul></div>}
           <h4>{t('发布包')}</h4>
           <div className="kp-inline"><select value={platform} onChange={(e) => setPlatform(e.target.value)}><option value="douyin">抖音</option><option value="shipinhao">视频号</option><option value="bilibili">B 站</option><option value="shorts">YouTube Shorts</option></select><button onClick={makePack} disabled={!!busy}>{t('打发布包（mp4 + 封面 + SRT + 文案）')}</button></div>
-          {pack && <p style={{fontSize: 12}}>已生成：<code>{pack.dir}</code>{pack.zipName ? ` · ${pack.zipName}` : ''}<br/><small>不自动发布——拖进平台后台即可；AI 标识与素材署名都在文案里。</small></p>}
+          {pack && <p style={{fontSize: 12}}>已生成：<code>{pack.dir}</code>{pack.zipName ? ` · ${pack.zipName}` : ''}<br/><small>不自动发布——拖进平台后台即可；AI 标识与素材署名都在文案里。</small>
+            {(pack.warnings ?? []).length > 0 && <span style={{display: 'block', color: '#e6b493', marginTop: 6}}>{pack.warnings!.map((x, i) => <span key={i} style={{display: 'block'}}>⚠️ {x}</span>)}</span>}</p>}
           <h4>{t('批量出版本（同脚本换音色 / 字幕样式）')}</h4>
           <div className="kp-row">
             <label>{t('音色（多选）')}<select multiple size={4} value={batchVoices} onChange={(e) => setBatchVoices([...e.target.selectedOptions].map((o) => o.value))}>{voices.map((v) => <option key={v.id} value={v.id}>{v.label}</option>)}</select></label>
