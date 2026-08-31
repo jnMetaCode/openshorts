@@ -50,6 +50,38 @@ export async function hasFilter(name) {
   return _filters.get(bin).has(name);
 }
 
+/** 图片/视频的像素尺寸（拿不到返回 null） */
+export async function probeSize(file) {
+  try {
+    const r = await run(FFPROBE(), ['-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=width,height', '-of', 'csv=p=0', file]);
+    const [w, h] = String(r.stdout).trim().split(/[\r\n,]/).map(Number);
+    return w > 0 && h > 0 ? { w, h } : null;
+  } catch { return null; }
+}
+
+/**
+ * 一张图在竖屏画面里怎么摆。
+ *
+ * 两个极端都不行：**铺满裁切**会把主体切掉（真机：横构图的猫在纸箱里，猫脸正好裁在框外）；
+ * **完整放下**又会把 3:2 的横图压成只占 37.5% 高度的一条窄带，手机上根本看不清是什么
+ * （真机截图确认过）。所以取中间：允许放大到裁掉一部分宽度，好让主体做大，
+ * 但**放大倍数设上限**——最多比"完整放下"再放大 maxZoom 倍（默认 1.45，即最多裁掉约 31% 宽度）。
+ * 竖图 / 方图本来就能填满，不受影响。
+ *
+ * 竖直位置压在偏上（中心落在 42% 高度）：下面三分之一留给字幕，不让字压在主体上。
+ */
+export function imageLayout(iw, ih, w = 1080, h = 1920, { maxZoom = 1.45, minFill = 0.60, centerY = 0.42 } = {}) {
+  const fit = Math.min(w / iw, h / ih);
+  const cover = Math.max(w / iw, h / ih);
+  const wanted = (minFill * h) / ih;                    // 想让高度至少占到 minFill
+  const scale = Math.max(fit, Math.min(wanted, fit * maxZoom, cover));
+  const sw = Math.round((iw * scale) / 2) * 2;          // 偶数，libx264 要
+  const sh = Math.round((ih * scale) / 2) * 2;
+  const cw = Math.min(sw, w), ch = Math.min(sh, h);
+  const y = Math.max(0, Math.min(h - ch, Math.round(centerY * h - ch / 2)));
+  return { scaleW: sw, scaleH: sh, cropW: cw, cropH: ch, x: Math.round((w - cw) / 2), y, fill: ch / h };
+}
+
 /**
  * 一段：把素材裁成 w×h、时长 = 配音时长（素材短了就循环补足），配音铺上去。
  *
@@ -60,6 +92,9 @@ export async function hasFilter(name) {
  */
 export async function renderSegment({ clip, audio, durationSec, w = 1080, h = 1920, fps = 30, out, clipVolume = 0, signal, kind = 'video', panReverse = false }) {
   const isImage = kind === 'image';
+  // 先量一下这张图多大，取景的比例在 JS 里算好——比在滤镜表达式里推可读得多，也能单测
+  const size = isImage ? await probeSize(clip) : null;
+  const L = size ? imageLayout(size.w, size.h, w, h) : null;
   // 视频直接裁满屏：视频的取景本来就以主体为中心，加上画面在动，裁掉边角不碍事。
   //
   // 图片不能这么裁。真机试过：一张横构图的猫在纸箱里，裁 9:16 正好把猫脸切在框外，剩下半只身子。
@@ -76,8 +111,10 @@ export async function renderSegment({ clip, audio, durationSec, w = 1080, h = 19
   const vchain = isImage
     ? `[0:v]split[bg][fg];`
       + `[bg]scale=${bgW}:${bgH}:force_original_aspect_ratio=increase,crop=${w}:${h}:x='${pan('iw-ow', 'ow')}':y='${pan('ih-oh', 'oh')}',gblur=sigma=${Math.round(w / 24)},eq=brightness=-0.08[bgb];`
-      + `[fg]scale=${w}:${h}:force_original_aspect_ratio=decrease[fgs];`
-      + `[bgb][fgs]overlay=(W-w)/2:(H-h)/2,fps=${fps},format=yuv420p[v]`
+      + (L
+        ? `[fg]scale=${L.scaleW}:${L.scaleH},crop=${L.cropW}:${L.cropH}:${Math.round((L.scaleW - L.cropW) / 2)}:${Math.round((L.scaleH - L.cropH) / 2)}[fgs];`
+        : `[fg]scale=${w}:${h}:force_original_aspect_ratio=decrease[fgs];`)
+      + `[bgb][fgs]overlay=${L ? `${L.x}:${L.y}` : '(W-w)/2:(H-h)/2'},fps=${fps},format=yuv420p[v]`
     : `[0:v]scale=${w}:${h}:force_original_aspect_ratio=increase,crop=${w}:${h},fps=${fps},format=yuv420p[v]`;
   const achain = clipVolume > 0 ? `[0:a]volume=${clipVolume}[c];[1:a][c]amix=inputs=2:duration=first[a]` : `[1:a]anull[a]`;
   const args = [...(isImage ? ['-loop', '1'] : ['-stream_loop', '-1']), '-i', clip, '-i', audio, '-t', String(durationSec),

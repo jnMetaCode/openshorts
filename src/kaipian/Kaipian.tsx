@@ -182,7 +182,21 @@ export const Kaipian = () => {
   const openProject = async (id: string) => { const p = await api<Project>(`/api/kaipian/projects/${encodeURIComponent(id)}`); setProject(p); setStep(p.final ? 4 : 3); };
   const copy = (t: string) => navigator.clipboard?.writeText(t);
 
-  const Steps = () => <ol className="kp-steps">{['输入', '来源与花费', '预览与调整', '出片与发布'].map((n0, i) => { const n = t(n0); return <li key={n0} className={step === i + 1 ? 'active' : step > i + 1 ? 'done' : ''}><span>{i + 1}</span>{n}</li>; })}</ol>;
+  /**
+   * 步骤条可以点着跳。原来它只是个进度指示——做到第 4 步想回去改个文案，只能靠卡片底部那颗
+   * 「上一步」一格一格退，而第 4 步压根没有回第 2 步的路。
+   * 规则：走过的步随便回；往前只允许到"手上这条项目已经具备的最远一步"（有项目才谈得上预览，
+   * 有成片才谈得上发布），点不了的给出原因而不是默默无反应。
+   */
+  const Steps = () => {
+    const reach = project?.final ? 4 : project ? 3 : line === 'drama' ? 2 : 2;
+    const why = (i: number) => (i <= step ? '' : i === 3 && !project ? t('先在第 1 步生成脚本') : i === 4 && !project?.final ? t('先出片') : '');
+    return <ol className="kp-steps">{['输入', '来源与花费', '预览与调整', '出片与发布'].map((n0, i) => {
+      const n = i + 1; const can = n <= Math.max(step, reach) && !why(n);
+      return <li key={n0} title={why(n) || undefined} onClick={() => { if (can && !busy) setStep(n); }}
+        className={`${step === n ? 'active' : step > n ? 'done' : ''} ${can && step !== n ? 'can' : ''}`}><span>{n}</span>{t(n0)}</li>;
+    })}</ol>;
+  };
   /**
    * 常驻侧栏。回答两个以前无处可看的问题：
    * ①「我这台机器现在能干什么」——ffmpeg 能不能烧字幕、本机能不能出图、画面有没有人把关；
@@ -422,8 +436,10 @@ export const Kaipian = () => {
           <h4>{t('标题（点复制）')}</h4><ul className="kp-copy">{project.publish.titles.map((t) => <li key={t} onClick={() => copy(t)}>{t}</li>)}</ul>
           <h4>{t('话题')}</h4><p className="kp-tags" onClick={() => copy(project.publish.tags.map((t) => `#${t}`).join(' '))}>{project.publish.tags.map((t) => `#${t}`).join(' ')}</p>
           <h4>{t('发布说明')}</h4><p>{project.publish.note}<br/><small>AI 标识：{project.publish.aiLabelText}</small></p>
-          {project.provenance.length > 0 && <><h4>{t('素材署名')}</h4><ul className="kp-prov">{project.provenance.map((p) => <li key={p.shot}>{p.shot}: {p.source}{p.author ? ` · ${p.author}` : ''}{p.license ? `（${p.license}）` : ''}</li>)}</ul></>}
-          {project.final.quality && <><h4>质检 {project.final.quality.pass ? '✅ 通过' : '⛔ 有问题'}{project.final.quality.warnings ? ` · ${project.final.quality.warnings} 条提醒` : ''}</h4><ul className="kp-prov">{project.final.quality.items.map((q) => <li key={q.id}>{q.status === 'pass' ? '✅' : q.status === 'warn' ? '⚠️' : '⛔'} {q.msg}</li>)}</ul></>}
+          <div className="kp-two">
+            {project.provenance.length > 0 && <div><h4>{t('素材署名')}</h4><ul className="kp-prov">{project.provenance.map((p) => <li key={p.shot}>{p.shot}: {p.source}{p.author ? ` · ${p.author}` : ''}{p.license ? `（${p.license}）` : ''}</li>)}</ul></div>}
+            {project.final.quality && <div><h4>质检 {project.final.quality.pass ? '✅ 通过' : '⛔ 有问题'}{project.final.quality.warnings ? ` · ${project.final.quality.warnings} 条提醒` : ''}</h4><ul className="kp-prov">{project.final.quality.items.map((q) => <li key={q.id}>{q.status === 'pass' ? '✅' : q.status === 'warn' ? '⚠️' : '⛔'} {q.msg}</li>)}</ul></div>}
+          </div>
           {project.final.notes.length > 0 && <div className="kp-warn"><b>{t('提示')}</b><ul>{project.final.notes.map((n, i) => <li key={i}>{n}</li>)}</ul></div>}
           <h4>{t('发布包')}</h4>
           <div className="kp-inline"><select value={platform} onChange={(e) => setPlatform(e.target.value)}><option value="douyin">抖音</option><option value="shipinhao">视频号</option><option value="bilibili">B 站</option><option value="shorts">YouTube Shorts</option></select><button onClick={makePack} disabled={!!busy}>{t('打发布包（mp4 + 封面 + SRT + 文案）')}</button></div>

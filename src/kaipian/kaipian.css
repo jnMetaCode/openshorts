@@ -4,8 +4,8 @@ body:has(.kp){overflow:auto}
 .kp-brand{display:flex;align-items:center;gap:12px}.kp-mark{width:38px;height:38px;display:grid;place-items:center;background:#a72d24;color:#f6e9d3;font:700 22px Georgia,"Songti SC",serif;box-shadow:4px 4px 0 #50201c;transform:rotate(-2deg)}
 .kp-brand strong{display:block;font-size:16px}.kp-brand small{color:#877d72;font-size:11px}
 .kp-top nav{display:flex;gap:12px;align-items:center}.kp-top nav a{color:#c9b8a5;font-size:12px}.kp-top nav select{background:#241e19;color:#d8cabc;border:1px solid #4a3c30;border-radius:6px;padding:6px 8px}
-.kp-steps{display:flex;gap:8px;list-style:none;padding:18px 24px 6px;margin:0;max-width:980px}.kp-steps li{flex:1;display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid #382f27;border-radius:8px;color:#877d72;font-size:12px}.kp-steps li span{width:22px;height:22px;display:grid;place-items:center;border-radius:50%;background:#241e19;font-size:11px}.kp-steps li.active{color:#f3dfca;border-color:#ce4a3f}.kp-steps li.active span{background:#a72d24;color:#fff}.kp-steps li.done{color:#a7c39f}.kp-steps li.done span{background:#3d5a3a;color:#dfeedb}
-.kp-card{max-width:980px;margin:12px 24px;padding:18px 20px;background:#17130f;border:1px solid #382f27;border-radius:10px}
+.kp-steps{display:flex;gap:8px;list-style:none;padding:18px 24px 6px;margin:0;max-width:1180px}.kp-steps li{flex:1;display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid #382f27;border-radius:8px;color:#877d72;font-size:12px}.kp-steps li span{width:22px;height:22px;display:grid;place-items:center;border-radius:50%;background:#241e19;font-size:11px}.kp-steps li.active{color:#f3dfca;border-color:#ce4a3f}.kp-steps li.active span{background:#a72d24;color:#fff}.kp-steps li.done{color:#a7c39f}.kp-steps li.done span{background:#3d5a3a;color:#dfeedb}
+.kp-card{max-width:1180px;margin:12px 24px;padding:18px 20px;background:#17130f;border:1px solid #382f27;border-radius:10px}
 .kp-card h3{margin:10px 0 8px;font-size:15px}.kp-card h3 small{color:#877d72;font-weight:400;font-size:12px}.kp-card h4{margin:14px 0 6px;font-size:12px;color:#a29282;letter-spacing:1px}
 .kp-card label{display:flex;flex-direction:column;gap:6px;font-size:12px;color:#a99b8e;flex:1}.kp-card textarea,.kp-card input,.kp-card select{width:100%;padding:9px 10px;background:#0f0d0b;border:1px solid #3a3028;border-radius:6px;color:#e3d5c7;font:inherit}
 .kp-row{display:flex;gap:14px;margin:10px 0}.kp-inline{display:flex;gap:8px}.kp-inline select{flex:1}
@@ -54,3 +54,14 @@ body:has(.kp){overflow:auto}
 .kp-testres.ok{background:#1d2a1b;color:#bcd7b4}
 .kp-testres.bad{background:#3a1f1c;color:#f3d6d2}
 @media (max-width:1280px){.kp-shell{grid-template-columns:1fr}.kp-aside{position:static;margin:12px 24px}}
+
+/* 步骤条可点：走过的步随便回，点不了的给光标和 title 说明原因（原来只能靠「上一步」一格格退） */
+.kp-steps li.can{cursor:pointer}
+.kp-steps li.can:hover{border-color:#7a5f4e;color:#e8dccf}
+.kp-steps li:not(.can):not(.active){cursor:not-allowed}
+/* 第 4 步：署名和质检并排，别排成一条长长的竖列 */
+.kp-two{display:grid;grid-template-columns:1fr 1fr;gap:0 20px;align-items:start}
+@media (max-width:900px){.kp-two{grid-template-columns:1fr}}
+/* 成片播放器跟着滚动条粘住：右边内容很长，划到质检时左边还能看见片子 */
+.kp-final-grid{grid-template-columns:340px minmax(0,1fr)}
+.kp-final video{width:340px;position:sticky;top:12px}

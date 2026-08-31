@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { renderSegment, concatSegments, audioPackets, probeDuration, escapeFilterPath, concatListLine } from '../src/compose/koubo.mjs';
+import { renderSegment, concatSegments, audioPackets, probeDuration, escapeFilterPath, concatListLine, imageLayout } from '../src/compose/koubo.mjs';
 
 const hasFfmpeg = spawnSync('ffmpeg', ['-version']).status === 0;
 
@@ -68,4 +68,35 @@ test('concat 清单行：同一个坑的另一半（它自己的解析器里反�
   assert.equal(concatListLine('C:\\Users\\yx\\a.mp4', 'win32'), "file 'C:/Users/yx/a.mp4'");
   assert.equal(concatListLine('/tmp/a.mp4', 'darwin'), "file '/tmp/a.mp4'");
   assert.equal(concatListLine("/tmp/it's.mp4", 'darwin'), "file '/tmp/it'\\''s.mp4'");
+});
+
+/**
+ * 图片在竖屏里的取景。两个极端都不行：铺满裁切会把主体切掉（真机：横构图的猫，猫脸裁在框外）；
+ * 完整放下又把 3:2 的横图压成只占 37.5% 高度的一条窄带，手机上看不清是什么（真机截图确认）。
+ */
+test('图片取景：横图放大到看得清，但放大倍数有上限；竖图/方图不受影响', () => {
+  const W = 1080, H = 1920;
+  const land = imageLayout(1024, 683, W, H);          // 就是真机那张
+  assert.ok(land.fill > 0.5 && land.fill < 0.6, `3:2 横图该占五成多，实际 ${(land.fill * 100).toFixed(0)}%`);
+  assert.ok(1 - land.cropW / land.scaleW <= 0.32, '最多裁掉三成宽度，再多主体就保不住了');
+  assert.ok(land.y > 0 && land.y + land.cropH < H * 0.75, '压在偏上，下面留给字幕');
+
+  const gen = imageLayout(576, 1024, W, H);            // 本机出图就是 9:16
+  assert.equal(gen.fill, 1, '9:16 的图该铺满');
+  assert.equal(gen.cropW, W);
+
+  const tall = imageLayout(683, 1024, W, H);
+  assert.ok(tall.fill > 0.8, '竖图本来就该占大部分高度');
+  assert.equal(1 - tall.cropW / tall.scaleW, 0, '竖图不该被裁宽度');
+
+  // 极扁的横图：放大上限保护它不被裁没，代价是占不满——这是有意的，不是漏掉
+  const strip = imageLayout(2400, 1000, W, H);
+  assert.ok(1 - strip.cropW / strip.scaleW <= 0.32);
+
+  for (const [iw, ih] of [[1024, 683], [576, 1024], [1200, 1200], [2400, 1000]]) {
+    const L = imageLayout(iw, ih, W, H);
+    assert.equal(L.scaleW % 2, 0, 'libx264 要偶数宽');
+    assert.equal(L.scaleH % 2, 0, 'libx264 要偶数高');
+    assert.ok(L.cropW <= W && L.cropH <= H, '裁出来不能比画面还大');
+  }
 });
