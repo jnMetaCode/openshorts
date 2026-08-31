@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 process.env.OPENSHORTS_HOME = fs.mkdtempSync(path.join(os.tmpdir(), 'os-home-'));   // 测试不碰真实 ~/.openshorts（缓存会污染断言）
-const { searchLocal, searchPexels, searchWikimedia, findCandidates, StockRateLimit, StockTooLarge, relaxQueries, cacheTier, materialize, materializeFirst, wikimediaTranscoded, searchWikimediaImages, commonsThumbWidth } = await import('../src/sources/stock.mjs');
+const { searchLocal, searchPexels, searchWikimedia, findCandidates, StockRateLimit, StockTooLarge, relaxQueries, cacheTier, materialize, materializeFirst, wikimediaTranscoded, searchWikimediaImages, commonsThumbWidth, searchOpenverse } = await import('../src/sources/stock.mjs');
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'os-stock-'));
 fs.writeFileSync(path.join(dir, 'cat_cardboard_box.mp4'), 'x');
@@ -138,4 +138,35 @@ test('Commons 图片源：只要能用的位图、比例别太极端，按标题
 test('Commons 缩略图换宽度', () => {
   assert.equal(commonsThumbWidth('https://x/thumb/a/ab/N.jpg/2400px-N.jpg', 640), 'https://x/thumb/a/ab/N.jpg/640px-N.jpg');
   assert.equal(commonsThumbWidth(null, 640), null);
+});
+
+test('Openverse：只收可商用可改编的许可证，NC / ND 一律不要（用户是要发平台的）', async () => {
+  const hit = (id, title, license, w = 2000, h = 1500) => ({ id, title, license, license_version: '2.0', url: `https://x/${id}.jpg`, thumbnail: `https://x/${id}-t.jpg`, width: w, height: h, creator: 'Somebody', foreign_landing_url: 'https://x/page' });
+  const fetchImpl = async () => ({ ok: true, status: 200, json: async () => ({ results: [
+    hit('a', 'Cat in a box', 'by'),
+    hit('b', 'Cat NC', 'by-nc-sa'),        // 非商用：不能给要发平台的用户埋雷
+    hit('c', 'Cat ND', 'by-nd'),           // 禁改编：我们要裁切推拉，属于改编
+    hit('d', 'Cat CC0', 'cc0'),
+    hit('e', 'Cat tiny', 'by', 320, 240),  // 太小，垫底放大会糊
+    hit('f', 'Cat strip', 'by', 8000, 900),// 细横条
+  ] }) });
+  const r = await searchOpenverse('cat box', { fetchImpl, limit: 5 });
+  assert.deepEqual(r.map((c) => c.id), ['openverse:a', 'openverse:d'], 'NC / ND / 太小 / 细横条都该挡掉');
+  assert.equal(r[0].kind, 'image');
+  assert.equal(r[1].license, 'CC0 2.0', '"cc0" 本身就是完整名字，不该拼成 "CC CC0"');
+  assert.ok(r[0].thumb, '排序要用缩略图，不能为了看一眼去下原图');
+});
+
+test('取材顺序即优先级：图片源在前，中间给视频留一个位', async () => {
+  // 用一个别的测试没碰过的检索词：findCandidates 会写缓存，同名词会读到上一个测试留下的候选
+  const calls = [];
+  const fetchImpl = async (u) => {
+    const url = String(u); calls.push(url);
+    if (url.includes('openverse')) return { ok: true, status: 200, json: async () => ({ results: [1, 2, 3, 4].map((i) => ({ id: 'ov' + i, title: 'otter raft ' + i, license: 'cc0', url: `https://x/${i}.jpg`, thumbnail: 't', width: 2000, height: 1500 })) }) };
+    if (url.includes('filetype%3Avideo') || url.includes('filetype:video')) return { ok: true, status: 200, json: async () => ({ query: { pages: { 9: { pageid: 9, title: 'File:Otter raft clip.webm', imageinfo: [{ url: 'https://upload.wikimedia.org/wikipedia/commons/1/17/Clip.webm', mime: 'video/webm', height: 1080, size: 5e6, duration: 20, extmetadata: {} }] } } } }) };
+    return { ok: true, status: 200, json: async () => ({ query: { pages: {} } }) };
+  };
+  const r = await findCandidates('otter raft', { config: { stock: {} }, fetchImpl });
+  assert.deepEqual(r.map((c) => c.kind), ['image', 'image', 'video'], '两张图 + 一条视频：没开看图排序时排头的图中选，开了才有得挑');
+  assert.equal(r.filter((c) => c.source === 'openverse').length, 2, '每个源自己的 limit 不能被外层总额顶掉');
 });

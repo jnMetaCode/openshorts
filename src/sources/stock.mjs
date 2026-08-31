@@ -126,6 +126,38 @@ export async function searchWikimedia(query, { limit = 3, minDuration = 0, maxDu
   });
 }
 
+/**
+ * Openverse（WordPress 维护的 CC 媒体聚合站，聚合 Flickr / rawpixel / 各大博物馆，**不要 key**）。
+ *
+ * 这个源上一版被我错误地否掉过：当时 Node 连它一律 ECONNRESET、curl 却能通，我判成"WAF 按 TLS 指纹
+ * 拦 Node"。真实原因是本机设了 HTTPS_PROXY 而 Node 的 fetch 不认代理（见 src/net/proxy.mjs）。
+ * 装上代理调度器后一次就通。留着这段注释，免得以后又有人照着错结论把它删掉。
+ *
+ * 排在 Commons 图片前面：语料大得多（Flickr 的日常照片正是口播要的"生活场景"），命中也更准。
+ * 只要可商用 + 可改编的许可证：用户是要发到平台上的，NC（非商用）不能给他们埋雷；
+ * 裁切推拉属于改编，ND（禁改）也要排除。服务端过滤之外本地再兜一道。
+ */
+export async function searchOpenverse(query, { limit = 3, fetchImpl = fetch } = {}) {
+  const u = new URL('https://api.openverse.org/v1/images/');
+  Object.entries({ q: query, page_size: String(Math.max(limit * 3, 9)), license_type: 'commercial,modification', mature: 'false' })
+    .forEach(([k, v]) => u.searchParams.set(k, v));
+  const r = await fetchImpl(u, { headers: { 'User-Agent': UA } });
+  if (r.status === 429) throw new StockRateLimit('Openverse 触发限速（匿名调用有配额），稍后再试');
+  if (!r.ok) throw new Error(`Openverse ${r.status}`);
+  const j = await r.json();
+  const usable = (lic) => lic && !/\bnc\b/.test(lic) && !/\bnd\b/.test(lic);
+  return (j.results ?? [])
+    .filter((x) => x.url && usable(x.license) && (x.width ?? 0) >= 800 && (x.width / (x.height || 1)) >= 0.4 && (x.width / (x.height || 1)) <= 3.5)
+    .slice(0, limit)
+    .map((x) => ({
+      id: `openverse:${x.id}`, source: 'openverse', kind: 'image', file: null,
+      url: x.url, thumb: x.thumbnail ?? null, width: x.width, height: x.height, duration: null,
+      license: licenseLabel(x.license, x.license_version),
+      licenseUrl: x.license_url ?? null, author: x.creator ?? null,
+      page: x.foreign_landing_url ?? x.detail_url ?? null, title: x.title ?? null,
+    }));
+}
+
 /** Commons 缩略图地址换个宽度：.../thumb/a/ab/N.jpg/2400px-N.jpg → 640px-N.jpg（MediaWiki 按需生成） */
 export const commonsThumbWidth = (url, px) => (url ? String(url).replace(/\/(\d+)px-/, `/${px}px-`) : null);
 
@@ -194,16 +226,22 @@ export async function findCandidates(query, { localDirs = [], used = new Set(), 
   const cached = readCacheIndex(query, tier); if (cached) push(cached);
   if (out.length >= limit) return out.slice(0, limit);
   const errors = [];
-  // 有 key 的视频源先用（画质/时长最可控）；没 key 时先试 Commons 的**图片**——同一个站，
+  // 有 key 的视频源先用（画质/时长最可控）；没 key 时先试 CC **图片**（Openverse 语料大、Commons 兜底）——同一个站，
   // 图片库比视频库大得多也准得多（真机对比："cat sleeping" 图片给 Sleeping cat on her back，
   // 视频却把 Wasp eating cat food 配给了"猫钻纸箱"）。一张贴合的静图 + 缓推，好过一段不相干的视频。
   // 图片只取 2 条，给 Wikimedia 视频留一个位——让看图排序在"图 vs 视频"之间挑，而不是替它决定。
-  const chain = [[searchPexels, { key: config.stock?.pexelsKey }], [searchPixabay, { key: config.stock?.pixabayKey }], [searchWikimediaImages, { limit: 2 }], [searchWikimedia, {}]];
+  // 顺序即优先级：不看图排序时第一条直接中选，所以最准的排最前。
+  // 视频源夹在两个图片源中间而不是垫底——这样候选里一定有一条视频可选（图片源会把 3 个位子占满），
+  // 开了看图排序时模型才有"图 vs 视频"可挑；没开时排在前面的图片会中选，这也正是我们想要的默认。
+  const chain = [[searchPexels, { key: config.stock?.pexelsKey }], [searchPixabay, { key: config.stock?.pixabayKey }],
+    [searchOpenverse, { limit: 2 }], [searchWikimedia, { limit: 1 }], [searchWikimediaImages, { limit: 2 }]];
   for (const [fn, extra] of chain) {
     if (out.length >= limit) break;
     if ('key' in extra && !extra.key) continue;
     for (const q of relaxQueries(query)) {
-      try { const r = await fn(q, { ...extra, limit, minDuration, fetchImpl }); push(r); if (r.length) { writeCacheIndex(query, r, tier); break; } }
+      // extra 放最后：每个源自己的 limit（比如图片源只取 2 条、给视频留位）必须能覆盖外层的总额，
+      // 写成 { ...extra, limit } 的话 extra.limit 会被外层顶掉——那样"留一个位给视频"就是空话
+      try { const r = await fn(q, { limit, minDuration, fetchImpl, ...extra }); push(r); if (r.length) { writeCacheIndex(query, r, tier); break; } }
       catch (e) { errors.push(e.message); if (e instanceof StockRateLimit) break; }
     }
   }
@@ -260,6 +298,12 @@ export async function materializeFirst(candidates, { fetchImpl = fetch, onError 
   }
   return null;
 }
+
+/** "cc0" / "pdm" 本身就是完整名字，别再前缀一个 CC 变成 "CC CC0" */
+export const licenseLabel = (lic, ver) => {
+  const L = String(lic ?? '').toUpperCase();
+  return `${/^(CC0|PDM)/.test(L) ? L : `CC ${L}`} ${ver ?? ''}`.trim();
+};
 
 export class StockRateLimit extends Error {}
 export class StockTooLarge extends Error {}

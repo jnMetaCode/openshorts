@@ -84,7 +84,8 @@ kaipian.get('/projects/:id/run', async (req, res) => {
   try {
     const project = JSON.parse(fs.readFileSync(f, 'utf-8'));
     const only = req.query.only ? String(req.query.only).split(',').map((x) => x.trim()).filter(Boolean) : null;
-    const p = await runKoubo(project, { outDir: path.dirname(f), log: (m) => send('log', { m }), vision: readConfig().vision, signal: ac.signal, only });
+    const p = await runKoubo(project, { outDir: path.dirname(f), log: (m) => send('log', { m }), vision: readConfig().vision, signal: ac.signal, only,
+      localImage: req.query.localImage === '0' ? false : 'auto' });
     send('done', { final: p.final, provenance: p.provenance });
   } catch (e) { send('error', { m: e.message }); }
   finally { running.delete(id); }
@@ -94,6 +95,18 @@ kaipian.post('/projects/:id/cancel', (req, res) => {
   const ac = running.get(safe(req.params.id));
   if (!ac) return res.status(404).json({ error: '这个项目没有在跑' });
   ac.abort(); res.json({ ok: true });
+});
+
+// 本地文生图（sd.cpp + FLUX.1-schnell，Apache-2.0 可商用）：素材库没命中时本机现画一张，不退纯色底
+import { sdImageStatus, installSdImage } from '../src/local/sd-image.mjs';
+kaipian.get('/local-image', async (_req, res, next) => { try { res.json(await sdImageStatus()); } catch (e) { next(e); } });
+kaipian.get('/local-image/install', async (req, res) => {
+  res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' });
+  const send = (ev, data) => res.write(`event: ${ev}\ndata: ${JSON.stringify(data)}\n\n`);
+  const ac = new AbortController(); req.on('close', () => ac.abort());
+  try { send('done', await installSdImage({ model: String(req.query.model || 'flux-schnell-q4'), signal: ac.signal, onLog: (m) => send('log', { m }), onProgress: (p) => send('progress', p) })); }
+  catch (e) { send('error', { m: e.message }); }
+  res.end();
 });
 
 // ffmpeg 能力与一键安装：Homebrew 的 ffmpeg 不含 libass ⇒ 字幕烧不进画面，这是免费路径的硬伤，

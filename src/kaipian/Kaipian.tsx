@@ -41,6 +41,7 @@ export const Kaipian = () => {
   const [tone, setTone] = useState('科普讲解');
   const [sources, setSources] = useState<Sources | null>(null);
   const [ff, setFf] = useState<{found: boolean; version: string; subtitles: boolean; drawtext: boolean; managed: boolean} | null>(null);
+  const [gen, setGen] = useState<{ok: boolean; cliFound: boolean; memGB: number; license: string; ready: string | null; models: Array<{id: string; label: string; sizeGB: number; present: boolean; usable: boolean; reason: string}>} | null>(null);
   const [voices, setVoices] = useState<Voice[]>([]);
   const [voice, setVoice] = useState('zh-CN-XiaoxiaoNeural');
   const [captions, setCaptions] = useState('douyin');
@@ -64,6 +65,7 @@ export const Kaipian = () => {
     api<any>('/api/kaipian/drama/providers').then(setProviders).catch(() => {});
     api<any>('/api/kaipian/local/status').then(setLocalSt).catch(() => {});
     api<any>('/api/kaipian/ffmpeg').then(setFf).catch(() => {});
+    api<any>('/api/kaipian/local-image').then(setGen).catch(() => {});
   };
   useEffect(() => {
     refresh().catch((e) => setError(String(e.message)));
@@ -131,6 +133,15 @@ export const Kaipian = () => {
     es.addEventListener('progress', (e: any) => { const p = JSON.parse(e.data); setDl((d) => ({...(d ?? {log: []}), file: p.file, bytes: p.bytes, total: p.total})); });
     es.addEventListener('done', async (e: any) => { es.close(); setFf(JSON.parse(e.data)); setDl(null); await refresh(); });
     es.addEventListener('error', (e: any) => { try { setError(JSON.parse(e.data).m); } catch { setError('ffmpeg 下载中断，可重试'); } es.close(); });
+  };
+  // 本地文生图模型（6.4 / 10 GB）：装了之后素材库没命中的镜头会本机现画一张，而不是退纯色底
+  const installLocalImage = (model: string) => {
+    setDl({log: []}); setError('');
+    const es = new EventSource(`/api/kaipian/local-image/install?model=${encodeURIComponent(model)}`);
+    es.addEventListener('log', (e: any) => setDl((d) => ({...(d ?? {log: []}), log: [...(d?.log ?? []), JSON.parse(e.data).m]})));
+    es.addEventListener('progress', (e: any) => { const p = JSON.parse(e.data); setDl((d) => ({...(d ?? {log: []}), file: p.file, bytes: p.bytes, total: p.total})); });
+    es.addEventListener('done', async (e: any) => { es.close(); setGen(JSON.parse(e.data)); setDl(null); await refresh(); });
+    es.addEventListener('error', (e: any) => { try { setError(JSON.parse(e.data).m); } catch { setError('模型下载中断（支持断点续传，可重试）'); } es.close(); });
   };
   const runBatch = () => {
     if (!project) return; setBatchResults([]); setLog([]); setBusy('批量出片中…'); setError('');
@@ -239,14 +250,25 @@ export const Kaipian = () => {
       <h3>{t('画面来源')}</h3>
       <div className="kp-srcs">
         <SrcCard k="stock" label="素材库" hint="Wikimedia CC 图片/视频（免 key）+ Pexels/Pixabay + 本地素材夹 · 不花钱"/>
-        <SrcCard k="image" label="AI 配图" hint="文生图 + 推拉动效 · 按张计费（M2 接入）"/>
-        <SrcCard k="local" label="本地生成" hint="sd.cpp 本地出片 · 不花钱、草稿级（M2）"/>
+        <SrcCard k="image" label="AI 配图" hint="云端文生图 · 按张计费（短剧线在用；口播线用本机出图，不花钱）"/>
+        <SrcCard k="local" label="本地生成" hint={gen?.ok ? `本机文生图就绪 · 素材库没命中时顶上 · 不花钱` : 'sd.cpp 本机文生图 · 不花钱（未装模型时素材库没命中就退纯色底）'}/>
         <SrcCard k="cloud" label="云端出片" hint="秘塔 / 火山 / Agnes … · 按秒计费（M2）"/>
       </div>
       <div className="kp-row">
         <label>{t('本次画面')}<select value={source} onChange={(e) => setSource(e.target.value as any)}><option value="stock">素材库（找不到时用纯色底）</option><option value="solid">只用纯色底 + 大字幕（最快，测试用）</option></select></label>
         <label>{t('本地素材夹（可选）')}<input value={localDir} onChange={(e) => setLocalDir(e.target.value)} placeholder="/path/to/我的素材（文件名或同名 .txt 里的关键词会被匹配）"/></label>
       </div>
+      {gen && gen.cliFound && !gen.ok && <details className="kp-keys">
+        <summary>找不到素材的镜头，让本机画一张（可选，不花钱、不联网）</summary>
+        <p style={{fontSize: 13, margin: '6px 0'}}>
+          口播里"狭小空间让它感到安全"这类抽象句，素材库本来就没有对应画面，现在会退成纯色底。
+          装一个本地文生图模型后，这些镜头会由本机现画一张（每张几十秒）。
+          <br/><small>{gen.license}</small>
+        </p>
+        <div className="kp-inline">{gen.models.filter((m) => m.usable).map((m) => <button key={m.id} disabled={!!dl} onClick={() => installLocalImage(m.id)}>{m.label} · {m.sizeGB} GB</button>)}</div>
+        {gen.models.every((m) => !m.usable) && <small>本机内存 {gen.memGB} GB，跑不动任何档位。</small>}
+        {dl && <pre className="kp-log" style={{maxHeight: 120, marginTop: 8}}>{[...dl.log, dl.total ? `${dl.file} ${(Number(dl.bytes ?? 0) / 1073741824).toFixed(2)}/${(dl.total / 1073741824).toFixed(2)} GB` : ''].filter(Boolean).join('\n')}</pre>}
+      </details>}
       {cfg && !(cfg.stock.hasPexels || cfg.stock.hasPixabay) && <details className="kp-keys" open><summary>素材库 key（免费，注册即得；只存本机 <code>~/.openshorts/config.json</code>）</summary>
         <div className="kp-row">
           <label>Pexels key <a href="https://www.pexels.com/api/" target="_blank" rel="noreferrer">去申请 ↗</a><input value={keyDraft.pexelsKey} onChange={(e) => setKeyDraft({...keyDraft, pexelsKey: e.target.value})} placeholder="粘贴后保存"/></label>

@@ -8,6 +8,11 @@ import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 
+// 先装代理再做任何联网的事：Node 的 fetch 不认 HTTPS_PROXY，不装的话在设了代理的机器上
+// 所有下载/检索都会以 ECONNRESET 失败，而且报错看不出是自己没走代理
+const { installProxy } = await import('../src/net/proxy.mjs');
+installProxy();
+
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const [cmd = 'open', ...rest] = process.argv.slice(2);
 
@@ -86,7 +91,8 @@ switch (cmd) {
     const vision = o['vision-provider'] ? { provider: o['vision-provider'], model: o['vision-model'] || '' } : c.vision;
     if (vision?.provider) console.log(`  🔍 素材候选看图排序：${vision.provider} / ${vision.model}`);
     const only = o.only ? String(o.only).split(',').map((x) => x.trim()).filter(Boolean) : null;
-    const p = await runKoubo(project, { outDir: path.dirname(path.resolve(pf)), log: (m) => console.log('  ' + m), vision, only });
+    const p = await runKoubo(project, { outDir: path.dirname(path.resolve(pf)), log: (m) => console.log('  ' + m), vision, only,
+      localImage: o['no-local-image'] ? false : (o['local-image-model'] || 'auto') });
     console.log(`\n✓ 成片：${p.final.file}（${p.final.durationSec.toFixed(1)}s，${((Date.now() - t0) / 1000).toFixed(0)}s 出片）\n  字幕：${p.final.srt}\n  封面：${p.final.cover ?? '无'}\n  发布文案：${p.final.publish}`);
     for (const n of p.final.notes) console.log(`  ⚠️ ${n}`);
     break;
@@ -136,6 +142,31 @@ switch (cmd) {
     } catch (e) { console.error(`\n⛔ ${e.message}`); process.exit(1); }
     break;
   }
+  case 'install-image': {
+    // 本地文生图：素材库没命中时用它顶上，不花钱、不联网、模型 Apache-2.0 可商用
+    const o = parseOpts(rest);
+    const m = await import('../src/local/sd-image.mjs');
+    const st = await m.sdImageStatus();
+    if (!st.cliFound) { console.error(`⛔ 没装 sd-cli（本地出图/出片都要它）。界面第 2 步「本地生成」里可以一键装，或先跑 openshorts drama 的本地档安装。`); process.exit(1); }
+    if (o.list || rest.includes('--list')) {
+      console.log(`\n本地出图档位（模型目录 ${st.modelsDir}，内存 ${st.memGB} GB）`);
+      for (const x of st.models) console.log(`  ${x.present ? '✅' : x.usable ? '⬜' : '⛔'} ${x.id.padEnd(18)} ${x.label} · ${x.sizeGB} GB · ${x.reason}`);
+      console.log(`\n许可证：${st.license}\n装：openshorts install-image --model flux-schnell-q4`);
+      break;
+    }
+    const want = o.model || m.pickImageModel(st)?.id;
+    const tier = st.models.find((x) => x.id === want);
+    if (!tier) { console.error(`⛔ 未知档位 ${want}（openshorts install-image --list 看有哪些）`); process.exit(1); }
+    if (!tier.usable) { console.error(`⛔ ${tier.reason}`); process.exit(1); }
+    if (tier.present && !o.force) { console.log(`✅ ${tier.label} 已经装好了。要重装加 --force`); break; }
+    console.log(`将下载 ${tier.label}，共约 ${tier.sizeGB} GB 到 ${st.modelsDir}\n许可证：${st.license}`);
+    try {
+      await m.installSdImage({ model: want, onLog: (x) => console.log('  ' + x),
+        onProgress: (p) => { if (p.total) process.stdout.write(`\r  ${p.file} ${(p.bytes / 1073741824).toFixed(2)}/${(p.total / 1073741824).toFixed(2)} GB   `); if (p.done) process.stdout.write('\n'); } });
+      console.log(`\n✓ 装好了。以后 openshorts run 遇到素材库没命中的镜头，会本机现画一张而不是退纯色底（加 --no-local-image 可关掉）。`);
+    } catch (e) { console.error(`\n⛔ ${e.message}`); process.exit(1); }
+    break;
+  }
   case 'doctor': {
     const { doctor, formatDoctor } = await import('../src/doctor.mjs');
     console.log('\nOpenShorts 体检'); console.log(formatDoctor(await doctor())); console.log('\nAO 引擎体检（文本/出图/出片供应商）：');
@@ -153,8 +184,11 @@ switch (cmd) {
   drama     AI 短剧：跑 AO 短剧流水线（参数透传给 ao run；--validate / --plan 只检查）
   doctor    环境体检（转 ao doctor）
   install-ffmpeg  装一份带 libass 的 ffmpeg 到 ~/.openshorts/bin（Homebrew 的不带，字幕会烧不进画面）
+  install-image   装本地文生图模型（FLUX.1-schnell，Apache-2.0 可商用）：素材库没命中时本机现画一张
+                  openshorts install-image --list / --model flux-schnell-q4
   new       口播科普：openshorts new koubo-kepu --topic "…" [--duration 60秒] [--tone 科普讲解] [--voice …] [--local-dir 素材夹] [--bgm x.mp3]
   run       出片：openshorts run <project.json> [--only s2,s3]（只重出这几镜，其余复用）
+            [--no-local-image]（关掉"素材库没命中就本机出图"，直接退纯色底）
             [--vision-provider agnes --vision-model agnes-2.0-flash]（候选素材看图排序）
   estimate  看这个项目要不要花钱
   export    发布包：openshorts export <project.json> --platform douyin|shipinhao|bilibili|shorts（mp4+封面+SRT+文案，不自动发布）

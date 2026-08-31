@@ -20,6 +20,8 @@ import {runAsr, transcriptToCaptions} from './lib/asr.mjs';
 import {corsOptions, createOriginGuard, resolveAllowedOrigins} from './lib/origin-guard.mjs';
 import {renderWaveform} from '../scripts/lib/audio.mjs';
 import {kaipian} from './kaipian.mjs';
+import { installProxy } from '../src/net/proxy.mjs';
+installProxy();   // Node 的 fetch 不认 HTTPS_PROXY，不装的话代理后的机器所有联网功能都会 ECONNRESET
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const projectsDir = path.join(root, 'projects');

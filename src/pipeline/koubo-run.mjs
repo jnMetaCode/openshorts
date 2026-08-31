@@ -81,7 +81,7 @@ async function visionJudge(vision, log) {
   } catch (e) { log(`素材排序不可用：${e.message.split('\n')[0]}`); return null; }
 }
 
-export async function runKoubo(project, { outDir, log = () => {}, fetchImpl = fetch, config, vision, signal, only = null, synthesizeImpl = synthesize } = {}) {
+export async function runKoubo(project, { outDir, log = () => {}, fetchImpl = fetch, config, vision, signal, only = null, synthesizeImpl = synthesize, localImage = 'auto' } = {}) {
   const wantVision = vision ?? project.vision ?? config?.vision;
   const judge = await visionJudge(wantVision, log);
   const dir = outDir ?? path.join(process.env.HOME || '.', 'OpenShorts', project.id);
@@ -91,6 +91,18 @@ export async function runKoubo(project, { outDir, log = () => {}, fetchImpl = fe
   // 每镜跑完就把项目写回盘：中途 Ctrl-C / TTS 挂掉时，已配好音、已选好素材的镜头下次不用重来
   const projectFile = path.join(dir, 'project.json');
   const save = () => { try { fs.writeFileSync(projectFile, JSON.stringify(project, null, 2)); } catch { /* 落盘失败不该拖垮出片 */ } };
+
+  // 本地出图：素材库都没命中时，与其退纯色底，不如本机现画一张（不花钱、不联网、Apache-2.0 模型）。
+  // 只在真的装了模型时才启用——没装就什么都不做，行为跟以前一样。
+  const localGen = localImage === false ? null : await (async () => {
+    try {
+      const m = await import('../local/sd-image.mjs');
+      const st = await m.sdImageStatus();
+      if (!st.ok) return null;
+      log(`🖌 本地出图待命：${st.models.find((x) => x.id === st.ready)?.label ?? st.ready}（素材库没命中时用它顶上，不花钱）`);
+      return { gen: m.generateImage, model: localImage === 'auto' || localImage === true ? st.ready : localImage };
+    } catch { return null; }
+  })();
 
   // 没有看图把关时，画面只靠检索词的字面匹配——真机上"Wasp eating cat food"就这么配到了
   // "猫为什么总爱钻纸箱"上。技术链路再绿也得说清这一条：没人看过这些画面。
@@ -172,6 +184,20 @@ export async function runKoubo(project, { outDir, log = () => {}, fetchImpl = fe
         }
         if (chosen) used.add(chosen.id);
       } catch (e) { notes.push(`镜头 ${shot.id} 素材库：${e.message}`); }
+    }
+    // 素材库没命中 → 先试本地出图（几十秒），再退纯色底。
+    // 用的是 query 而不是 visualIntent：模板里 query 本来就是"具体可检索的英文画面描述"，
+    // 正好是文生图要的东西；visualIntent 是中文的，Flux 吃不好。
+    if (!clip && localGen && shot.visual?.source !== 'solid') {
+      const q = shot.query || shot.visualIntent;
+      const img = path.join(work, `${shot.id}-gen.png`);
+      try {
+        const r = await localGen.gen(`${q}, photographic, natural lighting, sharp focus`, { out: img, width: 768, height: 1344, model: localGen.model, signal, log: (m) => log(`  ${m}`) });
+        clip = img;
+        shot.visual = { source: 'local-image', provider: 'local-flux', kind: 'image', file: img, model: r.model, prompt: r.prompt, cost: { kind: 'free' } };
+        project.provenance.push({ shot: shot.id, source: 'local-flux', id: r.model, kind: 'image', license: 'Apache-2.0（FLUX.1-schnell 本地生成）', author: null, page: 'https://huggingface.co/black-forest-labs/FLUX.1-schnell' });
+        log(`🖌 ${shot.id} 素材库没命中 → 本地出图 ${r.seconds.toFixed(0)}s`);
+      } catch (e) { notes.push(`镜头 ${shot.id} 本地出图失败：${e.message.slice(0, 120)}`); }
     }
     if (!clip) {
       // 降级：纯色底（有 lavfi 的 ffmpeg 都能出），字幕成为画面主体
