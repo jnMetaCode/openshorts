@@ -26,7 +26,7 @@ export async function loudness(file) {
 export async function checkKoubo(project, { file = project.final?.file, burnedCaptions = false, targetLufs = -16 } = {}) {
   const items = [];
   const add = (id, status, msg) => items.push({ id, status, msg });
-  if (!file || !fs.existsSync(file)) { add('file', 'fail', '成片文件不存在'); return { pass: false, items }; }
+  if (!file || !fs.existsSync(file)) { add('file', 'fail', '成片文件不存在'); return { pass: false, warnings: 0, items }; }
   const p = await probe(file);
   const v = p.streams.find((s) => s.codec_type === 'video'); const a = p.streams.find((s) => s.codec_type === 'audio'); const sub = p.streams.find((s) => s.codec_type === 'subtitle');
   const { w, h } = project.output ?? { w: 1080, h: 1920 };
@@ -45,7 +45,10 @@ export async function checkKoubo(project, { file = project.final?.file, burnedCa
   add('cover', project.final?.cover && fs.existsSync(project.final.cover) ? 'pass' : 'warn', project.final?.cover ? '有封面' : '无封面');
   add('ai-label', /AI-generated|AI 生成/.test(String(p.format?.tags?.comment ?? '')) ? 'pass' : 'warn', p.format?.tags?.comment ? '元数据含 AI 生成标识' : '元数据无 AI 标识');
   add('shots', project.shots.every((s) => s.status === 'ready') ? 'pass' : 'warn', `${project.shots.filter((s) => s.status === 'ready').length}/${project.shots.length} 镜头就绪`);
-  const solid = project.shots.filter((s) => s.visual?.source === 'solid').length; if (solid) add('solid', 'warn', `${solid} 个镜头是纯色底（没找到素材）`);
+  // 个别镜头退纯色底是提醒；过半就不是"降级"而是"这条片没有画面"了——素材检索整体失败
+  // （断网/key 全废）时以前也只是 warn，产物是一条全深蓝底的片子还报质检通过
+  const solid = project.shots.filter((s) => s.visual?.source === 'solid').length;
+  if (solid) add('solid', solid * 2 > project.shots.length ? 'fail' : 'warn', `${solid}/${project.shots.length} 个镜头是纯色底（没找到素材）${solid * 2 > project.shots.length ? '——过半，先查素材源（openshorts sources）再重跑' : ''}`);
   // 画面有没有被看过，是这条片能不能直接发的关键事实之一——技术项全绿不等于画面对
   const gen = project.shots.filter((s) => s.visual?.source === 'local-image').length;
   if (gen) add('generated', 'pass', `${gen} 个镜头的画面是本机生成的（不是检索来的）——发布时的 AI 标识要保留`);
