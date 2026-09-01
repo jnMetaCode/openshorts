@@ -1,6 +1,6 @@
 {
   "name": "openshorts",
-  "version": "2.0.0-alpha.22",
+  "version": "2.0.0-alpha.23",
   "private": true,
   "type": "module",
   "description": "Local-first layered paper collage video editor powered by Remotion",
@@ -13,9 +13,11 @@
     "dist",
     "!dist/audio",
     "!dist/uploads",
+    "!dist/assets/generated",
     "server",
     "shared",
     "scripts",
+    "projects",
     "src",
     "!src/studio/**/*.css.map",
     "public/assets",
@@ -64,7 +66,6 @@
   },
   "dependencies": {
     "@remotion/bundler": "4.0.499",
-    "@remotion/cli": "4.0.499",
     "@remotion/player": "4.0.499",
     "@remotion/renderer": "4.0.499",
     "agency-orchestrator": "^0.19.1",
@@ -78,6 +79,7 @@
     "zod": "4.1.12"
   },
   "devDependencies": {
+    "@remotion/cli": "4.0.499",
     "@types/express": "5.0.3",
     "@types/react": "19.1.16",
     "@types/react-dom": "19.1.9",
