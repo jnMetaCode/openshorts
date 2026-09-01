@@ -7,10 +7,24 @@ services:
       HOST: 0.0.0.0
       PORT: 4174
       CHROME_PATH: /usr/bin/chromium
+      # 从宿主机之外访问（非 127.0.0.1/localhost）必须设这个，否则所有写操作 403：
+      # OPENSHORTS_ALLOWED_ORIGINS=http://<你的地址>:4174
+      OPENSHORTS_ALLOWED_ORIGINS: ${OPENSHORTS_ALLOWED_ORIGINS:-}
     volumes:
+      # v1 图层编辑器的数据（相对仓库根）
       - ./projects:/app/projects
       - ./out:/app/out
       - ./data:/app/data
       - ./public/uploads:/app/public/uploads
+      # v2 开片的数据在容器用户的 home 下——不挂载的话，成片、配置和存好的 API key
+      # 会在容器重建时全部丢失
+      - openshorts-output:/home/node/OpenShorts
+      - openshorts-config:/home/node/.openshorts
+      - openshorts-ao:/home/node/.ao
     init: true
     restart: unless-stopped
+
+volumes:
+  openshorts-output:
+  openshorts-config:
+  openshorts-ao:
