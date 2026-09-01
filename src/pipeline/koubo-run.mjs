@@ -54,6 +54,7 @@ async function prefetchAudio(project, { work, log, synthesizeImpl, concurrency =
   if (todo.length < 2) return;                       // 只有一镜要配，串行反而少一层包装
   log(`🎙 并发配音 ${todo.length} 镜（${Math.min(concurrency, todo.length)} 条并行）`);
   const queue = [...todo];
+  let ok = 0, failed = 0;
   const workers = Array.from({ length: Math.min(concurrency, queue.length) }, async () => {
     while (queue.length) {
       if (signal?.aborted) return;
@@ -64,7 +65,14 @@ async function prefetchAudio(project, { work, log, synthesizeImpl, concurrency =
         const durationSec = await audioDuration(audio, tts);
         const words = tts.words.length ? alignPunctuation(tts.words, shot.text) : estimateWords(shot.text, durationSec * 1000);
         shot.render = { ...shot.render, audioFingerprint: audioFingerprint(shot, project), durationSec, words, justSynthesized: true };
-      } catch { /* 预取失败不报错：主循环会照常再试一次，那里有完整的错误信息与重试 */ }
+        ok++;
+      } catch {
+        // 预取失败不报错：主循环会照常再试一次，那里有完整的错误信息与重试。
+        // 但 TTS 整体不可用时别硬撑——前 3 镜全挂（每镜已重试 3 次）说明不是抖，
+        // 是端点/网络整个不行；以前会静默再发十几次失败请求，用户中间看不到任何输出
+        failed++;
+        if (!ok && failed >= 3 && queue.length) { log(`⚠️ 配音预取连挂 ${failed} 镜，先不预取了——主循环会重试并给出具体报错`); queue.length = 0; }
+      }
     }
   });
   await Promise.all(workers);
@@ -93,7 +101,10 @@ export async function runKoubo(project, { outDir, log = () => {}, fetchImpl = fe
   const { w, h, fps } = project.output;
   // 每镜跑完就把项目写回盘：中途 Ctrl-C / TTS 挂掉时，已配好音、已选好素材的镜头下次不用重来
   const projectFile = path.join(dir, 'project.json');
-  const save = () => { try { fs.writeFileSync(projectFile, JSON.stringify(project, null, 2)); } catch { /* 落盘失败不该拖垮出片 */ } };
+  // 落盘失败不拖垮出片，但要说一声（一次就够）：磁盘满/只读时每镜都在静默丢进度，
+  // 用户中断后才发现全要重来
+  let saveWarned = false;
+  const save = () => { try { fs.writeFileSync(projectFile, JSON.stringify(project, null, 2)); } catch (e) { if (!saveWarned) { saveWarned = true; log(`⚠️ 项目进度写盘失败（${String(e.message).split('\n')[0]}）——出片继续，但中断后已完成的镜头会重来`); } } };
 
   // 本地出图：素材库都没命中时，与其退纯色底，不如本机现画一张（不花钱、不联网、Apache-2.0 模型）。
   // 只在真的装了模型时才启用——没装就什么都不做，行为跟以前一样。

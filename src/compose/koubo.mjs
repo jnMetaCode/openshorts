@@ -39,14 +39,26 @@ async function ff(args, label, signal) {
   catch (e) { const err = e; if (err.name === 'AbortError' || signal?.aborted) throw new Error('已取消'); if (err.code === 'ENOENT') throw new Error('找不到 ffmpeg：跑 `openshorts install-ffmpeg` 装一份带 libass 的（约 40 MB，只装到 ~/.openshorts/bin），或自行安装后设 OPENSHORTS_FFMPEG'); throw new Error(`${label} 失败：${String(err.stderr || err.message).split('\n').filter(Boolean).slice(-2).join(' | ').slice(0, 300)}`); }
 }
 export async function probeDuration(file) {
-  const r = await run(FFPROBE(), ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', file]);
-  const n = Number(String(r.stdout).trim().split(/[\r\n,]/)[0]); return Number.isFinite(n) ? n : 0;
+  // 同文件的 probeSize/audioPackets 都 catch 了，这里以前不 catch——ffprobe 缺失时
+  // 甩的是裸 ENOENT，而不是那句"跑 install-ffmpeg"
+  try {
+    const r = await run(FFPROBE(), ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', file]);
+    const n = Number(String(r.stdout).trim().split(/[\r\n,]/)[0]); return Number.isFinite(n) ? n : 0;
+  } catch (e) {
+    if (e.code === 'ENOENT') throw new Error('找不到 ffprobe：跑 `openshorts install-ffmpeg`（会一并装上），或自行安装后设 OPENSHORTS_FFPROBE');
+    throw new Error(`读不出时长（${file}）：${String(e.stderr || e.message).split('\n').filter(Boolean).slice(-1)[0]?.slice(0, 200)}`);
+  }
 }
 // 按二进制路径缓存：装完 `install-ffmpeg` 后 ffmpegPath() 会变，同一进程里不能再用旧结论
 const _filters = new Map();
 export async function hasFilter(name) {
   const bin = FFMPEG();
-  if (!_filters.has(bin)) { try { const r = await run(bin, ['-hide_banner', '-filters']); _filters.set(bin, new Set(String(r.stdout).split('\n').map((l) => l.trim().split(/\s+/)[1]).filter(Boolean))); } catch { _filters.set(bin, new Set()); } }
+  if (!_filters.has(bin)) {
+    // 探测失败（ffmpeg 缺失/超时）不能缓存成"什么滤镜都没有"——那会让质检把原因
+    // 说成"缺 libass、去装 install-ffmpeg"，装了也没用。这次先按没有算，下次重探。
+    try { const r = await run(bin, ['-hide_banner', '-filters']); _filters.set(bin, new Set(String(r.stdout).split('\n').map((l) => l.trim().split(/\s+/)[1]).filter(Boolean))); }
+    catch { return false; }
+  }
   return _filters.get(bin).has(name);
 }
 

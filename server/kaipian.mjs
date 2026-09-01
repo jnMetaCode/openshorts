@@ -290,9 +290,10 @@ function streamAoRun({ req, res, args, runsDir, onDone }) {
   const before = new Set(listDramaRuns(runsDir));   // spawn 前快照，跑完取"新出现的那个"当运行目录
   const child = spawn(process.execPath, args, { env: { ...process.env, AO_NO_MODEL_HINT: '1', AO_NO_RESUME_HINT: '1', FORCE_COLOR: '0' } });
   dramaChild = child;
-  let buf = ''; let runDir = '';
+  let buf = ''; let runDir = ''; const tail = [];   // 最近的原始行：失败时要拿它说清原因
   const onLine = (line) => {
     const clean = line.replace(/\x1b\[[0-9;]*m/g, '').replace(/\r/g, '').trim(); if (!clean) return;
+    tail.push(clean); if (tail.length > 12) tail.shift();
     const m = clean.match(/详细输出:\s*(.+)$/); if (m) runDir = m[1].trim();
     if (/^(──|🎬|🎨|🎞|⚠️|⟳|✅|❌|完成|失败|部分失败|🖥|💰|·|🎙|✎)/.test(clean) || /验收|重出|素材|镜头|恢复自|跳过已完成/.test(clean)) send('log', { m: clean.slice(0, 300) });
   };
@@ -300,8 +301,14 @@ function streamAoRun({ req, res, args, runsDir, onDone }) {
   child.on('close', (code) => {
     dramaChild = null;
     if (buf) onLine(buf);
-    // 非 0 退出（中断/失败）不回填：否则会拿半截的运行目录覆盖项目
-    if (code !== 0) { send('error', { m: `引擎退出码 ${code}（中断或失败），项目未改动` }); return res.end(); }
+    // 非 0 退出（中断/失败）不回填：否则会拿半截的运行目录覆盖项目。
+    // 但原因必须带出来——AO 报"缺少必填输入 image_model"这种一句话能解决的事，
+    // 以前用户只看得到"退出码 1"
+    if (code !== 0) {
+      const why = tail.filter((l) => /错误|Error|缺少|失败|❌/.test(l)).slice(-2).join('；') || tail.slice(-2).join('；');
+      send('error', { m: `引擎退出码 ${code}，项目未改动${why ? `：${why.slice(0, 400)}` : ''}` });
+      return res.end();
+    }
     if (!runDir) runDir = pickFreshRunDir(before, runsDir);
     try { const id = onDone(runDir); send('done', { id, code }); }
     catch (e) { send('error', { m: `${e.message}（退出码 ${code}）` }); }
@@ -312,6 +319,8 @@ function streamAoRun({ req, res, args, runsDir, onDone }) {
 kaipian.get('/drama/run', (req, res) => {
   const q = req.query; const inputs = dramaInputs(q);
   if (!inputs.story) return res.status(400).json({ error: '请输入故事' });
+  // 工作流里 image_model 是必填无默认（定妆图用）：这里不拦的话 AO 会在 spawn 后立刻退出码 1
+  if (!inputs.image_model) return res.status(400).json({ error: '请选择定妆图的图片模型（image_model）——界面在「画面来源」里选，API 传 image_provider / image_model' });
   if (dramaChild) return res.status(409).json({ error: '已有一条短剧在跑（按秒计费，不允许并行）——等它跑完，或关掉那个页面取消' });
   const { cli, wf } = aoCli(); const cfg = readConfig();
   const runsDir = path.join(cfg.outputDir, '.ao-runs'); fs.mkdirSync(runsDir, { recursive: true });
@@ -373,7 +382,7 @@ kaipian.get('/projects/:id/drama/redo', (req, res) => {
 });
 
 // ───────────── 本地生成：状态 / 安装 sd-cli / 下载模型（SSE 进度；下载前必须确认许可证） ─────────────
-import { downloadWithResume, pickSdcppAsset } from '../src/local/download.mjs';
+import { downloadWithResume, pickSdcppAsset, hfExpectedSha256 } from '../src/local/download.mjs';
 import { execFileSync } from 'node:child_process';
 const HF = 'https://huggingface.co/unsloth/MiniMax-H3-GGUF/resolve/main';
 const MODEL_FILES = (m) => [[m.diffusion, `${HF}/${m.diffusion}`], [m.llm, `${HF}/${m.llm}`], ['minimax_h3_video_vae_fp16.safetensors', `${HF}/vae/minimax_h3_video_vae_fp16.safetensors`], ['minimax_h3_audio_vae_fp32.safetensors', `${HF}/vae/minimax_h3_audio_vae_fp32.safetensors`]];
@@ -395,8 +404,10 @@ kaipian.get('/local/install', async (req, res) => {
     if (what === 'model' || what === 'all') {
       const cat = m.LOCAL_MODELS.find((x) => x.id === modelId); if (!cat) throw new Error(`未知档位 ${modelId}`);
       for (const [name, url] of MODEL_FILES(cat)) {
+        const expected = await hfExpectedSha256(url, { signal: ac.signal });
+        if (!expected) send('log', { m: `（${name} 拿不到官方 sha256，本次不校验）` });
         send('log', { m: `下载 ${name}` });
-        await downloadWithResume(url, path.join(modelsDir, name), { signal: ac.signal, onProgress: (p) => send('progress', { file: name, ...p }) });
+        await downloadWithResume(url, path.join(modelsDir, name), { signal: ac.signal, expectedSha256: expected, onProgress: (p) => send('progress', { file: name, ...p }) });
       }
       send('log', { m: `模型就绪：${modelsDir}` });
     }

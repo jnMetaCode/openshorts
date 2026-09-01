@@ -26,6 +26,13 @@ import {applyAoKeysToEnv} from '../src/config.mjs';
 await applyAoKeysToEnv();   // AO 的库函数 run() 只认环境变量，不读 Studio 存的 key 文件
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+// v1 图层编辑器的数据（projects/out/uploads/jobs）锚定在包目录：上传路径、素材工具的
+// containment、Remotion 的 public 目录都指着这里，搬家要一起搬，不是改几个常量的事。
+// v2「开片」的数据在 ~/OpenShorts，不受影响。npx / 依赖安装时包目录在 npm 缓存里，
+// 写进去的 v1 产物会随缓存清理蒸发——至少要把这件事说出来，不能默默丢。
+if (/node_modules|_npx/.test(root)) {
+  console.warn(`⚠️ 以 npm 包方式运行：v1 图层编辑器（/editor）的工程和产物会写进包目录（${root}），npm 缓存清理时会丢失。开片（默认界面）的数据在 ~/OpenShorts，不受影响。长期使用 v1 编辑器请用 git 检出或 Docker。`);
+}
 const projectsDir = path.join(root, 'projects');
 const templatesDir = path.join(root, 'templates');
 const dataDir = path.join(root, 'data');

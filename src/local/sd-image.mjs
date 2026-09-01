@@ -18,7 +18,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawn, execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { downloadWithResume, pickSdcppAsset, assetMacOS } from './download.mjs';
+import { downloadWithResume, pickSdcppAsset, assetMacOS, hfExpectedSha256 } from './download.mjs';
 import { OPENSHORTS_HOME } from '../config.mjs';
 
 /** 内部把 14.7 记成 14.07（minor/100 便于比较），显示时还原成人看的写法 */
@@ -159,8 +159,11 @@ export async function installSdImage({ model = 'flux-schnell-q4', onLog = () => 
   await installSdCli({ onLog, onProgress, signal });      // 缺二进制就一并装上，别把用户推去开网页
   onLog(`${m.label} · 共约 ${m.sizeGB} GB · ${LICENSE_NOTE}`);
   for (const [name, url] of modelFiles(m)) {
+    // HF 的 LFS 指针带权威 sha256，下完整文件校验；拿不到指针（断网/镜像）就照常下、说一声
+    const expected = await hfExpectedSha256(url, { signal });
+    if (!expected) onLog(`（${name} 拿不到官方 sha256，本次不校验）`);
     onLog(`下载 ${name}`);
-    await downloadWithResume(url, path.join(modelsDir, name), { signal, onProgress: (p) => onProgress({ file: name, ...p }) });
+    await downloadWithResume(url, path.join(modelsDir, name), { signal, expectedSha256: expected, onProgress: (p) => onProgress({ file: name, ...p }) });
   }
   onLog('模型就绪');
   return sdImageStatus();

@@ -1,18 +1,47 @@
 /**
  * 大文件断点续传下载（本地模型 27 GB 这种量级）：写 .part、带 Range 续传、按字节报进度；
- * 完成后重命名。不校验 sha（HF 不提供稳定的 sha 头；靠大小 + 后续 sd-cli 加载失败兜底）。
+ * 完成后重命名。
+ *
+ * 校验：HTTP 头里确实没有稳定的 sha，但 HuggingFace 的 LFS 指针文件（/raw/ 路径）带
+ * 权威 sha256——传 expectedSha256 时下载完成后整文件校验，对不上就删掉重来，
+ * 而不是让坏文件活到"sd-cli 加载失败"那一步（27 GB 下完才发现，报错还看不出是文件坏了）。
  */
 import fs from 'node:fs';
 import path from 'node:path';
+import crypto from 'node:crypto';
 
-export async function downloadWithResume(url, dest, { onProgress = () => {}, fetchImpl = fetch, signal } = {}) {
+export async function fileSha256(file) {
+  const hash = crypto.createHash('sha256');
+  await new Promise((res, rej) => { const s = fs.createReadStream(file); s.on('data', (c) => hash.update(c)); s.on('end', res); s.on('error', rej); });
+  return hash.digest('hex');
+}
+
+/** HF 下载链接 → 该文件 LFS 指针里的 sha256；拿不到（非 HF、小文件、断网）返回 null，不阻塞下载 */
+export async function hfExpectedSha256(url, { fetchImpl = fetch, signal } = {}) {
+  const m = String(url).match(/^https:\/\/huggingface\.co\/(.+?)\/resolve\/([^/]+)\/(.+?)(?:\?.*)?$/);
+  if (!m) return null;
+  try {
+    const r = await fetchImpl(`https://huggingface.co/${m[1]}/raw/${m[2]}/${m[3]}`, { headers: { 'User-Agent': 'OpenShorts/2.0' }, signal });
+    if (!r.ok) return null;
+    return (await r.text()).slice(0, 500).match(/oid sha256:([0-9a-f]{64})/)?.[1] ?? null;
+  } catch { return null; }
+}
+
+async function verifyOrThrow(dest, expected, onProgress) {
+  if (!expected) return;
+  onProgress({ verifying: true });
+  const got = await fileSha256(dest);
+  if (got !== expected) { fs.rmSync(dest, { force: true }); throw new Error(`下载的文件校验不过（sha256 ${got.slice(0, 12)}… ≠ 官方 ${expected.slice(0, 12)}…），已删除——多半是传输中断或镜像出错，重跑一次会重新下`); }
+}
+
+export async function downloadWithResume(url, dest, { onProgress = () => {}, fetchImpl = fetch, signal, expectedSha256 = null } = {}) {
   fs.mkdirSync(path.dirname(dest), { recursive: true });
   if (fs.existsSync(dest) && fs.statSync(dest).size > 0) { onProgress({ done: true, skipped: true, bytes: fs.statSync(dest).size }); return dest; }
   const part = dest + '.part';
   let have = fs.existsSync(part) ? fs.statSync(part).size : 0;
   const headers = { 'User-Agent': 'OpenShorts/2.0' }; if (have > 0) headers.Range = `bytes=${have}-`;
   const r = await fetchImpl(url, { headers, redirect: 'follow', signal });
-  if (r.status === 416) { fs.renameSync(part, dest); onProgress({ done: true, bytes: have }); return dest; }
+  if (r.status === 416) { fs.renameSync(part, dest); await verifyOrThrow(dest, expectedSha256, onProgress); onProgress({ done: true, bytes: have }); return dest; }
   if (!r.ok && r.status !== 206) {
     // 401/403 在 HuggingFace 上基本都是"这个仓库要先登录并接受条款"（gated），
     // 而不是网络问题——直接说清楚，别让人对着一个裸状态码猜
@@ -30,7 +59,9 @@ export async function downloadWithResume(url, dest, { onProgress = () => {}, fet
     if (Date.now() - last > 1000) { onProgress({ bytes, total }); last = Date.now(); }
   }
   await new Promise((res, rej) => out.end((e) => (e ? rej(e) : res())));
-  fs.renameSync(part, dest); onProgress({ done: true, bytes, total });
+  fs.renameSync(part, dest);
+  await verifyOrThrow(dest, expectedSha256, onProgress);
+  onProgress({ done: true, bytes, total });
   return dest;
 }
 
