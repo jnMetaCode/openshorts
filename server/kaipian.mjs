@@ -328,11 +328,13 @@ kaipian.get('/drama/run', (req, res) => {
   const pv = flagVal(q.provider); if (pv) args.push('--provider', pv);
   const md = flagVal(q.model); if (md) args.push('--model', md);
   const vp = flagVal(q.verify_provider); if (vp) args.push('--verify-provider', vp, '--verify-model', flagVal(q.verify_model) ?? '');
-  streamAoRun({ req, res, args, runsDir, onDone: (runDir) => finishDramaRun({ runDir, inputs, tier: q.tier || 'cloud' }) });
+  // 文本供应商要记进项目：redo 不带它的话会回落到工作流默认的 deepseek——
+  // 用户用 agnes 跑通的项目，一点"重出这镜"就报"deepseek 没配 key"（真机撞过）
+  streamAoRun({ req, res, args, runsDir, onDone: (runDir) => finishDramaRun({ runDir, inputs, tier: q.tier || 'cloud', llm: pv ? { provider: pv, model: md || '' } : null }) });
 });
 
 /** AO 运行目录 → 项目（新建或覆盖同 id）：回填 shots/验收、按输入标来源、拷贝 assets、记住 aoRun 供 resume。 */
-function finishDramaRun({ runDir, inputs, tier, existingId, shotSources }) {
+function finishDramaRun({ runDir, inputs, tier, existingId, shotSources, llm = null }) {
   // runDir 由调用方确定（stdout 刮到的，或 spawn 后新出现的目录）。确定不了就报错，
   // 绝不猜"最新的那个"——resume 时最新的就是上一次自己，旧产物会被当成新成片报成功
   if (!runDir) throw new Error('没有从引擎输出里识别出本次运行目录（可能引擎输出格式变了），项目未改动');
@@ -342,6 +344,7 @@ function finishDramaRun({ runDir, inputs, tier, existingId, shotSources }) {
   const id = existingId || safe(`短剧-${inputs.story.slice(0, 16)}-${new Date().toISOString().slice(5, 16).replace(/[:T]/g, '')}`);
   const project = aoResultToProject(meta, tpl, { id, assetsBase: 'assets' });
   project.line = 'drama'; project.title = inputs.story.slice(0, 30); project.topic = inputs.story; project.inputs = inputs; project.tier = tier; project.shotSources = shotSources ?? {};
+  if (llm) project.llm = llm;
   for (const s of project.shots) {
     const ov = shotSources?.[s.id];
     const vp = ov?.video_provider ?? inputs.video_provider, vm = ov?.video_model ?? inputs.video_model;
@@ -376,9 +379,13 @@ kaipian.get('/projects/:id/drama/redo', (req, res) => {
   else if (q.tier === 'cloud') { for (const k of ['video_provider', 'video_model', 'video_resolution', 'video_duration']) { const v = flagVal(q[k]); if (v) inputs[k] = v; } }
   shotSources[shot] = { video_provider: inputs.video_provider, video_model: inputs.video_model };
   const args = [cli, 'run', wf, '--output', runsDir, '--resume', prev.final.aoRun, '--from', shot, ...inputArgs(inputs)];
+  // 文本供应商沿用首跑存的（q 可覆盖）：不带的话 AO 回落到工作流默认的 deepseek，
+  // 用 agnes 跑通的项目一点重出就报"deepseek 没配 key"（真机撞过）
+  const pv = flagVal(q.provider) ?? prev.llm?.provider; if (pv) args.push('--provider', pv);
+  const md = flagVal(q.model) ?? prev.llm?.model; if (md) args.push('--model', md);
   const fb = flagVal(q.feedback); if (fb) args.push('--feedback', fb);
   const vp = flagVal(q.verify_provider); if (vp) args.push('--verify-provider', vp, '--verify-model', flagVal(q.verify_model) ?? '');
-  streamAoRun({ req, res, args, runsDir, onDone: (runDir) => finishDramaRun({ runDir, inputs: prev.inputs, tier: prev.tier, existingId: prev.id, shotSources: { ...(prev.shotSources ?? {}), ...shotSources } }) });
+  streamAoRun({ req, res, args, runsDir, onDone: (runDir) => finishDramaRun({ runDir, inputs: prev.inputs, tier: prev.tier, existingId: prev.id, shotSources: { ...(prev.shotSources ?? {}), ...shotSources }, llm: pv ? { provider: pv, model: md || '' } : prev.llm ?? null }) });
 });
 
 // ───────────── 本地生成：状态 / 安装 sd-cli / 下载模型（SSE 进度；下载前必须确认许可证） ─────────────
