@@ -7,7 +7,7 @@ type Sources = {stock: Src; image: Src; local: Src; cloud: Src; layered: Src; to
 type Voice = {id: string; label: string};
 type Shot = {id: string; text: string; visualIntent: string; query: string; emphasis: string[]; durationSec: number | null; status: string; visual: {source: string | null; file: string | null; author?: string | null; license?: string}};
 type DramaShot = {id: string; kind: 'video' | 'image'; order: number; durationSec: number | null; visual: {source: string; provider: string | null; model: string | null; file: string}; verification: {pass: boolean; failed: string[]; reworked: boolean} | null; status: string; stepName: string};
-type Project = {id: string; title: string; topic: string; line?: string; tier?: string; inputs?: Record<string, string>; shots: Shot[]; voice: {voice: string; rate: number}; captions: {preset: string}; defaults: {visualSource: string; localDirs: string[]}; publish: {titles: string[]; tags: string[]; note: string; aiLabelText: string}; final?: {file: string; srt: string; cover: string | null; publish: string; durationSec: number; notes: string[]; quality?: {pass: boolean; warnings: number; items: Array<{id: string; status: string; msg: string}>}} | null; provenance: Array<{shot: string; source: string; author?: string | null; license?: string; page?: string | null}>};
+type Project = {id: string; title: string; topic: string; line?: string; tier?: string; inputs?: Record<string, string>; shots: Shot[]; scriptWarnings?: string[]; voice: {voice: string; rate: number}; captions: {preset: string}; defaults: {visualSource: string; localDirs: string[]}; publish: {titles: string[]; tags: string[]; note: string; aiLabelText: string}; final?: {file: string; srt: string; cover: string | null; publish: string; durationSec: number; notes: string[]; quality?: {pass: boolean; warnings: number; items: Array<{id: string; status: string; msg: string}>}} | null; provenance: Array<{shot: string; source: string; author?: string | null; license?: string; page?: string | null}>};
 
 const api = async <T,>(url: string, init?: RequestInit): Promise<T> => { const r = await fetch(url, {headers: {'Content-Type': 'application/json'}, ...init}); const j = await r.json(); if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`); return j; };
 const fileUrl = (p: Project, abs: string) => `/api/kaipian/projects/${encodeURIComponent(p.id)}/file/${encodeURIComponent(abs.split('/').pop() || '')}`;
@@ -408,6 +408,9 @@ export const Kaipian = () => {
 
     {step === 3 && project && <section className="kp-card">
       <h3>{project.title || project.topic}<small> · {project.shots.length} 个镜头 · 文案与检索词可改，画面在出片时按检索词找</small></h3>
+      {/* CLI 一直会打脚本警告（长度偏差 / 文案里夹英文），Web 端以前一条都不显示——
+          自动重写一次仍没救回来的问题，用户得在这里看到，别等成片短了 30% 才发现 */}
+      {(project.scriptWarnings ?? []).map((w, i) => <div key={i} className="kp-warn">⚠️ {w}</div>)}
       <ol className="kp-shots">{project.shots.map((s, i) => <li key={s.id}>
         <div className="kp-shot-head"><b>{i + 1}. {s.id === 'hook' ? '钩子' : s.id === 'outro' ? '收尾' : `第 ${i} 段`}</b>{s.durationSec ? <em>{s.durationSec.toFixed(1)}s</em> : null}{s.visual?.source ? <em>{s.visual.source}{s.visual.author ? ` · ${s.visual.author}` : ''}</em> : null}</div>
         <textarea value={s.text} rows={2} onChange={(e) => setProject({...project, shots: project.shots.map((x) => x.id === s.id ? {...x, text: e.target.value} : x)})}/>
