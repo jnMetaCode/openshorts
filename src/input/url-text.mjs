@@ -36,8 +36,17 @@ export async function assertPublicHost(url, { resolve = (h) => dns.lookup(h, { a
 
 export async function fetchArticle(url, { fetchImpl = fetch, maxChars = 6000, resolve } = {}) {
   if (!/^https?:\/\//i.test(url)) throw new Error('请输入 http(s) 链接');
-  await assertPublicHost(url, resolve ? { resolve } : {});
-  const r = await fetchImpl(url, { headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh) AppleWebKit/537.36 OpenShorts/2.0', Accept: 'text/html,*/*' }, redirect: 'follow', signal: AbortSignal.timeout(20000) });
+  // 重定向逐跳自己走：redirect:'follow' 只校验第一跳，公网域名 302 到 169.254.169.254 或
+  // 127.0.0.1 就把上面的校验全绕过了
+  let cur = url; let r;
+  for (let hop = 0; ; hop++) {
+    await assertPublicHost(cur, resolve ? { resolve } : {});
+    r = await fetchImpl(cur, { headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh) AppleWebKit/537.36 OpenShorts/2.0', Accept: 'text/html,*/*' }, redirect: 'manual', signal: AbortSignal.timeout(20000) });
+    if (![301, 302, 303, 307, 308].includes(r.status)) break;
+    const loc = r.headers.get('location'); if (!loc) throw new Error(`抓取失败 HTTP ${r.status}（重定向没给目标）`);
+    if (hop >= 5) throw new Error('重定向次数过多');
+    cur = new URL(loc, cur).href;
+  }
   if (!r.ok) throw new Error(`抓取失败 HTTP ${r.status}`);
   const a = extractArticle(await r.text(), url);
   if (a.chars < 80) throw new Error('抓到的正文太短（可能需要登录或是纯前端渲染页）——请把文章内容直接粘贴进来');

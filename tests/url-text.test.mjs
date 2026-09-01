@@ -25,3 +25,18 @@ test('SSRF：本机 / 内网 / 解析到内网的域名一律拒绝', async () =
   await assert.rejects(() => fetchArticle('http://localhost/x'), /内网/);
   await assert.rejects(() => fetchArticle('http://evil.example/', { resolve: async () => [{ address: '10.0.0.5' }] }), /内网/);
 });
+
+test('SSRF：公网域名 302 到内网也拦——redirect:follow 只校验第一跳，这是绕过口', async () => {
+  const fetchImpl = async () => ({ ok: false, status: 302, headers: { get: (h) => (h === 'location' ? 'http://127.0.0.1:4174/api/kaipian/config' : null) } });
+  await assert.rejects(() => fetchArticle('https://ok.example/', { resolve: async () => [{ address: '8.8.8.8' }], fetchImpl }), /内网/);
+});
+
+test('正常重定向逐跳校验后照走；循环重定向在 5 跳后报错', async () => {
+  const fetchImpl = async (u) => (u.includes('final')
+    ? { ok: true, status: 200, headers: { get: () => null }, text: async () => '<article><p>' + '字'.repeat(100) + '</p></article>' }
+    : { ok: false, status: 301, headers: { get: (h) => (h === 'location' ? 'https://ok.example/final' : null) } });
+  const a = await fetchArticle('https://ok.example/', { resolve: async () => [{ address: '8.8.8.8' }], fetchImpl });
+  assert.ok(a.chars >= 80, '两跳后拿到正文');
+  const loopImpl = async () => ({ ok: false, status: 302, headers: { get: (h) => (h === 'location' ? 'https://ok.example/loop' : null) } });
+  await assert.rejects(() => fetchArticle('https://ok.example/', { resolve: async () => [{ address: '8.8.8.8' }], fetchImpl: loopImpl }), /重定向次数/);
+});
