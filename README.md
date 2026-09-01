@@ -6,7 +6,7 @@
 <p align="center"><img src="docs/cases/koubo-onion/onion-12s.gif" width="260" alt="《为什么切洋葱会流眼泪》——0 元 0 key 生成"></p>
 <p align="center"><sub>上面这条 60 秒的片子：0 元、0 个付费 key，6 镜里 2 镜是素材库没货时本机现画的 · <a href="docs/cases/koubo-onion/">看完整案例</a></sub></p>
 
-![License](https://img.shields.io/badge/license-MIT-green) ![Node](https://img.shields.io/badge/node-%E2%89%A520-brightgreen) ![Tests](https://img.shields.io/badge/tests-183%20passing-brightgreen) ![CI](https://img.shields.io/badge/CI-ubuntu%20%7C%20macOS%20%7C%20windows-brightgreen) ![Format](https://img.shields.io/badge/format-9%3A16%20%7C%2016%3A9-blue)
+![License](https://img.shields.io/badge/license-MIT-green) ![Node](https://img.shields.io/badge/node-%E2%89%A520-brightgreen) ![Tests](https://img.shields.io/badge/tests-195%20passing-brightgreen) ![CI](https://img.shields.io/badge/CI-ubuntu%20%7C%20macOS%20%7C%20windows-brightgreen) ![Format](https://img.shields.io/badge/format-9%3A16%20%7C%2016%3A9-blue)
 
 ```bash
 npx openshorts          # 起本地服务并打开浏览器（http://127.0.0.1:4174）
@@ -338,8 +338,9 @@ npm run new -- sky-blue --topic="为什么天空是蓝的" --format=9:16
 
 ## 旁白音色
 
-> v1 的旁白脚本调的是 **Python 版 `edge-tts`**（`pip install edge-tts`），与 v2「开片」用的 Node 版是两套。
-> 只用开片的话不需要装它。端点偶尔会抖，某个音色没生成时重跑一次通常就好（脚本会逐个报，不会中断）。
+> 音色试听（`npm run voices`）现在用的是仓里自带的 Node 版 Edge TTS，**不再需要 Python**。
+> 端点偶尔会抖，某个音色没生成时重跑一次通常就好（脚本会逐个报，不会中断）。
+> v1 的逐镜旁白脚本（`npm run story … audio`）仍是 Python 版 `edge-tts`——只用开片的话不需要装它。
 
 
 写在 `content/<故事名>/storyboard.json`：
