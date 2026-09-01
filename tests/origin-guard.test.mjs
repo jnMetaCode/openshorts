@@ -88,6 +88,9 @@ test('会花钱/写盘的 GET 接口，跨站触发要拦（靠 Sec-Fetch-Site�
   assert.equal(run('/api/kaipian/local/install', {'sec-fetch-site': 'cross-site'}).passed, false);
   assert.equal(run('/api/kaipian/local/install', {'sec-fetch-site': 'cross-site'}).status, 403);
   assert.equal(run('/api/kaipian/drama/run', {'sec-fetch-site': 'cross-site'}).passed, false, '这个会花钱，尤其不能漏');
+  // options 只是读，但它起 `ao doctor` 子进程——跨站 <img> 循环打它等于免费的 fork 原语
+  assert.equal(run('/api/kaipian/drama/options', {'sec-fetch-site': 'cross-site'}).passed, false);
+  assert.equal(run('/api/kaipian/drama/options', {'sec-fetch-site': 'same-origin'}).passed, true, '界面自己照常能用');
   assert.equal(run('/api/kaipian/projects/abc/run', {'sec-fetch-site': 'same-site'}).passed, false);
 
   // 界面自己的 EventSource：同源

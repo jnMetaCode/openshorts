@@ -9,7 +9,8 @@ import { fileURLToPath } from 'node:url';
 import { readConfig, writeConfig, aoHome } from '../src/config.mjs';
 import { sourcesAvailability } from '../src/sources/availability.mjs';
 import { DEFAULT_VOICES, synthesize } from '../src/voice/edge-tts.mjs';
-import { buildKouboProject, uniqueProjectId } from '../src/project/koubo.mjs';
+import { uniqueProjectId } from '../src/project/koubo.mjs';
+import { generateKoubo } from '../src/pipeline/koubo-script.mjs';
 import { runKoubo } from '../src/pipeline/koubo-run.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -24,7 +25,12 @@ kaipian.get('/config', (_req, res) => { const c = readConfig(); res.json({ ...c,
 kaipian.put('/config', (req, res) => {
   const cur = readConfig(); const b = req.body ?? {};
   // 输出目录必须真能写：先建、再试写，失败 400——否则下一次出片才在最后一步炸
-  if (b.outputDir) { const od = path.resolve(String(b.outputDir)); try { fs.mkdirSync(od, { recursive: true }); fs.accessSync(od, fs.constants.W_OK); } catch { return res.status(400).json({ error: `输出目录不可写：${od}` }); } b.outputDir = od; }
+  if (b.outputDir) {
+    const od = path.resolve(String(b.outputDir));
+    if (od === path.parse(od).root) return res.status(400).json({ error: '输出目录不能是文件系统根目录' });
+    try { fs.mkdirSync(od, { recursive: true }); fs.accessSync(od, fs.constants.W_OK); } catch { return res.status(400).json({ error: `输出目录不可写：${od}` }); }
+    b.outputDir = od;
+  }
   const next = { ...cur, ...(b.outputDir ? { outputDir: b.outputDir } : {}), tts: { ...cur.tts, ...(b.tts ?? {}) }, vision: { ...(cur.vision ?? {}), ...(b.vision ?? {}) }, text: { ...(cur.text ?? {}), ...(b.text ?? {}) }, stock: { ...cur.stock } };
   if (typeof b.pexelsKey === 'string' && b.pexelsKey && !b.pexelsKey.includes('…')) next.stock.pexelsKey = b.pexelsKey.trim();
   if (typeof b.pixabayKey === 'string' && b.pixabayKey && !b.pixabayKey.includes('…')) next.stock.pixabayKey = b.pixabayKey.trim();
@@ -42,15 +48,18 @@ kaipian.post('/new', async (req, res, next) => {
   try {
     const b = req.body ?? {};
     if (!String(b.topic ?? '').trim()) return res.status(400).json({ error: '请输入话题或文案' });
-    const { run } = await import('agency-orchestrator');
     const cfg = readConfig();
     const inputs = { topic: String(b.topic).trim(), duration: b.duration || '60秒', tone: b.tone || '科普讲解' };
     // 侧栏选的模型要真的用上：不传 llmOverride 的话 AO 会用它自己的默认供应商，
     // 用户在界面里选了 agnes 却跑去调 deepseek，报"缺 key"时一头雾水
     const over = cfg.text?.provider ? { llmOverride: { provider: cfg.text.provider, ...(cfg.text.model ? { model: cfg.text.model } : {}) } } : {};
-    const r = await run(path.join(root, 'templates', 'koubo-kepu.yaml'), inputs, { quiet: true, outputDir: path.join(cfg.outputDir, '.ao-runs'), ...over });
-    if (!r.success) return res.status(502).json({ error: '脚本生成失败：' + r.steps.filter((s) => s.status === 'failed').map((s) => `${s.id}: ${s.error}`).join('；') });
-    const project = buildKouboProject(r, { topic: inputs.topic, inputs, defaults: { voice: b.voice || cfg.tts?.voice, captionPreset: b.captions || 'douyin', captionStyle: b.captionStyle && typeof b.captionStyle === 'object' ? b.captionStyle : {}, visualSource: b.source || 'stock', localDirs: b.localDir ? [path.resolve(String(b.localDir))] : [], bgm: b.bgm ? path.resolve(String(b.bgm)) : null } });
+    // 与 CLI 同一份编排：脚本长度不达标或 JSON 写坏会自动重写一次（generateKoubo）
+    const g = await generateKoubo({ wf: path.join(root, 'templates', 'koubo-kepu.yaml'), inputs,
+      buildDefaults: { voice: b.voice || cfg.tts?.voice, captionPreset: b.captions || 'douyin', captionStyle: b.captionStyle && typeof b.captionStyle === 'object' ? b.captionStyle : {}, visualSource: b.source || 'stock', localDirs: b.localDir ? [path.resolve(String(b.localDir))] : [], bgm: b.bgm ? path.resolve(String(b.bgm)) : null },
+      aoOpts: { quiet: true, outputDir: path.join(cfg.outputDir, '.ao-runs'), ...over } });
+    if (!g.ok && g.kind === 'run') return res.status(502).json({ error: '脚本生成失败：' + g.res.steps.filter((s) => s.status === 'failed').map((s) => `${s.id}: ${s.error}`).join('；') });
+    if (!g.ok) return res.status(502).json({ error: `脚本写出来了但解析不了（已自动重写一次仍失败）：${String(g.error.message).split('\n')[0]}。再试一次，或在设置里换个文本模型。` });
+    const project = g.project;
     project.id = uniqueProjectId(cfg.outputDir, safe(project.id));   // 同话题再跑一次不该覆盖上一条片子
     fs.mkdirSync(projDir(project.id), { recursive: true });
     fs.writeFileSync(path.join(projDir(project.id), 'project.json'), JSON.stringify(project, null, 2));
@@ -210,8 +219,9 @@ kaipian.get('/ao-status', (_req, res) => {
 });
 
 // ───────────── AI 短剧线（复用 AO 短剧流水线；AO 以子进程跑，stdout 逐行转 SSE） ─────────────
-import { spawn, spawnSync } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import { aoResultToProject } from '../src/core/ao-result.mjs';
+import { listDramaRuns, pickFreshRunDir } from './lib/ao-run-dir.mjs';
 function aoCli() { const main = fileURLToPath(import.meta.resolve('agency-orchestrator')); const dir = path.resolve(path.dirname(main), '..'); return { dir, cli: path.join(dir, 'dist', 'cli.js'), wf: path.join(dir, 'workflows', '短剧流水线.yaml') }; }
 const TIERS = {
   local: { video_provider: 'local-sdcpp', video_model: 'minimax-h3-q2', video_resolution: '640x384', video_ratio: '16:9', video_duration: '2', label: '本地草稿档（不花钱，每镜约 3–4 分钟，2-bit 画质）' },
@@ -226,6 +236,18 @@ function dramaInputs(b) {
   return inputs;
 }
 const inputArgs = (inputs) => Object.entries(inputs).flatMap(([k, v]) => (v === '' ? [] : ['-i', `${k}=${v}`]));
+// 透传给 AO 命令行的值不能以 - 开头：spawn 数组形式没有 shell 注入，但一个 `--` 开头的值
+// 会被 AO 的参数解析器当成新开关（provider=--resume 之类）。供应商/模型 id 从来不长这样。
+const flagVal = (v) => { const s = String(v ?? '').trim(); return s && !s.startsWith('-') ? s : null; };
+/** AO 子进程跑一条只读命令（doctor/plan），异步收集输出。以前用 spawnSync——express 是单线程，
+ *  同步 spawn 会把 event loop 卡住几秒，正在跑的出片 SSE 和整个界面一起冻结。 */
+const runAoCapture = (args) => new Promise((resolve) => {
+  const child = spawn(process.execPath, args, { env: { ...process.env, AO_NO_MODEL_HINT: '1' } });
+  let out = '';
+  for (const s of [child.stdout, child.stderr]) s.on('data', (d) => { out += d.toString(); });
+  child.on('close', (status) => resolve({ status, out }));
+  child.on('error', (e) => resolve({ status: -1, out: String(e.message) }));
+});
 async function aoProviders() {
   // AO 的 exports 只暴露主入口；按绝对路径 import 同目录文件绕过白名单（同一份 dist，不会漂）
   const main = fileURLToPath(import.meta.resolve('agency-orchestrator'));
@@ -240,55 +262,72 @@ async function aoProviders() {
   return { video, image, localStatus };
 }
 kaipian.get('/drama/providers', async (_req, res, next) => { try { res.json(await aoProviders()); } catch (e) { next(e); } });
-kaipian.get('/drama/options', (_req, res) => {
+kaipian.get('/drama/options', async (_req, res) => {
   const { cli } = aoCli();
-  const r = spawnSync(process.execPath, [cli, 'doctor', '--no-probe'], { encoding: 'utf-8', env: { ...process.env, AO_NO_MODEL_HINT: '1' } });
-  const out = String(r.stdout || '') + String(r.stderr || '');
+  const { out } = await runAoCapture([cli, 'doctor', '--no-probe']);
   const localReady = /本地出片可用/.test(out);
   const cloud = (out.match(/文生视频可用（type: video）：([^（\n]+)/) || [])[1]?.split(/,\s*/).map((s) => s.trim()).filter(Boolean) ?? [];
   res.json({ tiers: TIERS, localReady, cloudProviders: cloud, doctor: out.split('\n').filter((l) => /本地出片|文生视频|出图/.test(l)) });
 });
-kaipian.post('/drama/preflight', (req, res) => {
+kaipian.post('/drama/preflight', async (req, res) => {
   const inputs = dramaInputs(req.body ?? {});
   if (!inputs.story) return res.status(400).json({ error: '请输入故事' });
   const { cli, wf } = aoCli();
-  const r = spawnSync(process.execPath, [cli, 'plan', wf, ...inputArgs(inputs)], { encoding: 'utf-8', env: { ...process.env, AO_NO_MODEL_HINT: '1' } });
-  const lines = (String(r.stdout || '') + String(r.stderr || '')).split('\n').map((l) => l.trim()).filter((l) => /^(🎬|🎨|🎙|🎞|·|合计)/.test(l));
-  res.json({ inputs, lines, ok: r.status === 0, raw: r.status !== 0 ? String(r.stderr || r.stdout).slice(-400) : undefined });
+  const { status, out } = await runAoCapture([cli, 'plan', wf, ...inputArgs(inputs)]);
+  const lines = out.split('\n').map((l) => l.trim()).filter((l) => /^(🎬|🎨|🎙|🎞|·|合计)/.test(l));
+  res.json({ inputs, lines, ok: status === 0, raw: status !== 0 ? out.slice(-400) : undefined });
 });
-kaipian.get('/drama/run', (req, res) => {
-  const q = req.query; const inputs = dramaInputs(q);
-  if (!inputs.story) return res.status(400).json({ error: '请输入故事' });
+// 短剧按秒真花钱，且两个 AO 进程会写同一个 project.json / assets/——全局同时只允许一条在跑。
+// （口播线的锁按项目分（上面的 running Map）；短剧的产物目录在跑完前不知道 id，只能全局单飞。）
+let dramaChild = null;
+/**
+ * 以子进程跑 AO 并把输出转 SSE。run 和 redo 以前各复制一份这段逻辑，
+ * 运行目录判定、并发锁、断连即杀改哪边都只修了一半——统一到这里。
+ */
+function streamAoRun({ req, res, args, runsDir, onDone }) {
   res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' });
   const send = (ev, data) => res.write(`event: ${ev}\ndata: ${JSON.stringify(data)}\n\n`);
-  const { cli, wf } = aoCli(); const cfg = readConfig();
-  const runsDir = path.join(cfg.outputDir, '.ao-runs'); fs.mkdirSync(runsDir, { recursive: true });
-  const args = [cli, 'run', wf, '--output', runsDir, ...inputArgs(inputs)];
-  if (q.provider) args.push('--provider', String(q.provider)); if (q.model) args.push('--model', String(q.model));
-  if (q.verify_provider) args.push('--verify-provider', String(q.verify_provider), '--verify-model', String(q.verify_model || ''));
+  const before = new Set(listDramaRuns(runsDir));   // spawn 前快照，跑完取"新出现的那个"当运行目录
   const child = spawn(process.execPath, args, { env: { ...process.env, AO_NO_MODEL_HINT: '1', AO_NO_RESUME_HINT: '1', FORCE_COLOR: '0' } });
+  dramaChild = child;
   let buf = ''; let runDir = '';
   const onLine = (line) => {
     const clean = line.replace(/\x1b\[[0-9;]*m/g, '').replace(/\r/g, '').trim(); if (!clean) return;
     const m = clean.match(/详细输出:\s*(.+)$/); if (m) runDir = m[1].trim();
-    if (/^(──|🎬|🎨|🎞|⚠️|⟳|✅|❌|完成|失败|部分失败|🖥|💰|·|🎙)/.test(clean) || /验收|重出|素材|镜头/.test(clean)) send('log', { m: clean.slice(0, 300) });
+    if (/^(──|🎬|🎨|🎞|⚠️|⟳|✅|❌|完成|失败|部分失败|🖥|💰|·|🎙|✎)/.test(clean) || /验收|重出|素材|镜头|恢复自|跳过已完成/.test(clean)) send('log', { m: clean.slice(0, 300) });
   };
-  for (const s of [child.stdout, child.stderr]) s.on('data', (d) => { buf += d.toString(); const parts = buf.split('\n'); buf = parts.pop(); parts.forEach(onLine); });
+  for (const st of [child.stdout, child.stderr]) st.on('data', (d) => { buf += d.toString(); const parts = buf.split('\n'); buf = parts.pop(); parts.forEach(onLine); });
   child.on('close', (code) => {
+    dramaChild = null;
     if (buf) onLine(buf);
     // 非 0 退出（中断/失败）不回填：否则会拿半截的运行目录覆盖项目
     if (code !== 0) { send('error', { m: `引擎退出码 ${code}（中断或失败），项目未改动` }); return res.end(); }
-    try { const id = finishDramaRun({ runDir, runsDir, inputs, tier: q.tier || 'cloud' }); send('done', { id, code }); }
+    if (!runDir) runDir = pickFreshRunDir(before, runsDir);
+    try { const id = onDone(runDir); send('done', { id, code }); }
     catch (e) { send('error', { m: `${e.message}（退出码 ${code}）` }); }
     res.end();
   });
   req.on('close', () => { try { child.kill('SIGTERM'); } catch { /* noop */ } });
+}
+kaipian.get('/drama/run', (req, res) => {
+  const q = req.query; const inputs = dramaInputs(q);
+  if (!inputs.story) return res.status(400).json({ error: '请输入故事' });
+  if (dramaChild) return res.status(409).json({ error: '已有一条短剧在跑（按秒计费，不允许并行）——等它跑完，或关掉那个页面取消' });
+  const { cli, wf } = aoCli(); const cfg = readConfig();
+  const runsDir = path.join(cfg.outputDir, '.ao-runs'); fs.mkdirSync(runsDir, { recursive: true });
+  const args = [cli, 'run', wf, '--output', runsDir, ...inputArgs(inputs)];
+  const pv = flagVal(q.provider); if (pv) args.push('--provider', pv);
+  const md = flagVal(q.model); if (md) args.push('--model', md);
+  const vp = flagVal(q.verify_provider); if (vp) args.push('--verify-provider', vp, '--verify-model', flagVal(q.verify_model) ?? '');
+  streamAoRun({ req, res, args, runsDir, onDone: (runDir) => finishDramaRun({ runDir, inputs, tier: q.tier || 'cloud' }) });
 });
 
 /** AO 运行目录 → 项目（新建或覆盖同 id）：回填 shots/验收、按输入标来源、拷贝 assets、记住 aoRun 供 resume。 */
-function finishDramaRun({ runDir, runsDir, inputs, tier, existingId, shotSources }) {
-  if (!runDir) { const dirs = fs.readdirSync(runsDir).filter((d) => d.startsWith('短剧流水线')).map((d) => path.join(runsDir, d)).sort((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs); runDir = dirs[0]; }
-  if (!runDir || !fs.existsSync(path.join(runDir, 'metadata.json'))) throw new Error('没有找到运行结果');
+function finishDramaRun({ runDir, inputs, tier, existingId, shotSources }) {
+  // runDir 由调用方确定（stdout 刮到的，或 spawn 后新出现的目录）。确定不了就报错，
+  // 绝不猜"最新的那个"——resume 时最新的就是上一次自己，旧产物会被当成新成片报成功
+  if (!runDir) throw new Error('没有从引擎输出里识别出本次运行目录（可能引擎输出格式变了），项目未改动');
+  if (!fs.existsSync(path.join(runDir, 'metadata.json'))) throw new Error(`运行目录里没有 metadata.json（${runDir}），项目未改动`);
   const meta = JSON.parse(fs.readFileSync(path.join(runDir, 'metadata.json'), 'utf-8'));
   const tpl = JSON.parse(fs.readFileSync(path.join(root, 'templates', 'ai-drama.template.json'), 'utf-8'));
   const id = existingId || safe(`短剧-${inputs.story.slice(0, 16)}-${new Date().toISOString().slice(5, 16).replace(/[:T]/g, '')}`);
@@ -301,7 +340,9 @@ function finishDramaRun({ runDir, runsDir, inputs, tier, existingId, shotSources
     s.visual.source = s.kind === 'video' && vp === 'local-sdcpp' ? 'local' : 'cloud';
   }
   const dir = projDir(id); fs.mkdirSync(path.join(dir, 'assets'), { recursive: true });
-  for (const f of fs.readdirSync(path.join(runDir, 'assets'))) fs.copyFileSync(path.join(runDir, 'assets', f), path.join(dir, 'assets', f));
+  // AO 在 script 步就失败时不会有 assets/——别在这儿甩 ENOENT
+  const srcAssets = path.join(runDir, 'assets');
+  if (fs.existsSync(srcAssets)) for (const f of fs.readdirSync(srcAssets)) fs.copyFileSync(path.join(srcAssets, f), path.join(dir, 'assets', f));
   project.final = project.final ? { file: path.join(dir, project.final.file), aoRun: runDir, notes: [] } : { file: null, aoRun: runDir, notes: ['本次运行没有成片'] };
   project.shots.forEach((s) => { s.visual.file = path.join(dir, s.visual.file); });
   // 保留上次的镜头级来源记录（未重出的镜头沿用）
@@ -317,30 +358,18 @@ kaipian.get('/projects/:id/drama/redo', (req, res) => {
   const prev = JSON.parse(fs.readFileSync(f, 'utf-8')); const q = req.query;
   const shot = String(q.shot || ''); if (!/^(shot[123]|character)$/.test(shot)) return res.status(400).json({ error: '只能重出 character / shot1 / shot2 / shot3' });
   if (!prev.final?.aoRun || !fs.existsSync(prev.final.aoRun)) return res.status(409).json({ error: '找不到上次的 AO 运行目录，无法续跑（可能被清理了）' });
-  res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' });
-  const send = (ev, data) => res.write(`event: ${ev}\ndata: ${JSON.stringify(data)}\n\n`);
+  if (dramaChild) return res.status(409).json({ error: '已有一条短剧在跑（按秒计费，不允许并行）——等它跑完，或关掉那个页面取消' });
   const { cli, wf } = aoCli(); const cfg = readConfig(); const runsDir = path.join(cfg.outputDir, '.ao-runs');
   // 换来源：本镜的 tier 覆盖只影响这次 -i；记进 shotSources 让标注正确
   const inputs = { ...prev.inputs };
   const shotSources = {};
   if (q.tier === 'local') { Object.assign(inputs, { video_provider: TIERS.local.video_provider, video_model: TIERS.local.video_model, video_resolution: inputs.video_ratio === '9:16' ? '384x640' : '640x384', video_duration: TIERS.local.video_duration }); }
-  else if (q.tier === 'cloud') { for (const k of ['video_provider', 'video_model', 'video_resolution', 'video_duration']) if (q[k]) inputs[k] = String(q[k]); }
+  else if (q.tier === 'cloud') { for (const k of ['video_provider', 'video_model', 'video_resolution', 'video_duration']) { const v = flagVal(q[k]); if (v) inputs[k] = v; } }
   shotSources[shot] = { video_provider: inputs.video_provider, video_model: inputs.video_model };
   const args = [cli, 'run', wf, '--output', runsDir, '--resume', prev.final.aoRun, '--from', shot, ...inputArgs(inputs)];
-  if (q.feedback && String(q.feedback).trim()) args.push('--feedback', String(q.feedback).trim());
-  if (q.verify_provider) args.push('--verify-provider', String(q.verify_provider), '--verify-model', String(q.verify_model || ''));
-  const child = spawn(process.execPath, args, { env: { ...process.env, AO_NO_MODEL_HINT: '1', AO_NO_RESUME_HINT: '1', FORCE_COLOR: '0' } });
-  let buf = ''; let runDir = '';
-  const onLine = (line) => { const clean = line.replace(/\x1b\[[0-9;]*m/g, '').replace(/\r/g, '').trim(); if (!clean) return; const m = clean.match(/详细输出:\s*(.+)$/); if (m) runDir = m[1].trim(); if (/^(──|🎬|🎨|🎞|⚠️|⟳|✅|❌|完成|失败|部分失败|🖥|✎|·)/.test(clean) || /验收|重出|镜头|恢复自|跳过已完成/.test(clean)) send('log', { m: clean.slice(0, 300) }); };
-  for (const st of [child.stdout, child.stderr]) st.on('data', (d) => { buf += d.toString(); const parts = buf.split('\n'); buf = parts.pop(); parts.forEach(onLine); });
-  child.on('close', (code) => {
-    if (buf) onLine(buf);
-    if (code !== 0) { send('error', { m: `引擎退出码 ${code}（中断或失败），项目未改动` }); return res.end(); }
-    try { const id = finishDramaRun({ runDir, runsDir, inputs: prev.inputs, tier: prev.tier, existingId: prev.id, shotSources: { ...(prev.shotSources ?? {}), ...shotSources } }); send('done', { id, code }); }
-    catch (e) { send('error', { m: `${e.message}（退出码 ${code}）` }); }
-    res.end();
-  });
-  req.on('close', () => { try { child.kill('SIGTERM'); } catch { /* noop */ } });
+  const fb = flagVal(q.feedback); if (fb) args.push('--feedback', fb);
+  const vp = flagVal(q.verify_provider); if (vp) args.push('--verify-provider', vp, '--verify-model', flagVal(q.verify_model) ?? '');
+  streamAoRun({ req, res, args, runsDir, onDone: (runDir) => finishDramaRun({ runDir, inputs: prev.inputs, tier: prev.tier, existingId: prev.id, shotSources: { ...(prev.shotSources ?? {}), ...shotSources } }) });
 });
 
 // ───────────── 本地生成：状态 / 安装 sd-cli / 下载模型（SSE 进度；下载前必须确认许可证） ─────────────
@@ -375,8 +404,6 @@ kaipian.get('/local/install', async (req, res) => {
   } catch (e) { send('error', { m: e.message }); }
   res.end();
 });
-function walkFind(dir, re) { for (const n of fs.readdirSync(dir)) { const p = path.join(dir, n); const st = fs.statSync(p); if (st.isDirectory()) { const r = walkFind(p, re); if (r) return r; } else if (re.test(n)) return p; } return null; }
-
 // 链接 → 正文（口播线输入）：只抓公开页，超时 20 s，正文 ≤ 6000 字
 import { fetchArticle } from '../src/input/url-text.mjs';
 kaipian.post('/fetch-url', async (req, res, next) => { try { res.json(await fetchArticle(String(req.body?.url ?? '').trim())); } catch (e) { res.status(400).json({ error: e.message }); } });

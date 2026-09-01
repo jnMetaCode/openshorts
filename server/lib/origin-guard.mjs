@@ -57,11 +57,14 @@ const isBrowserCrossSite = (req) => {
   return site !== 'same-origin' && site !== 'none';
 };
 
-/** 这些路径会写盘、下大文件或花钱，即使是 GET 也要按写请求对待 */
+/** 这些路径会写盘、下大文件、花钱或起子进程，即使是 GET 也要按写请求对待 */
 export const ACTION_PATHS = [
   /^\/api\/kaipian\/projects\/[^/]+\/(run|batch)$/,
   /^\/api\/kaipian\/projects\/[^/]+\/drama\/redo$/,
   /^\/api\/kaipian\/drama\/run$/,
+  // options 只是读，但它要起 `ao doctor` 子进程——恶意页面用 <img> 循环打它，
+  // 等于免费拿到一个"反复 fork Node"的原语，正在出的片会被拖死
+  /^\/api\/kaipian\/drama\/options$/,
   /^\/api\/kaipian\/(local|ffmpeg|local-image)\/install$/,
 ];
 export const isActionPath = (p) => ACTION_PATHS.some((re) => re.test(p));
