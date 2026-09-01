@@ -1,5 +1,63 @@
 # Changelog
 
+## [2.0.0-alpha.23] - 2026-09-01 · 把"炸了还报成功"的路径清一遍，外加发版前的打包账
+
+上一轮的教训是"单测全过、真跑才炸"；这一轮反过来：把**失败了还对用户说成功**的路径
+系统性清了一遍，另加发版路上的打包问题。
+
+- **`openshorts run` 出了坏片也退出码 0，质检 fail 一条不显示。**质检里"字幕没烧进画面 /
+  无音轨 / 分辨率不对"都是 fail，但 CLI 只打一行"✓ 成片"就结束——具体条目只有网页端显示。
+  现在非 pass 条目逐条列出，质检未过退出码 1（文件照常生成）。真机验证：用 Homebrew 的
+  ffmpeg（无 libass）重出一条片，⛔ 条目 + exit 1。`batch` 同修：有版本失败退出码 1
+  （以前"✓ 0/3 版完成"也 exit 0）。
+- **短剧 `--resume` 的运行目录不再靠猜。**以前从 stdout 刮「详细输出:」，刮不到就按 mtime
+  取最新的目录——对 resume 来说"最新"极可能就是上一次运行自己，于是旧产物被原样拷回、
+  界面报"重出成功"，画面一帧没变。AO 每次运行（含 resume）都新建时间戳目录（saveResults），
+  改成 spawn 前快照、跑完取"新出现的那一个"；识别不出就报错、不导入任何产物。
+- **短剧线补上并发锁。**口播线早有按项目的锁，短剧的 run / redo 一个都没有——两个标签页
+  同时点就是两个**按秒计费**的 AO 进程写同一个 project.json。顺带把 run 和 redo 逐字重复的
+  SSE/子进程/断连即杀逻辑抽成一个 `streamAoRun`，以后改一处两边都生效。
+- **脚本长度从"报警告"升级为"自动重写一次"。**提示词按不住模型（同一话题两次 278 / 183 字），
+  现在 CLI 和 Web 共用一份编排（`src/pipeline/koubo-script.mjs`）：长度偏出 ±12% 或 JSON
+  写坏，带着量化反馈（"总字数必须落在 243–297 字之间"）自动重写一次，还不行才把警告留给
+  用户。模板 acceptance 的编号也修了——两条都写着"4."，长度那条恰好被夹在中间。
+- **纯色底过半 = 质检 fail。**素材检索整段失败（断网 / key 全废）时每镜都退纯色底，产物是
+  一条全深蓝底的"片子"，以前质检只是 warn、退出码 0。
+- **安全补漏：`GET /drama/options` 进 ACTION_PATHS。**它起 `ao doctor` 子进程——恶意网页
+  `<img>` 循环打它等于免费拿到"反复 fork Node"的原语。顺带把 options / preflight 的
+  `spawnSync` 改成异步：express 单线程，同步 spawn 会把 event loop 卡住几秒，正在出的片
+  和整个界面一起冻。透传给 AO 命令行的 provider / model / feedback 值拒绝 `-` 开头
+  （防参数注入）；输出目录不允许设成文件系统根。
+- **SSRF 补漏：链接抓正文的重定向逐跳校验。**以前只校验第一跳的域名就 `redirect:'follow'`，
+  公网域名 302 到 `169.254.169.254` 或 `127.0.0.1:4174` 就把校验全绕过了。现在
+  `redirect:'manual'` 自己走，每一跳都过 `assertPublicHost`，最多 5 跳。
+  真网络验证：`http://github.com/features` 经 301 照常抓到正文。
+- **打包账（发版前必须的）**：`files` 排除 `dist/assets/generated`——vite build 会把整个
+  public 复制进 dist，9.9 MB 的 v1 示例素材全进了 npm 包，**10.2 MB → 470 KB**；
+  `@remotion/cli` 移到 devDependencies（源码零引用，只有 `npm run studio` 用，却连带
+  studio 全家桶装给每个用户）；`projects/` 进包（176 KB；不然 npm 装出来的 `/editor`
+  开箱就是 500——Dockerfile 一直是 COPY 进去的，两条分发路径以前不一致）。
+- **Docker**：镜像补 `zip unzip`（缺 zip 时发布包的 zip 会**静默**变 null，缺 unzip 时
+  sd-cli 装不了）；compose 暴露 `OPENSHORTS_ALLOWED_ORIGINS`（不设的话从容器外访问所有
+  写操作 403，`.env.example` 里写了但 compose 没跟上）；挂载 v2 的三个 home 目录
+  （`~/OpenShorts`、`~/.openshorts`、`~/.ao`）——以前只挂 v1 目录，重建容器就丢成片、
+  配置和存好的 key。
+- **`preview-voices` 改用仓里自带的 Node 版 Edge TTS**（`src/voice/edge-tts.mjs`），彻底
+  去掉 Python 依赖。真跑 6/6 通过，顺带抓到一个两版共有的老 bug：音色 label 里的
+  「新闻/小说」被 `path.join` 当成子目录，第 5 个音色一直生成到了错误的位置。
+- **`drama --plan` / `--validate` 把用户的 `-i` 透传下去。**以前全丢——README 教人
+  "`--plan -i story=… -i video_provider=…` 先看花费"，实际拿到的是不带任何输入的默认档
+  报价。注意：npm 上的 AO 0.19.1 的 plan 本身不吃 `-i`（修复在 AO 未发版的 main 里，
+  本地已验证），这条要等 AO 0.19.2 发版才对用户真正生效。
+- CLI 杂项：打错命令（`rnu`）退出码 1（以前打印帮助后 exit 0，脚本里当成功）；
+  run / batch / export / estimate 对不存在或不是项目的文件给一句人话而不是 ENOENT 堆栈；
+  `open` 传播 open-local 的退出码；帮助文本与实现对齐（文件头注释还写着
+  "new / run 在 M1 接入"）。架构文档 §12 整节按实现重写——之前列的 `render` 命令从未
+  实现、API 路径全缺 `/api/kaipian` 前缀、SSE 事件名也对不上。
+- 测试 183 → 195：长度自动重写（注入假 run，不花 token）、运行目录判定（resume 不产生
+  新目录时必须报 null）、CLI 退出码（真 spawn 子进程）、drama/options 的跨站拦截、
+  重定向 SSRF 与循环重定向。
+
 ## [2.0.0-alpha.22] - 2026-08-31 · 逐条跑 README 里的 v1 命令，发版检查本身是坏的
 
 把 README 后半段 v1 的命令逐条跑了一遍（这些从没验证过）。多数正常，两条有问题，
