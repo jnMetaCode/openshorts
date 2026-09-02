@@ -36,6 +36,22 @@ kaipian.put('/config', (req, res) => {
   if (typeof b.pixabayKey === 'string' && b.pixabayKey && !b.pixabayKey.includes('…')) next.stock.pixabayKey = b.pixabayKey.trim();
   writeConfig(next); res.json({ ok: true });
 });
+/** 素材库 key 探活（开发计划 M0 就写了"注册 + 粘贴 + 探活"，探活一直没做）：
+ *  填错的 key 以前要到出片时才发现。各真发一次最小检索（占 1 次配额）。 */
+kaipian.post('/stock/test', async (req, res) => {
+  const { searchPexels, searchPixabay } = await import('../src/sources/stock.mjs');
+  const cur = readConfig(); const b = req.body ?? {};
+  const pick = (v, saved) => (typeof v === 'string' && v && !v.includes('…') ? v.trim() : saved);
+  const test = async (fn, key) => {
+    if (!key) return { configured: false };
+    try { const hits = await fn('nature', { key, limit: 1 }); return { configured: true, ok: true, hits: hits.length }; }
+    catch (e) { return { configured: true, ok: false, error: String(e.message).split('\n')[0].slice(0, 120) }; }
+  };
+  res.json({
+    pexels: await test(searchPexels, pick(b.pexelsKey, cur.stock?.pexelsKey)),
+    pixabay: await test(searchPixabay, pick(b.pixabayKey, cur.stock?.pixabayKey)),
+  });
+});
 kaipian.get('/voices', (_req, res) => res.json(DEFAULT_VOICES));
 kaipian.post('/tts/preview', async (req, res, next) => {
   try {

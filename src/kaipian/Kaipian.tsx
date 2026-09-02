@@ -84,7 +84,18 @@ export const Kaipian = () => {
 
   const grabUrl = async () => { setBusy('抓取文章…'); setError(''); try { const a = await api<{title: string; text: string; chars: number}>('/api/kaipian/fetch-url', {method: 'POST', body: JSON.stringify({url: articleUrl})}); setTopic(`${a.title ? a.title + '\n\n' : ''}${a.text}`); } catch (e: any) { setError(e.message); } finally { setBusy(''); } };
   const preview = async () => { setBusy('试听中…'); try { const r = await api<{dataUrl: string}>('/api/kaipian/tts/preview', {method: 'POST', body: JSON.stringify({voice, text: topic.slice(0, 40) || '你有没有发现，猫为什么总爱钻纸箱？'})}); if (audioRef.current) { audioRef.current.src = r.dataUrl; await audioRef.current.play(); } } catch (e: any) { setError(e.message); } finally { setBusy(''); } };
-  const saveKeys = async () => { await api('/api/kaipian/config', {method: 'PUT', body: JSON.stringify({...keyDraft, tts: {voice}})}); setKeyDraft({pexelsKey: '', pixabayKey: ''}); await refresh(); };
+  const [keyTest, setKeyTest] = useState('');
+  const saveKeys = async () => {
+    // 保存后立刻探活：填错的 key 别等到出片时才发现（真发一次最小检索，各占 1 次配额）
+    setKeyTest('正在验证 key…');
+    await api('/api/kaipian/config', {method: 'PUT', body: JSON.stringify({...keyDraft, tts: {voice}})});
+    try {
+      const r = await api<{pexels: {configured: boolean; ok?: boolean; error?: string}; pixabay: {configured: boolean; ok?: boolean; error?: string}}>('/api/kaipian/stock/test', {method: 'POST', body: '{}'});
+      const line = (name: string, x: {configured: boolean; ok?: boolean; error?: string}) => (!x.configured ? '' : x.ok ? `${name} ✅ 可用` : `${name} ⛔ ${x.error ?? '不可用'}（key 贴错了？重新粘贴保存即可）`);
+      setKeyTest([line('Pexels', r.pexels), line('Pixabay', r.pixabay)].filter(Boolean).join(' · '));
+    } catch { setKeyTest('验证请求没发出去（不影响已保存的 key）'); }
+    setKeyDraft({pexelsKey: '', pixabayKey: ''}); await refresh();
+  };
   const createProject = async () => {
     setError(''); setBusy('AI 正在写脚本（20–60 秒）…');
     try { const p = await api<Project>('/api/kaipian/new', {method: 'POST', body: JSON.stringify({topic, duration, tone, voice, captions, captionStyle: capStyle, source, localDir})}); setProject(p); setStep(3); await refresh(); }
@@ -371,11 +382,12 @@ export const Kaipian = () => {
         {gen.models.every((m) => !m.usable) && <small>本机内存 {gen.memGB} GB，跑不动任何档位。</small>}
         {dl && <pre className="kp-log" style={{maxHeight: 120, marginTop: 8}}>{[...dl.log, dl.total ? `${dl.file} ${(Number(dl.bytes ?? 0) / 1073741824).toFixed(2)}/${(dl.total / 1073741824).toFixed(2)} GB` : ''].filter(Boolean).join('\n')}</pre>}
       </details>}
-      {cfg && !(cfg.stock.hasPexels || cfg.stock.hasPixabay) && <details className="kp-keys" open><summary>素材库 key（免费，注册即得；只存本机 <code>~/.openshorts/config.json</code>）</summary>
+      {cfg && (!(cfg.stock.hasPexels || cfg.stock.hasPixabay) || keyTest) && <details className="kp-keys" open><summary>素材库 key（免费，注册即得；只存本机 <code>~/.openshorts/config.json</code>）</summary>
         <div className="kp-row">
           <label>Pexels key <a href="https://www.pexels.com/api/" target="_blank" rel="noreferrer">去申请 ↗</a><input value={keyDraft.pexelsKey} onChange={(e) => setKeyDraft({...keyDraft, pexelsKey: e.target.value})} placeholder="粘贴后保存"/></label>
           <label>Pixabay key <a href="https://pixabay.com/api/docs/" target="_blank" rel="noreferrer">去申请 ↗</a><input value={keyDraft.pixabayKey} onChange={(e) => setKeyDraft({...keyDraft, pixabayKey: e.target.value})}/></label>
         </div><button onClick={saveKeys} disabled={!keyDraft.pexelsKey && !keyDraft.pixabayKey}>{t('保存 key')}</button>
+        {keyTest && <div className="kp-warn">{keyTest}</div>}
       </details>}
       <h3>{t('配音与字幕')}</h3>
       <div className="kp-row">
