@@ -27,7 +27,11 @@ COPY public ./public
 COPY projects ./projects
 COPY templates ./templates
 COPY adapters ./adapters
-RUN mkdir -p out data public/uploads && chown -R node:node /app
+# v2 的三个数据目录要在切到 node 用户前建好并交出属主：compose 的命名卷首次挂载时
+# Docker 按镜像里的目录属主初始化，不建的话挂载点是 root:root——USER node 下
+# 存 key、写配置、出片全部 EACCES，等于"数据持久化"把功能本身弄坏了
+RUN mkdir -p out data public/uploads /home/node/OpenShorts /home/node/.openshorts /home/node/.ao \
+    && chown -R node:node /app /home/node
 USER node
 EXPOSE 4174
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 CMD node -e "fetch('http://127.0.0.1:4174/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"

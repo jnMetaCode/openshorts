@@ -37,11 +37,13 @@ export async function assertPublicHost(url, { resolve = (h) => dns.lookup(h, { a
 export async function fetchArticle(url, { fetchImpl = fetch, maxChars = 6000, resolve } = {}) {
   if (!/^https?:\/\//i.test(url)) throw new Error('请输入 http(s) 链接');
   // 重定向逐跳自己走：redirect:'follow' 只校验第一跳，公网域名 302 到 169.254.169.254 或
-  // 127.0.0.1 就把上面的校验全绕过了
+  // 127.0.0.1 就把上面的校验全绕过了。20s 是整条链的总限时，不是每跳各 20s——
+  // 否则慢吞吞吐 301 的站能把"超时 20s"的承诺拖成 2 分钟
+  const deadline = AbortSignal.timeout(20000);
   let cur = url; let r;
   for (let hop = 0; ; hop++) {
     await assertPublicHost(cur, resolve ? { resolve } : {});
-    r = await fetchImpl(cur, { headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh) AppleWebKit/537.36 OpenShorts/2.0', Accept: 'text/html,*/*' }, redirect: 'manual', signal: AbortSignal.timeout(20000) });
+    r = await fetchImpl(cur, { headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh) AppleWebKit/537.36 OpenShorts/2.0', Accept: 'text/html,*/*' }, redirect: 'manual', signal: deadline });
     if (![301, 302, 303, 307, 308].includes(r.status)) break;
     const loc = r.headers.get('location'); if (!loc) throw new Error(`抓取失败 HTTP ${r.status}（重定向没给目标）`);
     if (hop >= 5) throw new Error('重定向次数过多');

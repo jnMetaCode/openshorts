@@ -255,6 +255,10 @@ const inputArgs = (inputs) => Object.entries(inputs).flatMap(([k, v]) => (v === 
 // 透传给 AO 命令行的值不能以 - 开头：spawn 数组形式没有 shell 注入，但一个 `--` 开头的值
 // 会被 AO 的参数解析器当成新开关（provider=--resume 之类）。供应商/模型 id 从来不长这样。
 const flagVal = (v) => { const s = String(v ?? '').trim(); return s && !s.startsWith('-') ? s : null; };
+// 反馈是自由文本："-镜头太暗"、"——去掉字幕"都是正常人话，不能按 flagVal 一刀切拦掉
+// （拦掉的话重出照样跑、钱照样花，就是没带意见——用户拿回一条一样烂的片还以为改了）。
+// 只拦"整个值就是一个开关"的形状（--resume 之类），那才是真正的注入口。
+const feedbackVal = (v) => { const s = String(v ?? '').trim(); return s && !/^--?[a-zA-Z][a-zA-Z0-9-]*$/.test(s) ? s : null; };
 /** AO 子进程跑一条只读命令（doctor/plan），异步收集输出。以前用 spawnSync——express 是单线程，
  *  同步 spawn 会把 event loop 卡住几秒，正在跑的出片 SSE 和整个界面一起冻结。 */
 const runAoCapture = (args) => new Promise((resolve) => {
@@ -278,12 +282,19 @@ async function aoProviders() {
   return { video, image, localStatus };
 }
 kaipian.get('/drama/providers', async (_req, res, next) => { try { res.json(await aoProviders()); } catch (e) { next(e); } });
+// doctor 结果缓存 60s：界面的 refresh() 有十来个调用点（挂载/存 key/每次跑完），
+// 每次都 spawn 一个 Node 跑 ao doctor——出片进行中还在跟渲染抢 CPU，而这个状态
+// 只有装了新东西才会变
+let optionsCache = null;
 kaipian.get('/drama/options', async (_req, res) => {
+  if (optionsCache && Date.now() - optionsCache.at < 60_000) return res.json(optionsCache.data);
   const { cli } = aoCli();
   const { out } = await runAoCapture([cli, 'doctor', '--no-probe']);
   const localReady = /本地出片可用/.test(out);
   const cloud = (out.match(/文生视频可用（type: video）：([^（\n]+)/) || [])[1]?.split(/,\s*/).map((s) => s.trim()).filter(Boolean) ?? [];
-  res.json({ tiers: TIERS, localReady, cloudProviders: cloud, doctor: out.split('\n').filter((l) => /本地出片|文生视频|出图/.test(l)) });
+  const data = { tiers: TIERS, localReady, cloudProviders: cloud, doctor: out.split('\n').filter((l) => /本地出片|文生视频|出图/.test(l)) };
+  optionsCache = { at: Date.now(), data };
+  res.json(data);
 });
 kaipian.post('/drama/preflight', async (req, res) => {
   const inputs = dramaInputs(req.body ?? {});
@@ -314,6 +325,9 @@ function streamAoRun({ req, res, args, runsDir, onDone }) {
     if (/^(──|🎬|🎨|🎞|⚠️|⟳|✅|❌|完成|失败|部分失败|🖥|💰|·|🎙|✎)/.test(clean) || /验收|重出|素材|镜头|恢复自|跳过已完成/.test(clean)) send('log', { m: clean.slice(0, 300) });
   };
   for (const st of [child.stdout, child.stderr]) st.on('data', (d) => { buf += d.toString(); const parts = buf.split('\n'); buf = parts.pop(); parts.forEach(onLine); });
+  // spawn 本身失败（EMFILE/EAGAIN 等）只发 'error' 不发 'close'：不接的话 SSE 永远吊着、
+  // dramaChild 永远占着，之后每次出短剧都 409，直到重启服务
+  child.on('error', (e) => { dramaChild = null; send('error', { m: `引擎进程起不来：${e.message}` }); res.end(); });
   child.on('close', (code) => {
     dramaChild = null;
     if (buf) onLine(buf);
@@ -399,14 +413,13 @@ kaipian.get('/projects/:id/drama/redo', (req, res) => {
   // 用 agnes 跑通的项目一点重出就报"deepseek 没配 key"（真机撞过）
   const pv = flagVal(q.provider) ?? prev.llm?.provider; if (pv) args.push('--provider', pv);
   const md = flagVal(q.model) ?? prev.llm?.model; if (md) args.push('--model', md);
-  const fb = flagVal(q.feedback); if (fb) args.push('--feedback', fb);
+  const fb = feedbackVal(q.feedback); if (fb) args.push('--feedback', fb);
   const vp = flagVal(q.verify_provider); if (vp) args.push('--verify-provider', vp, '--verify-model', flagVal(q.verify_model) ?? '');
   streamAoRun({ req, res, args, runsDir, onDone: (runDir) => finishDramaRun({ runDir, inputs: prev.inputs, tier: prev.tier, existingId: prev.id, shotSources: { ...(prev.shotSources ?? {}), ...shotSources }, llm: pv ? { provider: pv, model: md || '' } : prev.llm ?? null }) });
 });
 
 // ───────────── 本地生成：状态 / 安装 sd-cli / 下载模型（SSE 进度；下载前必须确认许可证） ─────────────
 import { downloadWithResume, pickSdcppAsset, hfExpectedSha256 } from '../src/local/download.mjs';
-import { execFileSync } from 'node:child_process';
 const HF = 'https://huggingface.co/unsloth/MiniMax-H3-GGUF/resolve/main';
 const MODEL_FILES = (m) => [[m.diffusion, `${HF}/${m.diffusion}`], [m.llm, `${HF}/${m.llm}`], ['minimax_h3_video_vae_fp16.safetensors', `${HF}/vae/minimax_h3_video_vae_fp16.safetensors`], ['minimax_h3_audio_vae_fp32.safetensors', `${HF}/vae/minimax_h3_audio_vae_fp32.safetensors`]];
 async function localModule() { const main = fileURLToPath(import.meta.resolve('agency-orchestrator')); return import(path.join(path.dirname(main), 'connectors', 'local-sdcpp.js')); }

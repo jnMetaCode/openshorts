@@ -86,15 +86,17 @@ export const Kaipian = () => {
   const preview = async () => { setBusy('试听中…'); try { const r = await api<{dataUrl: string}>('/api/kaipian/tts/preview', {method: 'POST', body: JSON.stringify({voice, text: topic.slice(0, 40) || '你有没有发现，猫为什么总爱钻纸箱？'})}); if (audioRef.current) { audioRef.current.src = r.dataUrl; await audioRef.current.play(); } } catch (e: any) { setError(e.message); } finally { setBusy(''); } };
   const [keyTest, setKeyTest] = useState('');
   const saveKeys = async () => {
-    // 保存后立刻探活：填错的 key 别等到出片时才发现（真发一次最小检索，各占 1 次配额）
+    // 保存后立刻探活：填错的 key 别等到出片时才发现（真发一次最小检索，各占 1 次配额）。
+    // 整段都要兜住：PUT 挂掉（服务重启/400）时不能让"正在验证…"永远挂在屏幕上
     setKeyTest('正在验证 key…');
-    await api('/api/kaipian/config', {method: 'PUT', body: JSON.stringify({...keyDraft, tts: {voice}})});
     try {
+      await api('/api/kaipian/config', {method: 'PUT', body: JSON.stringify({...keyDraft, tts: {voice}})});
       const r = await api<{pexels: {configured: boolean; ok?: boolean; error?: string}; pixabay: {configured: boolean; ok?: boolean; error?: string}}>('/api/kaipian/stock/test', {method: 'POST', body: '{}'});
       const line = (name: string, x: {configured: boolean; ok?: boolean; error?: string}) => (!x.configured ? '' : x.ok ? `${name} ✅ 可用` : `${name} ⛔ ${x.error ?? '不可用'}（key 贴错了？重新粘贴保存即可）`);
       setKeyTest([line('Pexels', r.pexels), line('Pixabay', r.pixabay)].filter(Boolean).join(' · '));
-    } catch { setKeyTest('验证请求没发出去（不影响已保存的 key）'); }
-    setKeyDraft({pexelsKey: '', pixabayKey: ''}); await refresh();
+      setKeyDraft({pexelsKey: '', pixabayKey: ''});
+    } catch (e) { setKeyTest(`保存或验证失败：${e instanceof Error ? e.message : String(e)}——key 还留在输入框里，再点一次保存即可`); }
+    await refresh();
   };
   const createProject = async () => {
     setError(''); setBusy('AI 正在写脚本（20–60 秒）…');

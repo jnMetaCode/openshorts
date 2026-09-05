@@ -50,9 +50,10 @@ function readProject(pf) {
 
 switch (cmd) {
   case 'open': case 'web': case 'studio-web': {
-    // open-local 起不来（端口占用/构建失败）会 exit 1——要把它传出去，别让脚本里以为启动成功了
+    // open-local 起不来（端口占用/构建失败）会 exit 1——要把它传出去，别让脚本里以为启动成功了。
+    // status 为 null（被信号杀死 / spawn 本身失败）同样不算成功，与 runAO 的 ?? 1 口径一致
     const r = spawnSync(process.execPath, [path.join(root, 'scripts', 'open-local.mjs')], { stdio: 'inherit' });
-    process.exit(r.status ?? 0);
+    process.exit(r.status ?? 1);
   }
   case 'sources': {
     const { sourcesAvailability } = await import('../src/sources/availability.mjs');

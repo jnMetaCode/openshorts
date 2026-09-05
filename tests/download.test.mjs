@@ -35,6 +35,17 @@ test('sha256 校验：对得上放行；对不上删文件并报错（27 GB 不�
   const bad = path.join(dir, 'bad.bin');
   await assert.rejects(() => downloadWithResume(`http://127.0.0.1:${port}/f`, bad, { expectedSha256: 'a'.repeat(64) }), /校验不过/);
   assert.equal(fs.existsSync(bad), false, '校验不过的文件必须删掉，不然下次会被"已存在"跳过');
+
+  // 已存在但内容不对的文件（老版本下的 / 落盘后坏掉的）：不能因"已存在"跳过校验——
+  // 那正是坏文件活到"sd-cli 加载失败"的原路。要当场删掉重下，一条命令内自愈
+  const heal = path.join(dir, 'heal.bin');
+  fs.writeFileSync(heal, '坏掉的旧内容');
+  await downloadWithResume(`http://127.0.0.1:${port}/f`, heal, { expectedSha256: good });
+  assert.ok(fs.readFileSync(heal).equals(body), '坏文件被重下成正确内容');
+  // 内容正确的已存在文件：校验通过后按 skipped 返回，不重下
+  const events = [];
+  await downloadWithResume(`http://127.0.0.1:${port}/f`, heal, { expectedSha256: good, onProgress: (p) => events.push(p) });
+  assert.equal(events.at(-1).skipped, true, '校验通过的已存在文件仍走跳过路径');
   srv.close(); fs.rmSync(dir, { recursive: true, force: true });
 });
 

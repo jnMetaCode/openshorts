@@ -102,13 +102,18 @@ export function uniqueProjectId(outputDir, id, fsImpl) {
  * 真机同一个话题两次生成分别是 278 字（落在 60 秒的 243–297 区间内）和 183 字（短 32%）。
  * 提示词管不住的事，至少不能让它悄悄过去：写少了成片就是比你要的短一大截。
  */
+// Edge TTS 实测语速（字/秒）。三处按它算：这里的门槛、koubo-script 的重写反馈、
+// 模板 yaml 里手写的字数区间（yaml 是文本导不了常量，改这里要同步模板文案）
+export const CHARS_PER_SEC = 4.5;
+export const LENGTH_TARGET_TOL = 0.10;   // 对模型**要求**的目标区间（模板与重写反馈用它）
+export const LENGTH_GATE_TOL = 0.12;     // 实际**放行**门槛：比要求松 2 个点，模型压线也算过
 export function lengthWarning(shots, duration) {
   const target = Number(String(duration ?? '').match(/\d+/)?.[0]);
   if (!target) return null;
   const chars = shots.reduce((n, s) => n + String(s.text ?? '').length, 0);
-  const secs = chars / 4.5;                       // Edge TTS 实测语速
+  const secs = chars / CHARS_PER_SEC;
   const off = (secs - target) / target;
-  if (Math.abs(off) <= 0.12) return null;
+  if (Math.abs(off) <= LENGTH_GATE_TOL) return null;
   return `脚本 ${chars} 字 ≈ ${secs.toFixed(0)} 秒，而目标是 ${target} 秒（${off > 0 ? '长' : '短'} ${Math.abs(off * 100).toFixed(0)}%）——重新生成一次通常就对了`;
 }
 

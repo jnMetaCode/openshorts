@@ -16,12 +16,15 @@ export async function fileSha256(file) {
   return hash.digest('hex');
 }
 
-/** HF 下载链接 → 该文件 LFS 指针里的 sha256；拿不到（非 HF、小文件、断网）返回 null，不阻塞下载 */
+/** HF 下载链接 → 该文件 LFS 指针里的 sha256；拿不到（非 HF、小文件、断网）返回 null，不阻塞下载。
+ *  自带 10s 超时：HF 被墙时连接常常是黑洞（既不通也不拒），CLI 那条路没有外部 signal，
+ *  不设超时的话 install 会在打印任何东西之前就吊死。 */
 export async function hfExpectedSha256(url, { fetchImpl = fetch, signal } = {}) {
   const m = String(url).match(/^https:\/\/huggingface\.co\/(.+?)\/resolve\/([^/]+)\/(.+?)(?:\?.*)?$/);
   if (!m) return null;
   try {
-    const r = await fetchImpl(`https://huggingface.co/${m[1]}/raw/${m[2]}/${m[3]}`, { headers: { 'User-Agent': 'OpenShorts/2.0' }, signal });
+    const t = AbortSignal.timeout(10_000);
+    const r = await fetchImpl(`https://huggingface.co/${m[1]}/raw/${m[2]}/${m[3]}`, { headers: { 'User-Agent': 'OpenShorts/2.0' }, signal: signal ? AbortSignal.any([signal, t]) : t });
     if (!r.ok) return null;
     return (await r.text()).slice(0, 500).match(/oid sha256:([0-9a-f]{64})/)?.[1] ?? null;
   } catch { return null; }
@@ -36,7 +39,16 @@ async function verifyOrThrow(dest, expected, onProgress) {
 
 export async function downloadWithResume(url, dest, { onProgress = () => {}, fetchImpl = fetch, signal, expectedSha256 = null } = {}) {
   fs.mkdirSync(path.dirname(dest), { recursive: true });
-  if (fs.existsSync(dest) && fs.statSync(dest).size > 0) { onProgress({ done: true, skipped: true, bytes: fs.statSync(dest).size }); return dest; }
+  if (fs.existsSync(dest) && fs.statSync(dest).size > 0) {
+    // 已存在的文件也要过校验（install 是低频动作，哈希这一分钟值得花）：
+    // 老版本下的、或落盘后坏掉的文件，不校验就正好活到"sd-cli 加载失败"——这是本功能要防的原案。
+    // 对不上不抛错：当场删掉、落回下面的正常下载，一条命令内自愈。
+    if (expectedSha256) {
+      onProgress({ verifying: true });
+      if (await fileSha256(dest) === expectedSha256) { onProgress({ done: true, skipped: true, bytes: fs.statSync(dest).size }); return dest; }
+      fs.rmSync(dest, { force: true });
+    } else { onProgress({ done: true, skipped: true, bytes: fs.statSync(dest).size }); return dest; }
+  }
   const part = dest + '.part';
   let have = fs.existsSync(part) ? fs.statSync(part).size : 0;
   const headers = { 'User-Agent': 'OpenShorts/2.0' }; if (have > 0) headers.Range = `bytes=${have}-`;

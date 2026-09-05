@@ -9,10 +9,7 @@
  * 解析失败同样自动重跑一次：模型偶发写坏 JSON，「直接重跑通常就好」这句话以前是
  * 打印出来让用户自己照做的，现在先替他做一遍，还是坏才把原始输出交出去。
  */
-import { buildKouboProject, lengthWarning } from '../project/koubo.mjs';
-
-/** Edge TTS 实测语速（字/秒），与模板提示词、lengthWarning 保持同一个数 */
-const CHARS_PER_SEC = 4.5;
+import { buildKouboProject, lengthWarning, CHARS_PER_SEC, LENGTH_TARGET_TOL } from '../project/koubo.mjs';
 
 /**
  * @returns {Promise<{ok:true, project:object, res:object, attempts:number}
@@ -42,8 +39,9 @@ export async function generateKoubo({ wf, inputs, buildDefaults, aoOpts = {}, lo
     if (!warn || attempt >= maxAttempts) return { ok: true, project, res, attempts: attempt };
     const target = Number(String(inputs.duration ?? '').match(/\d+/)?.[0]) || 60;
     const chars = project.shots.reduce((n, s) => n + String(s.text ?? '').length, 0);
-    const lo = Math.round(target * CHARS_PER_SEC * 0.9);
-    const hi = Math.round(target * CHARS_PER_SEC * 1.1);
+    // 反馈里给的是**要求区间**（±10%，与模板一致）；放行门槛在 lengthWarning 里松 2 个点
+    const lo = Math.round(target * CHARS_PER_SEC * (1 - LENGTH_TARGET_TOL));
+    const hi = Math.round(target * CHARS_PER_SEC * (1 + LENGTH_TARGET_TOL));
     lengthNote = `口播总字数 ${chars} 字，不符合目标时长 ${inputs.duration}。这次 hook + 各段 text + outro 的总字数必须落在 ${lo}–${hi} 字之间，其余要求不变。`;
     log(`脚本 ${chars} 字，偏离目标时长（要求 ${lo}–${hi} 字）——自动重写一次…`);
   }
