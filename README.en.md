@@ -16,7 +16,7 @@ npm run openshorts      # opens the GUI at http://127.0.0.1:4174
 
 Requires Node.js 20+ and FFmpeg (an npm package is coming; until then use the source checkout or a [release bundle](https://github.com/jnMetaCode/openshorts/releases)). **Run `openshorts doctor` right after installing** — it tells you what this machine can produce today and exactly what is missing.
 
-> **Note**: the GUI is currently Chinese-only. The CLI, docs and error messages below are bilingual enough to follow; an English UI is on the roadmap.
+> **Note**: the GUI has an English toggle (the EN button top-right, or open with `?lang=en`). Engine log lines and some machine-status values remain Chinese for now.
 
 ## Two pipelines
 
