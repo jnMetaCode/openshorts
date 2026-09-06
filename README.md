@@ -10,10 +10,12 @@
 ![License](https://img.shields.io/badge/license-MIT-green) ![Node](https://img.shields.io/badge/node-%E2%89%A520-brightgreen) ![Tests](https://img.shields.io/badge/tests-202%20passing-brightgreen) ![CI](https://img.shields.io/badge/CI-ubuntu%20%7C%20macOS%20%7C%20windows-brightgreen) ![Format](https://img.shields.io/badge/format-9%3A16%20%7C%2016%3A9-blue)
 
 ```bash
-npx openshorts          # 起本地服务并打开浏览器（http://127.0.0.1:4174）
+git clone https://github.com/jnMetaCode/openshorts.git
+cd openshorts && npm install
+npm run openshorts      # 起本地服务并打开浏览器（http://127.0.0.1:4174）
 ```
 
-需要 Node.js 20+ 和 FFmpeg。**装完先跑一次 `openshorts doctor`**——它会告诉你这台机器现在能不能出片，以及缺什么。
+需要 Node.js 20+ 和 FFmpeg（npm 包即将发布，届时一行 `npx openshorts` 即可；当前请用源码或 [Release 包](https://github.com/jnMetaCode/openshorts/releases)）。**装完先跑一次 `openshorts doctor`**——它会告诉你这台机器现在能不能出片，以及缺什么。
 
 ---
 
@@ -56,7 +58,7 @@ AI 拆出的每一镜都摊开给你：**口播文案**、**画面意图**、**�
 | **改一镜要不要全重来** | 单镜重出：口播改一句话只重出那一镜；短剧按验收意见 / 提意见 / 换来源 | 全部重跑 | 重新生成 |
 | **脚本谁写** | 276 位专家角色分工（科普作者写稿、抖音策略师起标题、编剧拆三镜） | 一个通用 prompt | 黑盒 |
 | **数据在哪** | 本地优先：key 只存本机，产物在你硬盘，素材署名与 AI 标识写进发布文案 | 本地 | 云端 |
-| **怎么装** | `npx openshorts` 一行 / Docker | Python 环境 / 整合包 | App |
+| **怎么装** | 克隆一行跑 / Release 包 / Docker（npm 包即将发布） | Python 环境 / 整合包 | App |
 
 一句话：**别人给你一个出片按钮，开片给你一条能看见成本、能被审、能改单镜的生产线。**
 
@@ -86,11 +88,14 @@ AI 拆出的每一镜都摊开给你：**口播文案**、**画面意图**、**�
 
 ## 快速开始（v2 · 开片）
 
-需要 Node.js 20+ 和 FFmpeg。一行起本地服务并打开浏览器（默认 http://127.0.0.1:4174）：
+需要 Node.js 20+ 和 FFmpeg。起本地服务并打开浏览器（默认 http://127.0.0.1:4174）：
 
 ```bash
-npx openshorts
+git clone https://github.com/jnMetaCode/openshorts.git
+cd openshorts && npm install && npm run openshorts
 ```
+
+（npm 包即将发布，届时一行 `npx openshorts` 即可。）
 
 > **装完先跑一次 `openshorts doctor`。** 短视频的字幕必须**烧进画面**（抖音、视频号一律不认软字幕轨），
 > 而烧字幕要 ffmpeg 带 libass。**Homebrew 现在的 `ffmpeg` formula 已经不再依赖 libass**
