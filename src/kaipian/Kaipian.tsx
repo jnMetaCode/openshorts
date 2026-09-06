@@ -66,7 +66,7 @@ export const Kaipian = () => {
   const runningEs = useRef<EventSource | null>(null);
 
   const refresh = async () => {
-    const [s, v, a, c, ps] = await Promise.all([api<Sources>('/api/kaipian/sources'), api<Voice[]>('/api/kaipian/voices'), api<any>('/api/kaipian/ao-status'), api<any>('/api/kaipian/config'), api<any>('/api/kaipian/projects')]);
+    const [s, v, a, c, ps] = await Promise.all([api<Sources>(`/api/kaipian/sources?lang=${lang}`), api<Voice[]>('/api/kaipian/voices'), api<any>('/api/kaipian/ao-status'), api<any>('/api/kaipian/config'), api<any>('/api/kaipian/projects')]);
     setSources(s); setVoices(v); setAoStatus(a); setCfg(c); setProjects(ps); if (c?.tts?.voice) setVoice(c.tts.voice);
     api<any>('/api/kaipian/drama/options').then(setDramaOpts).catch(() => {});
     api<any>('/api/kaipian/drama/providers').then(setProviders).catch(() => {});
@@ -75,6 +75,8 @@ export const Kaipian = () => {
     api<any>('/api/kaipian/local-image').then(setGen).catch(() => {});
     api<any>('/api/kaipian/providers/text').then((r) => { setTextProv(r); setVis({provider: r.vision?.provider ?? '', model: r.vision?.model ?? ''}); if (r.text?.provider) setMdl((m) => (m.provider ? m : {provider: r.text.provider, model: r.text.model ?? '', apiKey: ''})); }).catch(() => {});
   };
+  // 切换语言后 sources 的 reason 由服务端按 lang 重新给（其余接口语言无关，不重取）
+  useEffect(() => { api<Sources>(`/api/kaipian/sources?lang=${lang}`).then(setSources).catch(() => {}); }, [lang]);
   useEffect(() => {
     refresh().catch((e) => setError(String(e.message)));
     // ?project=<id> 深链：直接打开某个项目（做完的落在第 4 步，没做完的落在第 3 步）
@@ -226,12 +228,12 @@ export const Kaipian = () => {
       <div className={`kp-stat ${ok ? 'ok' : 'bad'}`}><b>{label}</b><span>{ok ? '✅ ' : '⛔ '}{text}</span></div>;
     return <aside className="kp-aside">
       <h4>{t('这台机器')}</h4>
-      {row('ffmpeg', !!ff?.subtitles, ff ? (ff.found ? (ff.subtitles ? `${ff.version} 可烧字幕` : '缺 libass，字幕烧不进画面') : '没找到') : '…')}
+      {row('ffmpeg', !!ff?.subtitles, ff ? (ff.found ? (ff.subtitles ? `${ff.version}${t(' 可烧字幕')}` : t('缺 libass，字幕烧不进画面')) : t('没找到')) : '…')}
       {ff && ff.found && !ff.subtitles && <button onClick={installFfmpeg} disabled={!!dl}>{t('装一份带 libass 的（40 MB）')}</button>}
-      {row(t('看图把关'), visionOn, visionOn ? `${textProv!.vision.provider} / ${textProv!.vision.model}` : '没开——画面只按检索词字面匹配')}
-      {row(t('本机出图'), !!gen?.ok, gen?.ok ? `${gen.ready} 就绪` : '没装模型，找不到素材时退纯色底')}
-      {row(t('文本模型'), !!aoStatus?.hasTextKey, aoStatus?.hasTextKey ? [...(aoStatus.saved ?? []), ...(aoStatus.envs ?? [])].join('、') : '没配，第 1 步写不了脚本')}
-      {row(t('素材源'), !!sources?.stock?.ok, sources?.stock?.tier === 'keyed' ? 'Pexels/Pixabay + CC 兜底' : 'CC 免 key（配 Pexels 更好）')}
+      {row(t('看图把关'), visionOn, visionOn ? `${textProv!.vision.provider} / ${textProv!.vision.model}` : t('没开——画面只按检索词字面匹配'))}
+      {row(t('本机出图'), !!gen?.ok, gen?.ok ? `${gen.ready}${t(' 就绪')}` : t('没装模型，找不到素材时退纯色底'))}
+      {row(t('文本模型'), !!aoStatus?.hasTextKey, aoStatus?.hasTextKey ? [...(aoStatus.saved ?? []), ...(aoStatus.envs ?? [])].join(lang === 'en' ? ', ' : '、') : t('没配，第 1 步写不了脚本'))}
+      {row(t('素材源'), !!sources?.stock?.ok, sources?.stock?.tier === 'keyed' ? t('Pexels/Pixabay + CC 兜底') : t('CC 免 key（配 Pexels 更好）'))}
 
       <h4>{t('写脚本的模型')}</h4>
       <label>{t('供应商')}

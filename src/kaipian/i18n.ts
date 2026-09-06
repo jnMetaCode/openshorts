@@ -106,6 +106,12 @@ const EN: Record<string, string> = {
   'ffmpeg 下载中断，可重试': 'ffmpeg download interrupted — retry', '出片中断': 'Rendering interrupted', '批量中断': 'Batch interrupted',
   '重出中断': 'Redo interrupted', '下载中断（可重试，支持断点续传）': 'Download interrupted (retry — resumable)',
   '模型下载中断（支持断点续传，可重试）': 'Model download interrupted (resumable — retry)', '预览失败': 'Preview failed',
+  // 侧栏机器状态（前端拼的部分）
+  ' 可烧字幕': ' — can burn subtitles', '缺 libass，字幕烧不进画面': 'no libass — subtitles cannot be burned in', '没找到': 'not found',
+  '没开——画面只按检索词字面匹配': 'off — visuals picked by literal keyword match', ' 就绪': ' ready',
+  '没装模型，找不到素材时退纯色底': 'no model installed; stock misses fall back to solid color',
+  '没配，第 1 步写不了脚本': 'not configured — step 1 cannot write a script',
+  'Pexels/Pixabay + CC 兜底': 'Pexels/Pixabay + CC fallback', 'CC 免 key（配 Pexels 更好）': 'CC, no key (Pexels key is better)',
 };
 export type Lang = 'zh' | 'en';
 export const getLang = (): Lang => { try { const q = new URLSearchParams(location.search).get('lang'); if (q === 'en' || q === 'zh') return q; return (localStorage.getItem('kp-lang') as Lang) || (navigator.language.startsWith('zh') ? 'zh' : 'en'); } catch { return 'zh'; } };

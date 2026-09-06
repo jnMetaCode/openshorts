@@ -19,7 +19,7 @@ const safe = (id) => String(id).replace(/[\\/:*?"<>|]/g, '').replace(/\.\./g, ''
 const projDir = (id) => path.join(readConfig().outputDir, safe(id));
 const mask = (k) => (k ? `${k.slice(0, 4)}…${k.slice(-3)}` : '');
 
-kaipian.get('/sources', (_req, res) => res.json(sourcesAvailability()));
+kaipian.get('/sources', (req, res) => res.json(sourcesAvailability({ lang: req.query.lang === 'en' ? 'en' : 'zh' })));
 kaipian.get('/doctor', async (_req, res, next) => { try { const { doctor } = await import('../src/doctor.mjs'); res.json(await doctor()); } catch (e) { next(e); } });
 kaipian.get('/config', (_req, res) => { const c = readConfig(); res.json({ ...c, stock: { pexelsKey: mask(c.stock?.pexelsKey), pixabayKey: mask(c.stock?.pixabayKey), hasPexels: !!c.stock?.pexelsKey, hasPixabay: !!c.stock?.pixabayKey }, aoHome: aoHome() }); });
 kaipian.put('/config', (req, res) => {
