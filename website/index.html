@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>开片 OpenShorts — 一句话，出一条能发的短视频</title>
+<meta name="description" content="本地优先的 AI 短视频生成器：话题或链接进去，带字幕、封面、发布文案的成片出来。免费路径 0 元 0 key；AI 短剧支持本机出片草稿档。MIT 开源。">
+<meta property="og:title" content="开片 OpenShorts">
+<meta property="og:description" content="一句话，出一条能发的短视频。本地优先 · 免费路径 0 元 0 key · MIT 开源。">
+<style>
+  :root{
+    --ink:#1a1d21; --ink2:#4a5158; --line:#e6e3dc; --bg:#faf8f4; --card:#ffffff;
+    --accent:#c2410c; --accent2:#9a3412; --ok:#166534; --code:#f4f1ea;
+  }
+  *{box-sizing:border-box} html{scroll-behavior:smooth}
+  body{margin:0;font:16px/1.75 -apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;color:var(--ink);background:var(--bg)}
+  a{color:var(--accent);text-decoration:none} a:hover{text-decoration:underline}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+  header{position:sticky;top:0;background:rgba(250,248,244,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);z-index:10}
+  .nav{display:flex;align-items:center;gap:20px;height:60px}
+  .logo{font-weight:800;font-size:19px;letter-spacing:.5px}
+  .logo em{font-style:normal;color:var(--accent)}
+  .nav .sp{flex:1}
+  .nav a{color:var(--ink2);font-size:14px}
+  .btn{display:inline-block;padding:10px 22px;border-radius:8px;font-weight:600;font-size:15px;border:1px solid var(--line);background:var(--card);color:var(--ink)}
+  .btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+  .btn.pri:hover{background:var(--accent2);text-decoration:none}
+  .btn:hover{text-decoration:none;border-color:#c9c4ba}
+  .hero{display:grid;grid-template-columns:1.15fr .85fr;gap:48px;align-items:center;padding:72px 0 56px}
+  .hero h1{font-size:42px;line-height:1.25;margin:0 0 18px;font-weight:800}
+  .hero h1 .hl{color:var(--accent)}
+  .hero p.lead{font-size:18px;color:var(--ink2);margin:0 0 28px}
+  .hero .acts{display:flex;gap:12px;flex-wrap:wrap}
+  .phone{justify-self:center;width:min(300px,80vw);border-radius:22px;overflow:hidden;border:6px solid #23262b;background:#000;box-shadow:0 24px 60px rgba(0,0,0,.18)}
+  .phone video{display:block;width:100%;height:auto}
+  .phone-cap{text-align:center;font-size:12.5px;color:var(--ink2);margin-top:10px}
+  .stats{display:flex;gap:0;border:1px solid var(--line);border-radius:12px;background:var(--card);overflow:hidden;margin:8px 0 0}
+  .stats div{flex:1;text-align:center;padding:16px 8px;border-left:1px solid var(--line)}
+  .stats div:first-child{border-left:0}
+  .stats b{display:block;font-size:22px} .stats span{font-size:12.5px;color:var(--ink2)}
+  section{padding:64px 0} section.alt{background:var(--card);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+  h2{font-size:28px;margin:0 0 8px;font-weight:800}
+  .sub{color:var(--ink2);margin:0 0 36px;font-size:15.5px}
+  .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+  .step{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  section.alt .step{background:var(--bg)}
+  .step img{width:100%;display:block;border-bottom:1px solid var(--line)}
+  .step .t{padding:14px 16px 16px}
+  .step b{font-size:15.5px} .step p{margin:4px 0 0;font-size:13.5px;color:var(--ink2);line-height:1.6}
+  .lines{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:26px 26px 22px}
+  section.alt .card{background:var(--bg)}
+  .card h3{margin:0 0 6px;font-size:19px} .card .tag{display:inline-block;font-size:12px;padding:2px 10px;border-radius:99px;background:var(--code);color:var(--ink2);margin-left:8px;vertical-align:2px}
+  .card p{color:var(--ink2);font-size:14.5px;margin:10px 0}
+  .card ul{margin:12px 0 0;padding-left:0;list-style:none}
+  .card li{font-size:14px;padding:5px 0 5px 24px;position:relative;color:var(--ink)}
+  .card li:before{content:"✓";position:absolute;left:2px;color:var(--ok);font-weight:700}
+  .gal{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+  .clip{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .clip video{width:100%;display:block;background:#000;aspect-ratio:9/16;object-fit:cover}
+  .clip.wide video{aspect-ratio:16/9}
+  .clip .t{padding:10px 12px 12px}
+  .clip b{font-size:13.5px;display:block} .clip span{font-size:12px;color:var(--ink2);line-height:1.5;display:block;margin-top:3px}
+  .diff{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;font-size:14px}
+  .diff th,.diff td{padding:12px 16px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+  .diff th{background:var(--code);font-size:13.5px}
+  .diff td:first-child{font-weight:600;white-space:nowrap}
+  .diff tr:last-child td{border-bottom:0}
+  .tbl-scroll{overflow-x:auto;border-radius:12px}
+  pre{background:#22262c;color:#e8e6e1;border-radius:12px;padding:20px 22px;font:13.5px/1.9 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;overflow-x:auto;margin:0}
+  pre .c{color:#8a949e} pre .g{color:#7ec48a}
+  .qs{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start}
+  .note{font-size:13px;color:var(--ink2);margin-top:14px;line-height:1.7}
+  footer{border-top:1px solid var(--line);padding:36px 0 48px;color:var(--ink2);font-size:13.5px}
+  footer .row{display:flex;gap:24px;flex-wrap:wrap;align-items:center}
+  footer .sp{flex:1}
+  .six{margin-top:36px;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .six img{width:100%;display:block}
+  .six .t{padding:12px 16px;font-size:13px;color:var(--ink2)}
+  @media (max-width:860px){
+    .hero{grid-template-columns:1fr;padding:44px 0 36px}
+    .hero h1{font-size:32px}
+    .steps,.lines,.qs{grid-template-columns:1fr}
+    .gal{grid-template-columns:1fr 1fr}
+    .stats{flex-wrap:wrap} .stats div{min-width:45%}
+  }
+</style>
+</head>
+<body>
+
+<header><div class="wrap nav">
+  <span class="logo">开片 <em>OpenShorts</em></span>
+  <span class="sp"></span>
+  <a href="#cases">真实成片</a>
+  <a href="#lines">两条线</a>
+  <a href="#start">快速开始</a>
+  <a href="https://github.com/jnMetaCode/openshorts" target="_blank" rel="noreferrer">GitHub</a>
+</div></header>
+
+<div class="wrap">
+  <div class="hero">
+    <div>
+      <h1>一句话，<br>出一条<span class="hl">能发的</span>短视频</h1>
+      <p class="lead">话题或链接进去；带字幕、封面、发布文案的竖版成片出来。
+        本地优先——免费路径 <b>0 元、0 个付费 key</b>，素材库没货就用本机模型现画一张。</p>
+      <div class="acts">
+        <a class="btn pri" href="#start">快速开始</a>
+        <a class="btn" href="https://github.com/jnMetaCode/openshorts" target="_blank" rel="noreferrer">GitHub ★</a>
+        <a class="btn" href="https://github.com/jnMetaCode/openshorts/releases" target="_blank" rel="noreferrer">下载发布包</a>
+      </div>
+      <div class="stats">
+        <div><b>0 元</b><span>免费路径全链路</span></div>
+        <div><b>202</b><span>测试 · 三平台 CI</span></div>
+        <div><b>2 条线</b><span>口播科普 / AI 短剧</span></div>
+        <div><b>MIT</b><span>开源协议</span></div>
+      </div>
+    </div>
+    <div>
+      <div class="phone">
+        <video src="assets/onion-60s.mp4" autoplay muted loop playsinline preload="metadata"></video>
+      </div>
+      <div class="phone-cap">《为什么切洋葱会流眼泪》60s · 0 元 0 key 实际生成<br>6 镜里 2 镜是素材库没货时本机 FLUX 现画的</div>
+    </div>
+  </div>
+</div>
+
+<section class="alt" id="steps"><div class="wrap">
+  <h2>四步，从想法到发布包</h2>
+  <p class="sub">界面不出现"工作流 / 参数"这类词——每一步只回答一个问题。</p>
+  <div class="steps">
+    <div class="step"><img src="assets/input.png" alt="第一步：输入话题或链接" loading="lazy">
+      <div class="t"><b>① 说想法</b><p>话题、一段文案、或一个文章链接；选时长和语气。AI 写出分镜脚本。</p></div></div>
+    <div class="step"><img src="assets/edit.png" alt="第二步：预览与调整" loading="lazy">
+      <div class="t"><b>② 每一镜都能改</b><p>口播文案、画面意图、检索词全部摊开可编辑——不满意就改，改了只重做该镜。</p></div></div>
+    <div class="step"><img src="assets/final.png" alt="第三步：出片与发布" loading="lazy">
+      <div class="t"><b>③④ 出片 → 发布包</b><p>配音、找素材、烧字幕、合成、逐项质检；一键导出 mp4 + 封面 + SRT + 发布文案（含素材署名）。</p></div></div>
+  </div>
+</div></section>
+
+<section id="lines"><div class="wrap">
+  <h2>两条内容线</h2>
+  <p class="sub">同一个引擎（<a href="https://github.com/jnMetaCode/agency-orchestrator" target="_blank" rel="noreferrer">agency-orchestrator</a>），两种打开方式。</p>
+  <div class="lines">
+    <div class="card">
+      <h3>口播科普<span class="tag">0 元 0 key 就能跑</span></h3>
+      <p>写脚本 → Edge TTS 配音 → CC 素材库找画面 → 字幕烧进画面 → 质检。全程不要一个付费 key。</p>
+      <ul>
+        <li>素材库没货？<b>本机现画一张</b>（FLUX.1-schnell，Apache-2.0 可商用）</li>
+        <li>能看图的模型当把关员：不贴合的素材被拦下，不硬凑</li>
+        <li>画面 4–6 秒一换；字幕关键词高亮，六项样式可调</li>
+        <li>质检不过（比如字幕没烧进画面）退出码非 0——<b>坏片不装好片</b></li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>AI 短剧<span class="tag">本地草稿 / 云端成片</span></h3>
+      <p>一段故事 → 编剧三镜剧本 → 主角定妆图 → 图生视频 ×3 → 看图验收 → 合成。</p>
+      <ul>
+        <li><b>本地草稿档不花钱</b>：本机 stable-diffusion.cpp 跑 MiniMax-H3，先看构图节奏</li>
+        <li>满意再切云端成片档，按秒计费、运行前先看报价</li>
+        <li>哪一镜不满意<b>单独重出</b>，其余逐字节复用，不重复花钱</li>
+        <li>每一镜记录来源 / 模型 / 花费——可复现、可署名</li>
+      </ul>
+    </div>
+  </div>
+</div></section>
+
+<section class="alt" id="cases"><div class="wrap">
+  <h2>真实成片，不是概念图</h2>
+  <p class="sub">每一条都由 OpenShorts 实际生成，项目 JSON 与完整案例都在仓库里，标注来源与模型。</p>
+  <div class="gal">
+    <div class="clip"><video src="assets/onion-60s.mp4" muted loop playsinline preload="metadata" controls></video>
+      <div class="t"><b>为什么切洋葱会流眼泪</b><span>口播科普 60s · CC 素材 + 本机 FLUX 出图 · 0 元 0 key</span></div></div>
+    <div class="clip"><video src="assets/cat-box-zero-key.mp4" muted loop playsinline preload="metadata" controls></video>
+      <div class="t"><b>猫为什么总爱钻纸箱</b><span>口播科普 · 看图把关 + 一镜切多段 · 0 元 0 key</span></div></div>
+    <div class="clip wide"><video src="assets/local-draft-q2.mp4" muted loop playsinline preload="metadata" controls></video>
+      <div class="t"><b>深夜便利店（本地草稿档）</b><span>AI 短剧 · 本机 MiniMax-H3（sd.cpp）· 不花钱</span></div></div>
+    <div class="clip wide"><video src="assets/cloud-agnes.mp4" muted loop playsinline preload="metadata" controls></video>
+      <div class="t"><b>深夜便利店（云端成片档）</b><span>AI 短剧 · Agnes agnes-video-2.5-flash 720P · 同一剧本换档重出</span></div></div>
+  </div>
+  <div class="six">
+    <img src="assets/six-shots.png" alt="洋葱片六镜一览" loading="lazy">
+    <div class="t">《洋葱》六镜一览：素材库命中的实拍 + 没命中时本机现画，看图把关决定谁上片。</div>
+  </div>
+</div></section>
+
+<section id="why"><div class="wrap">
+  <h2>它在乎的事</h2>
+  <p class="sub">大多数"文本生视频"工具止步于"生成了"。开片在乎的是<b>发出去之后</b>。</p>
+  <div class="tbl-scroll"><table class="diff">
+    <tr><th style="width:180px">问题</th><th>开片的答案</th></tr>
+    <tr><td>素材库没货怎么办</td><td>本机现画一张（不花钱不联网），而不是硬塞一段不相干的素材——"黄蜂吃猫粮"不会出现在猫科普里</td></tr>
+    <tr><td>谁来把关画面</td><td>能看图的模型逐镜打分（≥6 上片 / 4–5 补位 / &lt;4 判退）；没判过的素材不上片</td></tr>
+    <tr><td>成片质量谁负责</td><td>逐项质检：分辨率、时长偏差、音轨、字幕是否烧进画面、响度——fail 就是 fail，退出码非 0</td></tr>
+    <tr><td>改一个字要重来吗</td><td>不用。指纹级复用：改了哪镜只重做哪镜，配音、素材、渲染段都按内容寻址缓存</td></tr>
+    <tr><td>素材版权说得清吗</td><td>每镜记录来源 / 作者 / 许可证 / 页面链接，发布文案自动附署名；AI 生成画面强制标识</td></tr>
+    <tr><td>装不上跑不通怎么办</td><td>ffmpeg（带 libass）与本地模型都是一键装；三平台 CI；报错说人话并给下一步命令</td></tr>
+  </table></div>
+</div></section>
+
+<section class="alt" id="start"><div class="wrap">
+  <h2>快速开始</h2>
+  <p class="sub">要求：Node ≥ 20。ffmpeg 与本地出图模型都可以在装好后一键补齐。</p>
+  <div class="qs">
+    <div>
+      <pre><span class="c"># 装（发布包见 GitHub Releases，或直接用源码）</span>
+git clone https://github.com/jnMetaCode/openshorts.git
+cd openshorts &amp;&amp; npm install
+
+<span class="c"># 打开图形界面（推荐）：四步出片</span>
+npm run openshorts
+<span class="g"># → http://127.0.0.1:4174</span></pre>
+    </div>
+    <div>
+      <pre><span class="c"># 或者命令行三步</span>
+npx openshorts new koubo-kepu --topic "为什么天空是蓝色的"
+npx openshorts run ~/OpenShorts/为什么天空是蓝色的/project.json
+npx openshorts export ~/OpenShorts/为什么天空是蓝色的/project.json
+
+<span class="c"># 字幕烧不进画面？装一份带 libass 的 ffmpeg</span>
+npx openshorts install-ffmpeg</pre>
+      <p class="note">写脚本需要一个文本模型（DeepSeek / Kimi / GLM / Agnes……配一次 key 两边通用）；
+      画面与配音在免费路径下全程 0 元。AI 短剧线与本机出图详见
+      <a href="https://github.com/jnMetaCode/openshorts#readme" target="_blank" rel="noreferrer">README</a>。</p>
+    </div>
+  </div>
+</div></section>
+
+<footer><div class="wrap row">
+  <span><b style="color:var(--ink)">开片 OpenShorts</b> · MIT License</span>
+  <span class="sp"></span>
+  <a href="https://github.com/jnMetaCode/openshorts" target="_blank" rel="noreferrer">GitHub</a>
+  <a href="https://github.com/jnMetaCode/openshorts/releases" target="_blank" rel="noreferrer">Releases</a>
+  <a href="https://github.com/jnMetaCode/agency-orchestrator" target="_blank" rel="noreferrer">引擎 agency-orchestrator</a>
+</div></footer>
+
+</body>
+</html>
