@@ -5,7 +5,7 @@
 
 <p align="center"><img src="docs/cases/koubo-onion/onion-12s.gif" width="260" alt="《为什么切洋葱会流眼泪》——0 元 0 key 生成"></p>
 <p align="center"><sub>上面这条 60 秒的片子：0 元、0 个付费 key，6 镜里 2 镜是素材库没货时本机现画的 · <a href="docs/cases/koubo-onion/">看完整案例</a></sub></p>
-<p align="center"><b><a href="https://jnmetacode.github.io/openshorts/">🌐 官网 · 看真实成片</a></b> · <a href="https://github.com/jnMetaCode/openshorts/releases">下载发布包</a></p>
+<p align="center"><b><a href="https://jnmetacode.github.io/openshorts/">🌐 官网 · 看真实成片</a></b> · <a href="https://github.com/jnMetaCode/openshorts/releases">下载发布包</a> · <a href="README.en.md">English</a></p>
 
 ![License](https://img.shields.io/badge/license-MIT-green) ![Node](https://img.shields.io/badge/node-%E2%89%A520-brightgreen) ![Tests](https://img.shields.io/badge/tests-202%20passing-brightgreen) ![CI](https://img.shields.io/badge/CI-ubuntu%20%7C%20macOS%20%7C%20windows-brightgreen) ![Format](https://img.shields.io/badge/format-9%3A16%20%7C%2016%3A9-blue)
 
