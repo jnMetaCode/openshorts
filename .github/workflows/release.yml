@@ -2,6 +2,8 @@ name: Release
 on:
   push:
     tags: ["v*"]
+  # 发布失败后可在 Actions 页填 tag 重跑，不必删远端 tag 再重推
+  workflow_dispatch:
 permissions:
   contents: write
 jobs:
@@ -13,6 +15,14 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      # release:check 会跑全量测试，与 CI 同一套媒体依赖缺一不可——
+      # 第一次打 tag 就栽在这：CI 全绿、Release 却因缺 imagemagick 挂在 SVG 尺寸测试上
+      - name: 安装媒体依赖（apt 的 ImageMagick 是 6.x，无 magick 命令，补垫片）
+        run: |
+          sudo apt-get update -q && sudo apt-get install -y --no-install-recommends imagemagick ffmpeg librsvg2-bin
+          printf '#!/bin/bash\nif [ "$1" = "identify" ]; then shift; exec identify "$@"; fi\nexec convert "$@"\n' | sudo tee /usr/local/bin/magick >/dev/null
+          sudo chmod +x /usr/local/bin/magick
+          magick -list delegate >/dev/null && ffmpeg -version | head -1
       - run: npm ci
       - run: npm run release:check
       - run: npm run release:bundle
