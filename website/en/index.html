@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OpenShorts — One sentence in, a publishable short video out</title>
+<meta name="description" content="Local-first AI short-video pipeline: give it a topic or a link, get a finished vertical video with burned-in subtitles, cover and publish copy. Free path costs ¥0 and 0 paid keys. MIT licensed.">
+<link rel="icon" type="image/svg+xml" href="../favicon.svg">
+<link rel="alternate" hreflang="zh-CN" href="https://jnmetacode.github.io/openshorts/">
+<link rel="alternate" hreflang="en" href="https://jnmetacode.github.io/openshorts/en/">
+<meta property="og:title" content="OpenShorts">
+<meta property="og:description" content="One sentence in, a publishable short video out. Local-first · free path costs $0 and 0 keys · MIT.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://jnmetacode.github.io/openshorts/en/">
+<meta property="og:image" content="https://jnmetacode.github.io/openshorts/assets/og.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<style>
+  :root{
+    --ink:#1a1d21; --ink2:#4a5158; --line:#e6e3dc; --bg:#faf8f4; --card:#ffffff;
+    --accent:#c2410c; --accent2:#9a3412; --ok:#166534; --code:#f4f1ea;
+  }
+  *{box-sizing:border-box} html{scroll-behavior:smooth}
+  body{margin:0;font:16px/1.7 -apple-system,system-ui,"Segoe UI",Roboto,sans-serif;color:var(--ink);background:var(--bg)}
+  a{color:var(--accent);text-decoration:none} a:hover{text-decoration:underline}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+  header{position:sticky;top:0;background:rgba(250,248,244,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);z-index:10}
+  .nav{display:flex;align-items:center;gap:20px;height:60px}
+  .logo{font-weight:800;font-size:19px;letter-spacing:.5px}
+  .logo em{font-style:normal;color:var(--accent)}
+  .nav .sp{flex:1}
+  .nav a{color:var(--ink2);font-size:14px}
+  .btn{display:inline-block;padding:10px 22px;border-radius:8px;font-weight:600;font-size:15px;border:1px solid var(--line);background:var(--card);color:var(--ink)}
+  .btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+  .btn.pri:hover{background:var(--accent2);text-decoration:none}
+  .btn:hover{text-decoration:none;border-color:#c9c4ba}
+  .hero{display:grid;grid-template-columns:1.15fr .85fr;gap:48px;align-items:center;padding:72px 0 56px}
+  .hero h1{font-size:40px;line-height:1.22;margin:0 0 18px;font-weight:800}
+  .hero h1 .hl{color:var(--accent)}
+  .hero p.lead{font-size:18px;color:var(--ink2);margin:0 0 28px}
+  .hero .acts{display:flex;gap:12px;flex-wrap:wrap}
+  .phone{justify-self:center;width:min(300px,80vw);border-radius:22px;overflow:hidden;border:6px solid #23262b;background:#000;box-shadow:0 24px 60px rgba(0,0,0,.18)}
+  .phone video{display:block;width:100%;height:auto}
+  .phone-cap{text-align:center;font-size:12.5px;color:var(--ink2);margin-top:10px}
+  .stats{display:flex;border:1px solid var(--line);border-radius:12px;background:var(--card);overflow:hidden;margin:8px 0 0}
+  .stats div{flex:1;text-align:center;padding:16px 8px;border-left:1px solid var(--line)}
+  .stats div:first-child{border-left:0}
+  .stats b{display:block;font-size:22px} .stats span{font-size:12.5px;color:var(--ink2)}
+  section{padding:64px 0} section.alt{background:var(--card);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+  h2{font-size:28px;margin:0 0 8px;font-weight:800}
+  .sub{color:var(--ink2);margin:0 0 36px;font-size:15.5px}
+  .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+  .step{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  section.alt .step{background:var(--bg)}
+  .step img{width:100%;display:block;border-bottom:1px solid var(--line)}
+  .step .t{padding:14px 16px 16px}
+  .step b{font-size:15.5px} .step p{margin:4px 0 0;font-size:13.5px;color:var(--ink2);line-height:1.6}
+  .lines{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:26px 26px 22px}
+  section.alt .card{background:var(--bg)}
+  .card h3{margin:0 0 6px;font-size:19px} .card .tag{display:inline-block;font-size:12px;padding:2px 10px;border-radius:99px;background:var(--code);color:var(--ink2);margin-left:8px;vertical-align:2px}
+  .card p{color:var(--ink2);font-size:14.5px;margin:10px 0}
+  .card ul{margin:12px 0 0;padding-left:0;list-style:none}
+  .card li{font-size:14px;padding:5px 0 5px 24px;position:relative;color:var(--ink)}
+  .card li:before{content:"✓";position:absolute;left:2px;color:var(--ok);font-weight:700}
+  .gal{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+  .clip{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .clip video{width:100%;display:block;background:#000;aspect-ratio:9/16;object-fit:cover}
+  .clip.wide video{aspect-ratio:16/9}
+  .clip .t{padding:10px 12px 12px}
+  .clip b{font-size:13.5px;display:block} .clip span{font-size:12px;color:var(--ink2);line-height:1.5;display:block;margin-top:3px}
+  .diff{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;font-size:14px}
+  .diff th,.diff td{padding:12px 16px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+  .diff th{background:var(--code);font-size:13.5px}
+  .diff td:first-child{font-weight:600;white-space:nowrap}
+  .diff tr:last-child td{border-bottom:0}
+  .tbl-scroll{overflow-x:auto;border-radius:12px}
+  pre{background:#22262c;color:#e8e6e1;border-radius:12px;padding:20px 22px;font:13.5px/1.9 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;overflow-x:auto;margin:0}
+  pre .c{color:#8a949e} pre .g{color:#7ec48a}
+  .qs{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start}
+  .note{font-size:13px;color:var(--ink2);margin-top:14px;line-height:1.7}
+  footer{border-top:1px solid var(--line);padding:36px 0 48px;color:var(--ink2);font-size:13.5px}
+  footer .row{display:flex;gap:24px;flex-wrap:wrap;align-items:center}
+  footer .sp{flex:1}
+  .six{margin-top:36px;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .six img{width:100%;display:block}
+  .six .t{padding:12px 16px;font-size:13px;color:var(--ink2)}
+  @media (max-width:860px){
+    .hero{grid-template-columns:1fr;padding:44px 0 36px}
+    .hero h1{font-size:31px}
+    .steps,.lines,.qs{grid-template-columns:1fr}
+    .gal{grid-template-columns:1fr 1fr}
+    .stats{flex-wrap:wrap} .stats div{min-width:45%}
+  }
+</style>
+</head>
+<body>
+
+<header><div class="wrap nav">
+  <span class="logo">开片 <em>OpenShorts</em></span>
+  <span class="sp"></span>
+  <a href="#cases">Real output</a>
+  <a href="#lines">Two pipelines</a>
+  <a href="#start">Quick start</a>
+  <a href="https://github.com/jnMetaCode/openshorts" target="_blank" rel="noreferrer">GitHub</a>
+  <a href="../" title="中文版">中文</a>
+</div></header>
+
+<div class="wrap">
+  <div class="hero">
+    <div>
+      <h1>One sentence in,<br>a <span class="hl">publishable</span> short video out</h1>
+      <p class="lead">Give it a topic or an article link; get a finished vertical video with burned-in subtitles,
+        a cover image and publish copy. Local-first — the free path costs <b>$0 and 0 paid keys</b>;
+        when stock libraries come up empty, it paints a frame with a local model instead.</p>
+      <div class="acts">
+        <a class="btn pri" href="#start">Quick start</a>
+        <a class="btn" href="https://github.com/jnMetaCode/openshorts" target="_blank" rel="noreferrer">GitHub ★</a>
+        <a class="btn" href="https://github.com/jnMetaCode/openshorts/releases" target="_blank" rel="noreferrer">Download release</a>
+      </div>
+      <div class="stats">
+        <div><b>$0</b><span>free path, end to end</span></div>
+        <div><b>202</b><span>tests · 3-OS CI</span></div>
+        <div><b>2</b><span>pipelines: narrated / drama</span></div>
+        <div><b>MIT</b><span>licensed</span></div>
+      </div>
+    </div>
+    <div>
+      <div class="phone">
+        <video src="../assets/onion-60s.mp4" autoplay muted loop playsinline preload="metadata"></video>
+      </div>
+      <div class="phone-cap">"Why do onions make you cry" · 60s · generated for $0 with 0 keys<br>2 of 6 shots were painted locally by FLUX when stock had nothing</div>
+    </div>
+  </div>
+</div>
+
+<section class="alt" id="steps"><div class="wrap">
+  <h2>Four steps from idea to publish pack</h2>
+  <p class="sub">The UI never says "workflow" or "parameters" — each step answers exactly one question. (UI is currently in Chinese.)</p>
+  <div class="steps">
+    <div class="step"><img src="../assets/input.png" alt="Step 1: enter a topic or link" loading="lazy">
+      <div class="t"><b>① Say the idea</b><p>A topic, a passage, or an article URL; pick length and tone. AI drafts a shot-by-shot script.</p></div></div>
+    <div class="step"><img src="../assets/edit.png" alt="Step 2: preview and adjust" loading="lazy">
+      <div class="t"><b>② Every shot is editable</b><p>Narration text, visual intent and search query all laid out — change any of them, and only that shot is redone.</p></div></div>
+    <div class="step"><img src="../assets/final.png" alt="Step 3: render and publish" loading="lazy">
+      <div class="t"><b>③④ Render → publish pack</b><p>Voice-over, footage, burned subtitles, compositing, itemized QC; export mp4 + cover + SRT + publish copy with per-clip attribution.</p></div></div>
+  </div>
+</div></section>
+
+<section id="lines"><div class="wrap">
+  <h2>Two content pipelines</h2>
+  <p class="sub">Same engine (<a href="https://github.com/jnMetaCode/agency-orchestrator" target="_blank" rel="noreferrer">agency-orchestrator</a>), two ways in.</p>
+  <div class="lines">
+    <div class="card">
+      <h3>Narrated explainers<span class="tag">runs on $0 and 0 keys</span></h3>
+      <p>Script → Edge TTS voice-over → CC stock footage → burned subtitles → QC. No paid key anywhere in the chain.</p>
+      <ul>
+        <li>Stock came up empty? <b>Paint a frame locally</b> (FLUX.1-schnell, Apache-2.0, commercial-ok)</li>
+        <li>A vision model gatekeeps every candidate clip — irrelevant footage gets rejected, not shrugged in</li>
+        <li>Visuals change every 4–6 s; subtitle keywords highlighted, six style knobs</li>
+        <li>QC failures (e.g. subtitles not burned in) exit non-zero — <b>a bad video never pretends to be a good one</b></li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>AI mini-drama<span class="tag">local draft / cloud final</span></h3>
+      <p>A story → 3-shot screenplay → character sheet → image-to-video ×3 → vision acceptance → composite.</p>
+      <ul>
+        <li><b>Local draft tier is free</b>: MiniMax-H3 via stable-diffusion.cpp on your own machine</li>
+        <li>Happy with the cut? Switch to the cloud tier — per-second billing, quoted before you run</li>
+        <li>Redo <b>a single shot</b> with feedback; everything else is reused byte-for-byte</li>
+        <li>Every shot records source / model / cost — reproducible and attributable</li>
+      </ul>
+    </div>
+  </div>
+</div></section>
+
+<section class="alt" id="cases"><div class="wrap">
+  <h2>Real output, not concept art</h2>
+  <p class="sub">Every clip below was actually generated by OpenShorts; project JSON and full case studies live in the repo with source and model attribution.</p>
+  <div class="gal">
+    <div class="clip"><video src="../assets/onion-60s.mp4" muted loop playsinline preload="metadata" controls></video>
+      <div class="t"><b>Why onions make you cry</b><span>Narrated explainer 60s · CC stock + local FLUX · $0, 0 keys</span></div></div>
+    <div class="clip"><video src="../assets/cat-box-zero-key.mp4" muted loop playsinline preload="metadata" controls></video>
+      <div class="t"><b>Why cats love boxes</b><span>Narrated explainer · vision gatekeeping + multi-cut shots · $0, 0 keys</span></div></div>
+    <div class="clip wide"><video src="../assets/local-draft-q2.mp4" muted loop playsinline preload="metadata" controls></video>
+      <div class="t"><b>Late-night convenience store (local draft)</b><span>AI drama · MiniMax-H3 on-device (sd.cpp) · free</span></div></div>
+    <div class="clip wide"><video src="../assets/cloud-agnes.mp4" muted loop playsinline preload="metadata" controls></video>
+      <div class="t"><b>Late-night convenience store (cloud final)</b><span>AI drama · Agnes agnes-video-2.5-flash 720P · same script, re-rendered</span></div></div>
+  </div>
+  <div class="six">
+    <img src="../assets/six-shots.png" alt="Six shots of the onion video" loading="lazy">
+    <div class="t">All six shots of the onion video: stock hits plus locally-painted frames where stock had nothing — a vision judge decides what makes the cut.</div>
+  </div>
+</div></section>
+
+<section id="why"><div class="wrap">
+  <h2>What it cares about</h2>
+  <p class="sub">Most text-to-video tools stop at "it generated something." OpenShorts cares about <b>what happens after you hit publish</b>.</p>
+  <div class="tbl-scroll"><table class="diff">
+    <tr><th style="width:230px">Question</th><th>OpenShorts' answer</th></tr>
+    <tr><td>Stock library has nothing?</td><td>Paint a frame locally (free, offline) instead of shoving in unrelated footage — no "wasp eating cat food" in your cat explainer</td></tr>
+    <tr><td>Who reviews the visuals?</td><td>A vision model scores every candidate 0–10 (≥6 leads, 4–5 fills, &lt;4 rejected); unjudged footage never ships</td></tr>
+    <tr><td>Who owns output quality?</td><td>Itemized QC: resolution, duration drift, audio track, burned-in subtitles, loudness — a fail is a fail, exit code non-zero</td></tr>
+    <tr><td>Change one word, redo everything?</td><td>No. Fingerprint-level reuse: only the changed shot is redone; voice, footage and rendered segments are content-addressed</td></tr>
+    <tr><td>Can you account for the footage?</td><td>Per-shot source / author / license / page URL; attribution auto-appended to publish copy; AI-generated frames labeled</td></tr>
+    <tr><td>Will it even install?</td><td>One-command ffmpeg (with libass) and local model installs; 3-OS CI; errors speak plainly and name the next command</td></tr>
+  </table></div>
+</div></section>
+
+<section class="alt" id="start"><div class="wrap">
+  <h2>Quick start</h2>
+  <p class="sub">Requires Node ≥ 20. ffmpeg and the local image model are one-command installs afterwards.</p>
+  <div class="qs">
+    <div>
+      <pre><span class="c"># Install (or grab the bundle from GitHub Releases)</span>
+git clone https://github.com/jnMetaCode/openshorts.git
+cd openshorts &amp;&amp; npm install
+
+<span class="c"># Open the GUI (recommended): four steps to a video</span>
+npm run openshorts
+<span class="g"># → http://127.0.0.1:4174</span></pre>
+    </div>
+    <div>
+      <pre><span class="c"># Or three CLI steps (run inside the cloned repo)</span>
+npx openshorts new koubo-kepu --topic "Why is the sky blue"
+npx openshorts run ~/OpenShorts/&lt;project&gt;/project.json
+npx openshorts export ~/OpenShorts/&lt;project&gt;/project.json
+
+<span class="c"># Subtitles won't burn in? Install ffmpeg with libass:</span>
+npx openshorts install-ffmpeg</pre>
+      <p class="note">Script writing needs one text-model key (DeepSeek / Kimi / GLM / …— configure once, shared with the engine).
+      Visuals and voice-over are free on the default path. See the
+      <a href="https://github.com/jnMetaCode/openshorts#readme" target="_blank" rel="noreferrer">README</a> for the drama pipeline and local image generation.</p>
+    </div>
+  </div>
+</div></section>
+
+<footer><div class="wrap row">
+  <span><b style="color:var(--ink)">OpenShorts</b> · MIT License</span>
+  <span class="sp"></span>
+  <a href="../">中文版</a>
+  <a href="https://github.com/jnMetaCode/openshorts" target="_blank" rel="noreferrer">GitHub</a>
+  <a href="https://github.com/jnMetaCode/openshorts/releases" target="_blank" rel="noreferrer">Releases</a>
+  <a href="https://github.com/jnMetaCode/agency-orchestrator" target="_blank" rel="noreferrer">Engine: agency-orchestrator</a>
+</div></footer>
+
+</body>
+</html>
