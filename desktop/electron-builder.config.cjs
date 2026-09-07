@@ -2,6 +2,13 @@
 //   有 CSC_LINK（Apple Developer ID 证书）→ 真签名；再有公证三件套 → 自动公证
 //   没有 → 维持现状：identity:null + afterSign 的 ad-hoc 重签（未签名版照常可用）
 // 这样 Apple 账号一办下来，只往仓库 Secrets 填值（见 docs/SIGNING.md），下个 tag 即出签名公证版。
+// package.json 的 build 段里，node_modules 那条 extraResources 带 filter，原因写在这里
+// （JSON 不能写注释）：构建期依赖（typescript/vite/@types/@vitejs/concurrently/@remotion/cli
+// 共 ~52MB）运行时一行都用不到。CI 工作流有 prune 步骤而本地构建没有——同一份配置两种结果，
+// 本地打出来的 dmg 白胖 52MB。改成"拷贝时过滤"后本地 = CI，且不动开发者的 node_modules。
+// `.bin` 一并排除：运行时从不经过它（AO CLI 走 import.meta.resolve 拿到的绝对路径），
+// 留着反而会因目标被过滤而变成悬空链接——那正是 codesign --deep --strict 的死穴
+// （AO 0.4.5 的 mac 构建就死在这）。
 const base = require("./package.json").build;
 
 const hasCert = !!process.env.CSC_LINK;

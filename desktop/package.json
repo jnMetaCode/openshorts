@@ -37,7 +37,21 @@
       { "from": "../adapters", "to": "app/adapters" },
       { "from": "../projects", "to": "app/projects" },
       { "from": "../package.json", "to": "app/package.json" },
-      { "from": "../node_modules", "to": "app/node_modules" }
+      {
+        "from": "../node_modules",
+        "to": "app/node_modules",
+        "filter": [
+          "**/*",
+          "!.bin/**",
+          "!typescript/**",
+          "!@types/**",
+          "!vite/**",
+          "!@vitejs/**",
+          "!concurrently/**",
+          "!@remotion/cli/**",
+          "!**/*.map"
+        ]
+      }
     ],
     "mac": {
       "category": "public.app-category.video",
