@@ -16,3 +16,5 @@ public/audio/custom/
 
 # 引用的第三方媒体（评论/解说用途）不进仓库：来源与再获取方式记录在 content/*/assets.json
 public/assets/quoted/
+desktop/node_modules/
+desktop/release/

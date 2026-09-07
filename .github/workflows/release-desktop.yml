@@ -1,0 +1,104 @@
+name: Release Desktop App
+
+# 手动触发或推 desktop-v* tag：三平台各自构建桌面安装包并上传到对应 GitHub Release。
+# mac 出 arm64 + x64 两个 dmg / win exe / linux AppImage。
+# 未签名版（desktop/package.json 里 mac.identity=null）；要启用 mac 签名/公证，
+# 在仓库 Secrets 加 CSC_LINK / CSC_KEY_PASSWORD / APPLE_ID / APPLE_APP_SPECIFIC_PASSWORD /
+# APPLE_TEAM_ID 即自动切换（electron-builder.config.cjs 按有无证书动态选路）。
+on:
+  push:
+    tags: ["desktop-v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (e.g. desktop-v0.1.0)"
+        required: true
+        default: "desktop-v0.1.0"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            builder_flag: "--mac --arm64 --x64"
+            plat: mac
+          - os: windows-latest
+            builder_flag: "--win"
+            plat: win
+          - os: ubuntu-latest
+            builder_flag: "--linux"
+            plat: linux
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install root deps & build UI (dist/)
+        run: |
+          npm ci
+          npm run build
+
+      # 瘦身：typescript/@types/vite 等纯构建期依赖 ~40M+，dist 已编译、运行时用不到。
+      # 删包后必须清 .bin 悬空符号链接——打进 mac 包会让 codesign --deep --strict 失败
+      # （AO 0.4.5 的 mac 构建就死在这）。
+      - name: Slim node_modules for packaging
+        shell: bash
+        run: |
+          rm -rf node_modules/typescript node_modules/@types node_modules/vite node_modules/@vitejs node_modules/concurrently node_modules/@remotion/cli
+          for f in node_modules/.bin/*; do
+            if [ -L "$f" ] && [ ! -e "$f" ]; then rm "$f"; echo "removed dangling: $f"; fi
+          done
+
+      - name: Install desktop deps
+        working-directory: desktop
+        run: npm ci
+
+      - name: Build desktop installer
+        working-directory: desktop
+        run: npx electron-builder ${{ matrix.builder_flag }} --config electron-builder.config.cjs --publish never
+        env:
+          # CSC_LINK 只给 macOS：Windows 签名会兜底读 CSC_LINK，Apple 证书会把它带炸
+          CSC_LINK: ${{ runner.os == 'macOS' && secrets.CSC_LINK || '' }}
+          CSC_KEY_PASSWORD: ${{ runner.os == 'macOS' && secrets.CSC_KEY_PASSWORD || '' }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+
+      # 闸：确认界面产物真的被打进包（缺了就是白屏包，绝不发）
+      - name: Verify UI landed in packaged app
+        shell: bash
+        run: |
+          found=$(find desktop/release -path "*resources/app/dist/index.html" | head -1)
+          if [ -z "$found" ]; then echo "::error::resources/app/dist/index.html 不在包里——白屏包，拒发"; exit 1; fi
+          echo "UI in package: $found"
+
+      - name: Generate checksums
+        shell: bash
+        working-directory: desktop/release
+        run: |
+          shopt -s nullglob
+          files=( *.dmg *.exe *.AppImage )
+          if [ ${#files[@]} -gt 0 ]; then
+            if command -v sha256sum >/dev/null 2>&1; then HASH="sha256sum"; else HASH="shasum -a 256"; fi
+            $HASH "${files[@]}" > "SHA256SUMS-${{ matrix.plat }}.txt"
+            cat "SHA256SUMS-${{ matrix.plat }}.txt"
+          fi
+
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+          files: |
+            desktop/release/*.dmg
+            desktop/release/*.exe
+            desktop/release/*.AppImage
+            desktop/release/SHA256SUMS-*.txt
+          generate_release_notes: true

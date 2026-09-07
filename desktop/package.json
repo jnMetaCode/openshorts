@@ -1,0 +1,64 @@
+{
+  "name": "openshorts-desktop",
+  "private": true,
+  "version": "0.1.0",
+  "description": "开片 OpenShorts — desktop app (Electron)",
+  "main": "main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --config electron-builder.config.cjs",
+    "dist:mac": "electron-builder --mac --config electron-builder.config.cjs",
+    "dist:win": "electron-builder --win --config electron-builder.config.cjs"
+  },
+  "devDependencies": {
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.jnmetacode.openshorts",
+    "productName": "开片 OpenShorts",
+    "afterSign": "scripts/afterSign.cjs",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "main.cjs"
+    ],
+    "npmRebuild": false,
+    "extraResources": [
+      { "from": "../bin", "to": "app/bin" },
+      { "from": "../server", "to": "app/server" },
+      { "from": "../shared", "to": "app/shared" },
+      { "from": "../scripts", "to": "app/scripts" },
+      { "from": "../src", "to": "app/src" },
+      { "from": "../dist", "to": "app/dist", "filter": ["**/*", "!audio/**", "!uploads/**", "!assets/generated/**"] },
+      { "from": "../public/assets", "to": "app/public/assets", "filter": ["**/*", "!generated/**"] },
+      { "from": "../templates", "to": "app/templates" },
+      { "from": "../adapters", "to": "app/adapters" },
+      { "from": "../projects", "to": "app/projects" },
+      { "from": "../package.json", "to": "app/package.json" },
+      { "from": "../node_modules", "to": "app/node_modules" }
+    ],
+    "mac": {
+      "category": "public.app-category.video",
+      "icon": "build/icon.png",
+      "target": [
+        { "target": "dmg", "arch": ["x64", "arm64"] }
+      ],
+      "identity": null
+    },
+    "win": {
+      "icon": "build/icon.png",
+      "target": ["nsis"]
+    },
+    "linux": {
+      "icon": "build/icon.png",
+      "target": ["AppImage"]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true
+    }
+  }
+}

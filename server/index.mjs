@@ -3,6 +3,7 @@ import express from 'express';
 import multer from 'multer';
 import path from 'node:path';
 import fs from 'node:fs/promises';
+import fsSync from 'node:fs';
 import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
 import {fileURLToPath} from 'node:url';
@@ -26,20 +27,31 @@ import {applyAoKeysToEnv} from '../src/config.mjs';
 await applyAoKeysToEnv();   // AO 的库函数 run() 只认环境变量，不读 Studio 存的 key 文件
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-// v1 图层编辑器的数据（projects/out/uploads/jobs）锚定在包目录：上传路径、素材工具的
-// containment、Remotion 的 public 目录都指着这里，搬家要一起搬，不是改几个常量的事。
-// v2「开片」的数据在 ~/OpenShorts，不受影响。npx / 依赖安装时包目录在 npm 缓存里，
-// 写进去的 v1 产物会随缓存清理蒸发——至少要把这件事说出来，不能默默丢。
-if (/node_modules|_npx/.test(root)) {
-  console.warn(`⚠️ 以 npm 包方式运行：v1 图层编辑器（/editor）的工程和产物会写进包目录（${root}），npm 缓存清理时会丢失。开片（默认界面）的数据在 ~/OpenShorts，不受影响。长期使用 v1 编辑器请用 git 检出或 Docker。`);
+// v1 图层编辑器的数据（projects/out/uploads/jobs）默认锚定在包目录：上传路径、素材工具的
+// containment、Remotion 的 public 目录都指着这里。v2「开片」的数据一直在 ~/OpenShorts，不受影响。
+// 桌面版（Electron）打包后的资源目录是只读的——不给可写目录的话，启动第一步 mkdir 就 EROFS。
+// OPENSHORTS_V1_DATA 把四个写目录整体指到别处；只读的 templates/public/adapters/dist 仍在包里。
+const dataRoot = process.env.OPENSHORTS_V1_DATA ? path.resolve(process.env.OPENSHORTS_V1_DATA) : root;
+if (dataRoot === root && /node_modules|_npx/.test(root)) {
+  console.warn(`⚠️ 以 npm 包方式运行：v1 图层编辑器（/editor）的工程和产物会写进包目录（${root}），npm 缓存清理时会丢失。开片（默认界面）的数据在 ~/OpenShorts，不受影响。长期使用 v1 编辑器请用 git 检出或 Docker，或设 OPENSHORTS_V1_DATA 指一个持久目录。`);
 }
-const projectsDir = path.join(root, 'projects');
+const projectsDir = path.join(dataRoot, 'projects');
 const templatesDir = path.join(root, 'templates');
-const dataDir = path.join(root, 'data');
-const uploadsDir = path.join(root, 'public', 'uploads');
+const dataDir = path.join(dataRoot, 'data');
+const uploadsDir = path.join(dataRoot, 'public', 'uploads');
 const publicDir = path.join(root, 'public');
 const adaptersDir = path.join(root, 'adapters');
-const outDir = path.join(root, 'out');
+const outDir = path.join(dataRoot, 'out');
+// 数据目录搬出去后第一次启动是空的：把包里的示例工程播种过去，/editor 不至于开箱空白
+if (dataRoot !== root) {
+  await fs.mkdir(projectsDir, {recursive: true});
+  const seeded = await fs.readdir(projectsDir);
+  if (seeded.length === 0) {
+    for (const f of await fs.readdir(path.join(root, 'projects')).catch(() => [])) {
+      if (f.endsWith('.json')) await fs.copyFile(path.join(root, 'projects', f), path.join(projectsDir, f)).catch(() => {});
+    }
+  }
+}
 const app = express();
 const run = promisify(execFile);
 const projectStore = new ProjectStore({projectsDir, templatesDir});
@@ -164,8 +176,15 @@ app.post('/api/assets', imageUpload.single('asset'), (req, res) => {
 });
 const resolvePublicAsset = (src) => {
   if (typeof src !== 'string' || /^(https?:|data:|blob:)/.test(src)) throw new Error('素材工具仅处理 public 目录中的本地文件');
-  const target = path.resolve(publicDir, src.replace(/^\/+/, ''));
+  const rel = src.replace(/^\/+/, '');
+  const target = path.resolve(publicDir, rel);
   if (!target.startsWith(`${publicDir}${path.sep}`)) throw new Error('素材路径超出 public 目录');
+  // 数据目录搬出包后（OPENSHORTS_V1_DATA），上传的文件在 dataRoot/public/uploads——
+  // 包里的 public 找不到时去那边找，素材工具（波形/抠色/拆分）对上传文件才不失效
+  if (dataRoot !== root && !fsSync.existsSync(target)) {
+    const alt = path.resolve(dataRoot, 'public', rel);
+    if (alt.startsWith(`${path.join(dataRoot, 'public')}${path.sep}`) && fsSync.existsSync(alt)) return alt;
+  }
   return target;
 };
 const createWaveform = async (src) => {
