@@ -147,6 +147,20 @@ function startBackend() {
   });
 }
 
+// 后端手上还有没有在跑的活（出片几分钟到半小时；云端短剧按秒计费）。
+// 拿不到就当"不忙"——退出路径不该被一个查询卡住。
+function busyInfo() {
+  return new Promise((resolve) => {
+    const req = http.get(`${base()}api/busy`, (r) => {
+      let body = "";
+      r.on("data", (c) => { body += c; });
+      r.on("end", () => { try { resolve(JSON.parse(body)); } catch { resolve(null); } });
+    });
+    req.on("error", () => resolve(null));
+    req.setTimeout(800, () => { req.destroy(); resolve(null); });
+  });
+}
+
 function stopBackend() {
   try {
     backend && backend.kill();
@@ -349,6 +363,37 @@ if (!gotLock) {
 
   app.on("window-all-closed", () => {
     if (process.platform !== "darwin") app.quit();
+  });
+
+  // 退出前确认：Win/Linux 上关窗就是退出，一条跑了 25 分钟的本地短剧、或正在按秒
+  // 计费的云端任务会被无声杀掉。preventDefault 必须**同步**调用——先 await 再拦就晚了，
+  // 退出流程已经走完（Electron 的经典坑）。
+  let confirmedQuit = false;
+  app.on("before-quit", (e) => {
+    if (confirmedQuit || !backend) return; // 已确认 / 后端根本没跑 → 放行
+    e.preventDefault();
+    (async () => {
+      const info = await busyInfo();
+      if (!info || !info.busy) { confirmedQuit = true; app.quit(); return; }
+      const what = [
+        info.drama ? "AI 短剧出片" : "",
+        info.koubo && info.koubo.length ? `口播出片 ${info.koubo.length} 条` : "",
+        info.v1 && info.v1.length ? `图层动画渲染 ${info.v1.length} 个` : "",
+      ].filter(Boolean).join("、");
+      const { response } = await dialog.showMessageBox(mainWindow && !mainWindow.isDestroyed() ? mainWindow : undefined, {
+        type: "warning",
+        title: "开片 OpenShorts",
+        message: "还有任务在跑，现在退出会中断它",
+        detail:
+          `正在进行：${what}。\n\n退出会杀掉本地引擎：已完成的镜头会保留（下次重跑自动复用），` +
+          `但当前这一镜要重来。\n\n注意：云端任务一旦创建就已经在计费，退出本程序不会取消服务商那边的任务。`,
+        buttons: ["继续等它跑完", "仍然退出"],
+        defaultId: 0,
+        cancelId: 0,
+        noLink: true,
+      });
+      if (response === 1) { confirmedQuit = true; app.quit(); }
+    })();
   });
 
   app.on("quit", stopBackend);

@@ -60,7 +60,12 @@ test('OPENSHORTS_V1_DATA：写目录外迁到指定位置，首启播种示例�
   const listed = await (await fetch(`http://127.0.0.1:${port}/api/projects`)).json();
   assert.equal(listed.length, seeded.length, '/api/projects 读的应是外迁目录里的工程');
 
-  // ③ 仓库自己的 projects/ 没被动过（开发机跑桌面版不该改源码树）
+  // ③ /api/busy 存在且空闲时如实说不忙——桌面版退出确认全靠它（忙的那一路已用真出片手工验过）
+  const busy = await (await fetch(`http://127.0.0.1:${port}/api/busy`)).json();
+  assert.equal(busy.busy, false, '空闲时应报 busy:false');
+  assert.deepEqual(busy.koubo, [], '空闲时不该有在跑的口播任务');
+
+  // ④ 仓库自己的 projects/ 没被动过（开发机跑桌面版不该改源码树）
   const repoProjects = fs.readdirSync(path.join(root, 'projects')).filter((f) => f.endsWith('.json'));
   assert.deepEqual(seeded.sort(), repoProjects.sort(), '播种应是复制而非搬走，源码树保持原样');
 });

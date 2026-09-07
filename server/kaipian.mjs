@@ -307,6 +307,12 @@ kaipian.post('/drama/preflight', async (req, res) => {
 // 短剧按秒真花钱，且两个 AO 进程会写同一个 project.json / assets/——全局同时只允许一条在跑。
 // （口播线的锁按项目分（上面的 running Map）；短剧的产物目录在跑完前不知道 id，只能全局单飞。）
 let dramaChild = null;
+
+/** 手上还有没有在跑的活。桌面版退出前要问一句——关窗就把跑了 25 分钟的本地短剧、
+ *  或正在按秒计费的云端任务无声杀掉，是最不能接受的那种"静默丢东西"。 */
+export function kaipianBusy() {
+  return { koubo: [...running.keys()], drama: !!dramaChild };
+}
 /**
  * 以子进程跑 AO 并把输出转 SSE。run 和 redo 以前各复制一份这段逻辑，
  * 运行目录判定、并发锁、断连即杀改哪边都只修了一半——统一到这里。

@@ -20,7 +20,7 @@ import {attachGenerationTrace, retimeProjectFromNarration, retimeScene, reviewAs
 import {runAsr, transcriptToCaptions} from './lib/asr.mjs';
 import {corsOptions, createOriginGuard, createActionGuard, resolveAllowedOrigins} from './lib/origin-guard.mjs';
 import {renderWaveform} from '../scripts/lib/audio.mjs';
-import {kaipian} from './kaipian.mjs';
+import {kaipian, kaipianBusy} from './kaipian.mjs';
 import { installProxy } from '../src/net/proxy.mjs';
 await installProxy();   // Node 的 fetch 不认 HTTPS_PROXY，不装的话代理后的机器所有联网功能都会 ECONNRESET
 import {applyAoKeysToEnv} from '../src/config.mjs';
@@ -87,6 +87,13 @@ app.use('/out', express.static(outDir));
 app.use('/uploads', express.static(uploadsDir));
 
 app.get('/api/health', (_req, res) => res.json({ok: true, product: 'OpenShorts', renderConcurrency}));
+// 手上有没有在跑的活（桌面版退出前问这一句，见 desktop/main.cjs 的 before-quit）：
+// 出片一跑就是几分钟到半小时，云端短剧还按秒计费——关窗把它无声杀掉是最糟的静默丢失。
+app.get('/api/busy', (_req, res) => {
+  const k = kaipianBusy();
+  const v1 = jobQueue.list().filter((j) => j.status === 'running' || j.status === 'queued').map((j) => j.id);
+  res.json({busy: k.koubo.length > 0 || k.drama || v1.length > 0, koubo: k.koubo, drama: k.drama, v1});
+});
 app.get('/api/project', async (_req, res, next) => {
   try { res.json(await projectStore.get(activeProjectId)); } catch (error) { next(error); }
 });

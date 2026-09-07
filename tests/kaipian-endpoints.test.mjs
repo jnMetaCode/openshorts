@@ -15,7 +15,7 @@ process.env.OPENSHORTS_HOME = path.join(home, '.openshorts');
 process.env.AO_DATA_DIR = path.join(home, '.ao');
 
 const express = (await import('express')).default;
-const { kaipian } = await import('../server/kaipian.mjs');
+const { kaipian, kaipianBusy } = await import('../server/kaipian.mjs');
 const { writeConfig } = await import('../src/config.mjs');
 
 const outDir = path.join(home, 'OpenShorts'); fs.mkdirSync(outDir, { recursive: true });
@@ -64,6 +64,12 @@ test('单镜重出：项目不存在 404；镜头 id 不合法 400；上次运�
   assert.equal(badShot.status, 400); assert.match(badShot.body.error, /character|shot1/);
   const lost = await j(await fetch(`${base}/projects/短剧-测试/drama/redo?shot=shot1`));
   assert.equal(lost.status, 409); assert.match(lost.body.error, /运行目录/);
+});
+
+test('kaipianBusy：没活在跑时如实报空（桌面版退出确认的数据源）', () => {
+  const b = kaipianBusy();
+  assert.deepEqual(b.koubo, []);
+  assert.equal(b.drama, false);
 });
 
 test('GET /projects：空目录返回空清单；建过的项目能列出来', async () => {
