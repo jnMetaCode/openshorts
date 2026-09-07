@@ -125,6 +125,16 @@ openshorts drama --plan -i story="…" -i video_provider=local-sdcpp -i video_mo
 
 v1 的图层动画编辑器仍在 `/editor`，用法见下文。
 
+### 桌面版（Electron，不需要装 Node）
+
+```bash
+cd desktop && npm install && npm run dist:mac   # 或 dist:win；产物在 desktop/release/
+```
+
+打出的 app 自带 Node 运行时，双击即用：本地引擎自动启动（端口 4174 起自动顺延），
+v1 的工程与产物写在系统的应用数据目录（`OPENSHORTS_V1_DATA`），开片自己的成片仍在 `~/OpenShorts`。
+**三平台安装包**（mac dmg / win exe / linux AppImage）随 `desktop-v*` 标签自动构建并发到 Releases。
+
 ---
 
 # v1 · 图层动画编辑器

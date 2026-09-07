@@ -63,6 +63,18 @@ openshorts drama --plan -i story="…" -i video_provider=local-sdcpp -i video_mo
 
 Script writing needs one text-model key (DeepSeek / Kimi / GLM / … — configured once, shared with the engine's `~/.ao`). Visuals and voice-over are free on the default path. No shared keys ship with the product.
 
+## Desktop app (Electron, no Node install needed)
+
+```bash
+cd desktop && npm install && npm run dist:mac   # or dist:win; output in desktop/release/
+```
+
+The packaged app ships its own Node runtime: double-click and the local engine starts
+(port 4174, auto-incrementing if taken). v1 editor data lives in the OS app-data directory
+(`OPENSHORTS_V1_DATA`); your videos stay in `~/OpenShorts` as always.
+**Installers for all three platforms** (mac dmg / win exe / linux AppImage) are built and
+published to Releases by pushing a `desktop-v*` tag.
+
 ## Docs & internals
 
 - v2 product/architecture/decision docs: [`docs/v2/`](docs/v2/00-README.md) (Chinese)
