@@ -1,5 +1,18 @@
 # Changelog
 
+## [Unreleased]
+
+- **桌面端 Electron 壳（M3 收官）**：移植 AO desktop 的成熟实现——ELECTRON_RUN_AS_NODE
+  拉起后端、启动页与失败对话框带真实原因和日志路径、端口 4174 起自动顺延、单实例锁、
+  关窗复用健康引擎、GitHub desktop-v* 更新提示、mac ad-hoc 重签兜底、有证书 Secrets
+  自动切真签+公证。PATH 重建把 ~/.openshorts/bin 放最前（带 libass 的 ffmpeg 必须赢）。
+  配套把真正的阻塞解掉：打包后资源只读，v1 编辑器写包根会 EROFS——`OPENSHORTS_V1_DATA`
+  把四个写目录整体外迁（首启播种示例工程；素材工具对上传文件加回退）。
+  真机三连验证：dev 模式端口被占自动顺延 4175 且健康；本地真打 arm64+x64 dmg，
+  codesign 校验通过；**启动打包后的 .app 本体**——只读 bundle 起后端、sources 正常、
+  v1 从 userData 提供 9 个播种工程。三平台安装包 = 推 `desktop-v*` tag（release-desktop.yml，
+  含 UI 落包闸与 SHA256）。
+
 ## [2.0.0-alpha.23] - 2026-09-06 · 把"炸了还报成功"的路径清一遍，外加发版前的打包账
 
 - **依赖升到 `agency-orchestrator ^0.19.2`**（今日已发上 npm）：0.19.1 下 `plan` 不吃 `-i`、
