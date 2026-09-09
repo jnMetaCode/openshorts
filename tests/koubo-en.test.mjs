@@ -358,3 +358,100 @@ test('用户主动选「只用纯色底」时不标 fallback（否则下一轮�
   assert.equal(project.shots[0].visual.fallback, undefined, '主动选的纯色底不是降级，标了 fallback 下一轮就会被清掉去搜素材');
   fs.rmSync(dir, { recursive: true, force: true });
 });
+
+/**
+ * 重出一镜之后，项目里留下的"上一轮的东西"。真机上这条片重出 3 次后：
+ * credits 里挂着 4 条已经不在片中的素材，而每个镜头切好的多段全没了。
+ *
+ * 主画面必须是**图片**：视频主画面在复用时还能靠"同一条素材的不同时间点"把段补回来，
+ * 正好把这个 bug 盖住（我第一版测试就是这么漏的，变异检查逮到的）。真机上丢段的
+ * s4/s2 主画面都是图片——图片补不回来，段就真没了。
+ */
+test('重出一镜：旧署名要清掉，其余镜头切好的段要留住', { skip: !hasFfmpeg && '无 ffmpeg' }, async () => {
+  const { runKoubo } = await import('../src/pipeline/koubo-run.mjs');
+  const os = await import('node:os');
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'os-redo-'));
+  const img = (name, color) => {
+    const f = path.join(d, name);
+    spawnSync('ffmpeg', ['-v', 'error', '-y', '-f', 'lavfi', '-i', `color=c=${color}:size=180x320`, '-frames:v', '1', f]);
+    return f;
+  };
+  const a = img('a.png', 'navy'), b = img('b.png', 'maroon');
+  const synth = async (_t, { outFile }) => {
+    fs.mkdirSync(path.dirname(outFile), { recursive: true });
+    spawnSync('ffmpeg', ['-v', 'error', '-y', '-f', 'lavfi', '-i', 'anullsrc=r=24000:cl=mono', '-t', '8', outFile]);
+    return { buffer: fs.readFileSync(outFile), durationMs: 8000, words: [] };
+  };
+  const project = {
+    id: 'redo-keep', line: 'koubo', lang: 'zh',
+    output: { w: 180, h: 320, fps: 10 },
+    voice: { provider: 'edge-tts', voice: 'zh-CN-XiaoxiaoNeural', rate: 1 },
+    captions: { preset: 'douyin', maxChars: 16, style: {} },
+    defaults: { visualSource: 'stock', cutEverySec: 2, localDirs: [] },
+    publish: { titles: [], tags: [], note: '', aiLabel: false, aiLabelText: 'AI' },
+    // 上一轮记下的：s1 的两条图片素材各一条署名，s2 一条——重出 s2 后 s2 那条必须消失
+    provenance: [
+      { shot: 's1', source: 'test', id: 'test:a', kind: 'image', license: 'CC0', author: null, page: null },
+      { shot: 's1', source: 'test', id: 'test:b', kind: 'image', license: 'CC BY 2.0', author: '另一位', page: null },
+      { shot: 's2', source: 'test', id: 'test:stale', kind: 'image', license: 'CC BY-SA 4.0', author: '某摄影师', page: null },
+    ],
+    shots: [
+      // s1：上一轮切成了两段（两张不同的图）——这一轮不重定画面，就得原样留着
+      { id: 's1', text: '第一镜的口播，够长，上一轮被切成了两段。', query: 'q1', visualIntent: 'x', emphasis: [],
+        visual: { source: 'stock', provider: 'test', kind: 'image', file: a, candidateId: 'test:a', cost: { kind: 'free' },
+          parts: [{ file: a, kind: 'image', id: 'test:a' }, { file: b, kind: 'image', id: 'test:b' }] }, audio: null, durationSec: null, status: 'planned' },
+      { id: 's2', text: '第二镜的口播。', query: 'q2', visualIntent: 'y', emphasis: [],
+        visual: { source: 'stock', provider: 'test', kind: 'image', file: a, candidateId: 'test:stale', cost: { kind: 'free' } }, audio: null, durationSec: null, status: 'planned' },
+    ],
+  };
+  // 只重出 s2：它会重新找素材（这里断网 → 退纯色底），s1 原样复用
+  await runKoubo(project, { outDir: d, synthesizeImpl: synth, localImage: false, only: ['s2'],
+    fetchImpl: async () => { throw new Error('no network'); } }).catch(() => {});
+
+  assert.equal(project.provenance.filter((x) => x.shot === 's2').length, 0,
+    '重出这一镜后，上一轮的署名必须清掉——否则发布包会给根本没用到的作品署名（真机上累积了 4 条）');
+  assert.equal(project.provenance.filter((x) => x.shot === 's1').length, 2, '没动的镜头，署名一条都不能少');
+  assert.equal((project.shots[0].visual.parts ?? []).length, 2,
+    's1 这一轮没重新定画面，上次切好的两段必须原样留着——重算时 extras 是空的，图片又补不了段，多段会被悄悄丢成一段');
+  fs.rmSync(d, { recursive: true, force: true });
+});
+
+test('老项目自愈：出片结束时把已不在片中的署名清掉，并如实说清清了几条', { skip: !hasFfmpeg && '无 ffmpeg' }, async () => {
+  const { runKoubo } = await import('../src/pipeline/koubo-run.mjs');
+  const os = await import('node:os');
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'os-prune-'));
+  const a = path.join(d, 'a.png');
+  spawnSync('ffmpeg', ['-v', 'error', '-y', '-f', 'lavfi', '-i', 'color=c=navy:size=180x320', '-frames:v', '1', a]);
+  const synth = async (_t, { outFile }) => {
+    fs.mkdirSync(path.dirname(outFile), { recursive: true });
+    spawnSync('ffmpeg', ['-v', 'error', '-y', '-f', 'lavfi', '-i', 'anullsrc=r=24000:cl=mono', '-t', '3', outFile]);
+    return { buffer: fs.readFileSync(outFile), durationMs: 3000, words: [] };
+  };
+  const project = {
+    id: 'prune', line: 'koubo', lang: 'zh',
+    output: { w: 180, h: 320, fps: 10 },
+    voice: { provider: 'edge-tts', voice: 'zh-CN-XiaoxiaoNeural', rate: 1 },
+    captions: { preset: 'douyin', maxChars: 16, style: {} },
+    defaults: { visualSource: 'stock', cutEverySec: 0, localDirs: [] },
+    publish: { titles: [], tags: [], note: '', aiLabel: false, aiLabelText: 'AI' },
+    // 2026-09 之前重出留下的：test:gone 早就不在片中了
+    provenance: [
+      { shot: 's1', source: 'test', id: 'test:live', kind: 'image', license: 'CC0', author: null, page: null },
+      { shot: 's1', source: 'test', id: 'test:gone', kind: 'image', license: 'CC BY-SA 4.0', author: '某摄影师', page: null },
+      // 本机出图的署名 id 是模型名，永远不在"用到的素材 id"里——按 id 一刀切会把它误删，
+      // 那是**漏署**，比多署更严重（AI 生成内容的标识与许可要求）
+      { shot: 's2', source: 'local-flux', id: 'flux-schnell-q2', kind: 'image', license: 'Apache-2.0', author: null, page: 'https://x' },
+    ],
+    shots: [
+      { id: 's1', text: '一句口播。', query: 'q', visualIntent: 'x', emphasis: [],
+        visual: { source: 'stock', provider: 'test', kind: 'image', file: a, candidateId: 'test:live', cost: { kind: 'free' } }, audio: null, durationSec: null, status: 'planned' },
+      { id: 's2', text: '第二句口播。', query: 'q2', visualIntent: 'y', emphasis: [],
+        visual: { source: 'local-image', provider: 'local-flux', kind: 'image', file: a, cost: { kind: 'free' } }, audio: null, durationSec: null, status: 'planned' },
+    ],
+  };
+  const r = await runKoubo(project, { outDir: d, synthesizeImpl: synth, localImage: false });
+  assert.deepEqual(r.provenance.map((x) => x.id).sort(), ['flux-schnell-q2', 'test:live'],
+    '片中没用到的素材不能留在版权说明里，但本机出图的署名不能被误删（漏署比多署更严重）');
+  assert.ok((r.final.notes ?? []).some((n) => /清掉 1 条/.test(n)), `清理要说出来，实际 notes：${JSON.stringify(r.final.notes)}`);
+  fs.rmSync(d, { recursive: true, force: true });
+});

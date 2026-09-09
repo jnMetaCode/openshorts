@@ -179,6 +179,15 @@ export async function runKoubo(project, { outDir, log = () => {}, fetchImpl = fe
     if (shot.visual?.source === 'solid' && shot.visual.fallback) shot.visual = { ...shot.visual, source: null, file: null, fallback: false };
     // 「重出这一镜」= 把已选的素材丢掉重新找一遍（文案没改的话配音上面已经复用了，不花时间也不花钱）
     if (redo && shot.visual?.source !== 'solid') shot.visual = { ...shot.visual, source: null, file: null, candidateId: null };
+    // 这一轮到底要不要重新定画面（上面两行清完还没有画面 = 要重定）。
+    // 这个判断有两处非它不可：
+    // ① 署名：重定之前必须先把这一镜的旧署名清掉，否则重出几次就累积几份——真机上一条
+    //    重出过 3 次的片子，credits 里挂着 4 条已经不在片中的素材（含一条 CC BY-SA 4.0），
+    //    等于给没用到的作品署名，这在一份交给运营去发布的版权说明里是错的。
+    // ② 切镜头：复用画面时 extras 是空的，重算 picked 只剩主画面 → 上一轮切好的多段被丢掉，
+    //    一个画面挂满整镜。真机上重出一次 s4 的 2 段就没了，第二次 s2 的 3 段也没了，全程无提示。
+    const repick = !shot.visual.file;
+    if (repick) project.provenance = project.provenance.filter((x) => x.shot !== shot.id);
     let clip = shot.visual.file; let chosen = null;
     const extras = [];                     // 这一镜可用的全部候选（含中选那条），够长的镜头会用它们切成几段
     if (!clip && shot.visual.source !== 'solid') {
@@ -295,15 +304,27 @@ export async function runKoubo(project, { outDir, log = () => {}, fetchImpl = fe
       }
     }
     const n = Math.max(1, picked.length);
-    const parts = n > 1 ? picked.map((c) => ({ clip: c.file, kind: c.kind ?? 'video', ...(c.seekSec ? { seekSec: c.seekSec } : {}) })) : null;
-    if (parts) {
+    // 没重新定画面这一轮，就把上一轮切好的段原样复用——不能重算：那时 extras 是空的，
+    // picked 只剩主画面，多段会被悄悄丢成一段（真机上重出一次，切镜头就没了）
+    // 只有"这一轮没重新定画面、且上一轮真的切过段、文件还在"才复用，其余情况照旧现算——
+    // 门槛只卡 repick 的话，会把"画面是给定的但从没切过段"也一起挡掉
+    const kept = !repick ? (shot.visual?.parts ?? []).filter((x) => x.file && fs.existsSync(x.file)) : [];
+    const reusedParts = kept.length > 1;
+    const parts = reusedParts
+      ? kept.map((x) => ({ clip: x.file, kind: x.kind ?? 'video', ...(x.seekSec ? { seekSec: x.seekSec } : {}) }))
+      : (n > 1 ? picked.map((c) => ({ clip: c.file, kind: c.kind ?? 'video', ...(c.seekSec ? { seekSec: c.seekSec } : {}) })) : null);
+    if (parts && !reusedParts) {
       const fills = picked.slice(1).filter((c) => c.fillOnly).length;
       const seeks = picked.filter((c) => c.seekSec).length;
       log(T(`✂️ ${shot.id} ${durationSec.toFixed(1)}s 切成 ${n} 段（每段约 ${(durationSec / n).toFixed(1)}s${fills ? `，${fills} 段补位` : ''}${seeks ? `，${seeks} 段取同一条素材的不同时间点` : ''}）`, `✂️ ${shot.id} ${durationSec.toFixed(1)}s cut into ${n} parts (~${(durationSec / n).toFixed(1)}s each${fills ? `, ${fills} filler` : ''}${seeks ? `, ${seeks} from other timestamps of the same clip` : ''})`));
       // 一镜用了几条素材，就得给几条署名——CC BY-SA 要求的
       for (const c of picked.slice(1)) if (c.id && c.id !== chosen?.id && !c.seekSec) project.provenance.push({ shot: shot.id, source: c.source ?? shot.visual?.provider, id: c.id, kind: c.kind ?? 'video', license: c.license, author: c.author, page: c.page ?? null });
       shot.visual = { ...shot.visual, parts: picked.map((c) => ({ file: c.file, kind: c.kind ?? 'video', id: c.id, ...(c.seekSec ? { seekSec: c.seekSec } : {}) })) };
-    } else if (shot.visual?.parts) { const { parts: _drop, ...rest } = shot.visual; shot.visual = rest; }
+    } else if (!parts && shot.visual?.parts) {
+      // 真的只剩一段时才把 parts 抹掉；复用上一轮的多段时它必须留在项目里，
+      // 否则下一轮又会读不到、又退回一段（这个 else 分支原来只看 parts 是不是刚算出来的）
+      const { parts: _drop, ...rest } = shot.visual; shot.visual = rest;
+    }
     const sFp = segmentFingerprint(shot, project, aFp);
     // 同上：上次渲好的分段还在就直接用，不管它在哪个目录
     const priorSeg = cache.segmentFingerprint === sFp && cache.segment && fs.existsSync(cache.segment) ? cache.segment : null;
@@ -326,6 +347,24 @@ export async function runKoubo(project, { outDir, log = () => {}, fetchImpl = fe
   const out = path.join(dir, `${project.id}.mp4`);
   const fin = await finalize({ video: joined, ass, srt, bgm: project.bgm?.file, bgmVolume: project.bgm?.volume ?? 0.2, aiLabel: project.publish.aiLabel, aiLabelText: T('AI 生成', 'AI generated'), subLang: T('chi', 'eng'), lang, out, w, h, signal });
   notes.push(...fin.notes);
+
+  // 老项目自愈：2026-09 之前重出过的项目，署名里会累积上一轮的素材（那时重出不清旧的）。
+  // 真机上一条重出 3 次的片子挂着 4 条已经不在片中的素材，其中一条 CC BY-SA 4.0——
+  // 这是一份要交给运营去发布的版权说明，多署等于给没用到的作品署名。按各镜**最终**
+  // 真正用到的素材过一遍；没 id 的和本机出图的按镜头对应关系保留。
+  {
+    const usedIds = new Set();
+    const localShots = new Set();
+    for (const sh of project.shots) {
+      if (sh.visual?.candidateId) usedIds.add(sh.visual.candidateId);
+      for (const x of sh.visual?.parts ?? []) if (x.id) usedIds.add(x.id);
+      if (sh.visual?.source === 'local-image') localShots.add(sh.id);
+    }
+    const before = project.provenance.length;
+    project.provenance = project.provenance.filter((x) => (!x.id ? true : x.source === 'local-flux' ? localShots.has(x.shot) : usedIds.has(x.id)));
+    const dropped = before - project.provenance.length;
+    if (dropped) notes.push(T(`清掉 ${dropped} 条已不在片中的素材署名（早先重出留下的）`, `Dropped ${dropped} footage credits for material no longer in the film (left over from earlier re-renders)`));
+  }
 
   // 5) 封面（第 1 秒抽帧）+ 发布文案
   const cover = path.join(dir, `${project.id}-cover.jpg`);
