@@ -63,18 +63,28 @@ export function alignPunctuation(words, text) {
   return out;
 }
 
-/** words: [{text,startMs,endMs}] → cues: [{startMs,endMs,text,words}] */
-export function buildCues(words, { maxChars = 16, maxLines = 2, offsetMs = 0, maxDurMs = 4500 } = {}) {
+/**
+ * words: [{text,startMs,endMs}] → cues: [{startMs,endMs,text,words}]
+ *
+ * lang='en' 时词与词之间要留空格。以前这里无条件 `replace(/\s+/g,'')` 再 `join('')`——
+ * 中文正确，英文会把一句话拼成 "Whydocatslovebox es"（字幕、SRT、烧进画面的全是这个）。
+ */
+export function buildCues(words, { maxChars = 16, maxLines = 2, offsetMs = 0, maxDurMs = 4500, lang = 'zh' } = {}) {
+  const spaced = String(lang) === 'en';
+  const sep = spaced ? ' ' : '';
+  // 句末：中文看句读符，英文看 . ! ? 以及它后面可能跟的引号/括号（"…boxes." / "…really?"）
+  const isSentenceEnd = (t) => (spaced ? /[.!?…]["')\]]?$/.test(t) : /[。！？；…]$/.test(t));
   const cues = []; let cur = [];
-  const len = (ws) => ws.reduce((n, w) => n + w.text.length, 0);
-  const flush = () => { if (cur.length) { cues.push({ startMs: cur[0].startMs + offsetMs, endMs: cur[cur.length - 1].endMs + offsetMs, text: cur.map((w) => w.text).join(''), words: cur.map((w) => ({ ...w, startMs: w.startMs + offsetMs, endMs: w.endMs + offsetMs })) }); cur = []; } };
+  const len = (ws) => ws.reduce((n, w) => n + w.text.length, 0) + (spaced ? Math.max(ws.length - 1, 0) : 0);
+  const flush = () => { if (cur.length) { cues.push({ startMs: cur[0].startMs + offsetMs, endMs: cur[cur.length - 1].endMs + offsetMs, text: cur.map((w) => w.text).join(sep), words: cur.map((w) => ({ ...w, startMs: w.startMs + offsetMs, endMs: w.endMs + offsetMs })) }); cur = []; } };
   for (const w of words) {
-    const t = w.text.replace(/\s+/g, '');
+    // 英文的词内不会有空白，但边界词偶尔带前后空格；中文照旧整体去空白
+    const t = spaced ? w.text.trim() : w.text.replace(/\s+/g, '');
     if (!t) continue;
-    if (len(cur) + t.length > maxChars * maxLines) flush();
+    if (len(cur) + t.length + (spaced && cur.length ? 1 : 0) > maxChars * maxLines) flush();
     if (cur.length && w.endMs - cur[0].startMs > maxDurMs) flush();   // 一条最多 4.5 秒，读得完也不发闷
     cur.push({ ...w, text: t });
-    if (/[。！？；…]/.test(t.slice(-1)) || (PUNCT.test(t.slice(-1)) && len(cur) >= maxChars * 0.6)) flush();
+    if (isSentenceEnd(t) || (PUNCT.test(t.slice(-1)) && len(cur) >= maxChars * 0.6)) flush();
   }
   flush();
   // 相邻条之间的空隙 ≤ 300ms 时把上一条尾巴拉到下一条开头，避免闪烁
@@ -82,11 +92,16 @@ export function buildCues(words, { maxChars = 16, maxLines = 2, offsetMs = 0, ma
   return cues;
 }
 
-/** 没有词级时间戳时：按字数比例把一段文案摊到 [0, durationMs]（标 estimated） */
-export function estimateWords(text, durationMs) {
-  const chars = [...String(text).replace(/\s+/g, '')];
-  const per = durationMs / Math.max(chars.length, 1);
-  return chars.map((c, i) => ({ text: c, startMs: Math.round(i * per), endMs: Math.round((i + 1) * per), estimated: true }));
+/**
+ * 没有词级时间戳时：按字数比例把一段文案摊到 [0, durationMs]（标 estimated）。
+ * 英文按空格切词——按字符切的话，buildCues 会把每个字母当一个词，字幕变成 "C a t s"。
+ */
+export function estimateWords(text, durationMs, { lang = 'zh' } = {}) {
+  const units = String(lang) === 'en'
+    ? (String(text).trim().match(/\S+/g) ?? [])
+    : [...String(text).replace(/\s+/g, '')];
+  const per = durationMs / Math.max(units.length, 1);
+  return units.map((c, i) => ({ text: c, startMs: Math.round(i * per), endMs: Math.round((i + 1) * per), estimated: true }));
 }
 
 export function toSRT(cues, { maxChars = 16 } = {}) {
@@ -104,13 +119,51 @@ export function toASS(cues, { preset = 'douyin', w = 1080, h = 1920, emphasis = 
   const head = `[Script Info]\nScriptType: v4.00+\nPlayResX: ${w}\nPlayResY: ${h}\nWrapStyle: 0\n\n[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\nStyle: Default,${p.font},${px(p.size)},${p.color},${p.color},${p.outline},&H80000000,${p.bold},0,0,0,100,100,0,0,${p.box ? 3 : 1},${px(p.outlineW)},${px(p.shadow)},${p.align},${px(60)},${px(60)},${px(p.marginV)},1\n\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n`;
   const lines = cues.map((c) => {
     let text = wrap(c.text, maxChars).replace(/\n/g, '\\N');
-    for (const kw of emphasis) if (kw && text.includes(kw)) text = text.split(kw).join(`{\\c${p.highlight}}${kw}{\\c${p.color}}`);
+    for (const kw of emphasis) text = highlight(text, kw, p);
     return `Dialogue: 0,${assTime(c.startMs)},${assTime(c.endMs)},Default,,0,0,0,,${text}`;
   });
   return head + lines.join('\n') + '\n';
 }
 
-const wrap = (t, n = 16) => { const s = [...t]; if (s.length <= n) return t; let cut = -1; for (let i = Math.min(n, s.length - 1); i > n * 0.4; i--) if (PUNCT.test(s[i - 1])) { cut = i; break; } if (cut < 0) cut = n; return s.slice(0, cut).join('') + '\n' + s.slice(cut).join(''); };
+/**
+ * 单条字幕折行。带空格的（英文）必须在词边界折——按字符数硬切会切出
+ * "cardboard bo / xes"。中文没有词边界，照旧按标点优先、否则按字数切。
+ * spaced 默认按文本里有没有空白判断：buildCues 出来的中文条一定不含空白，
+ * 所以这个判断不会误伤，忘了传 lang 的调用方也不会写坏字幕。
+ */
+const wrap = (t, n = 16, spaced = /\s/.test(String(t))) => {
+  const s = [...String(t)];
+  if (s.length <= n) return t;
+  if (spaced) {
+    const lines = []; let cur = '';
+    for (const w of String(t).trim().split(/\s+/)) {
+      if (cur && cur.length + 1 + w.length > n) { lines.push(cur); cur = w; } else cur = cur ? `${cur} ${w}` : w;
+    }
+    if (cur) lines.push(cur);
+    return lines.join('\n');
+  }
+  let cut = -1;
+  for (let i = Math.min(n, s.length - 1); i > n * 0.4; i--) if (PUNCT.test(s[i - 1])) { cut = i; break; }
+  if (cut < 0) cut = n;
+  return s.slice(0, cut).join('') + '\n' + s.slice(cut).join('');
+};
+/**
+ * 关键词高亮。中文按子串直接替换（原行为）；带空格的（英文）必须**整词 + 不分大小写**：
+ * - 子串匹配会把 emphasis "box" 高亮进 "boxes"，画面上是橙色 box + 黄色 es（真机验证过）
+ * - 模型给的关键词常是小写（"cats"），而句首是大写（"Cats"），大小写敏感就静默不高亮——
+ *   用户只会觉得"高亮时有时无"，不会知道为什么
+ */
+function highlight(text, kw, p) {
+  const k = String(kw ?? '').trim();
+  if (!k) return text;
+  const on = `{\\c${p.highlight}}`, off = `{\\c${p.color}}`;
+  if (!/\s/.test(text) && !/\s/.test(k)) return text.includes(k) ? text.split(k).join(`${on}${k}${off}`) : text;
+  const esc = k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  // \b 对以非字母开头/结尾的关键词不成立（"3D"、"—"），那种情况退回子串匹配
+  const bounded = /^[\w]/.test(k) && /[\w]$/.test(k) ? `\\b${esc}\\b` : esc;
+  return text.replace(new RegExp(bounded, 'gi'), (m) => `${on}${m}${off}`);
+}
+
 const pad = (n, l = 2) => String(n).padStart(l, '0');
 const srtTime = (ms) => `${pad(Math.floor(ms / 3600000))}:${pad(Math.floor(ms / 60000) % 60)}:${pad(Math.floor(ms / 1000) % 60)},${pad(ms % 1000, 3)}`;
 const assTime = (ms) => `${Math.floor(ms / 3600000)}:${pad(Math.floor(ms / 60000) % 60)}:${pad(Math.floor(ms / 1000) % 60)}.${pad(Math.floor((ms % 1000) / 10))}`;

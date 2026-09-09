@@ -7,6 +7,7 @@ import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { ffmpegPath, ffprobePath } from '../media/ffmpeg.mjs';
+import { tt } from '../project/lang.mjs';
 const run = promisify(execFile);
 const FFMPEG = ffmpegPath;
 const FFPROBE = ffprobePath;
@@ -34,19 +35,28 @@ export function concatListLine(file, platform = process.platform) {
   return `file '${p.replace(/\\/g, '\\\\').replace(/'/g, "'\\''")}'`;
 }
 
-async function ff(args, label, signal) {
+// 合成失败是英文用户最可能撞上的一类（多半是没装 ffmpeg / 没有 libass），
+// 这几句会当成 error 一路冒到界面上——所以也按成片语言给
+async function ff(args, label, signal, T = (zh) => zh) {
   try { return await run(FFMPEG(), ['-hide_banner', '-loglevel', 'error', '-y', ...args], { maxBuffer: 64 << 20, signal }); }
-  catch (e) { const err = e; if (err.name === 'AbortError' || signal?.aborted) throw new Error('已取消'); if (err.code === 'ENOENT') throw new Error('找不到 ffmpeg：跑 `openshorts install-ffmpeg` 装一份带 libass 的（约 40 MB，只装到 ~/.openshorts/bin），或自行安装后设 OPENSHORTS_FFMPEG'); throw new Error(`${label} 失败：${String(err.stderr || err.message).split('\n').filter(Boolean).slice(-2).join(' | ').slice(0, 300)}`); }
+  catch (e) {
+    const err = e;
+    if (err.name === 'AbortError' || signal?.aborted) throw new Error(T('已取消', 'Cancelled'));
+    if (err.code === 'ENOENT') throw new Error(T('找不到 ffmpeg：跑 `openshorts install-ffmpeg` 装一份带 libass 的（约 40 MB，只装到 ~/.openshorts/bin），或自行安装后设 OPENSHORTS_FFMPEG',
+      'ffmpeg not found: run `openshorts install-ffmpeg` for a build with libass (~40 MB, installed only into ~/.openshorts/bin), or install it yourself and set OPENSHORTS_FFMPEG'));
+    throw new Error(`${label}${T('失败：', ' failed: ')}${String(err.stderr || err.message).split('\n').filter(Boolean).slice(-2).join(' | ').slice(0, 300)}`);
+  }
 }
-export async function probeDuration(file) {
+export async function probeDuration(file, { lang = 'zh' } = {}) {
+  const T = tt(lang);
   // 同文件的 probeSize/audioPackets 都 catch 了，这里以前不 catch——ffprobe 缺失时
   // 甩的是裸 ENOENT，而不是那句"跑 install-ffmpeg"
   try {
     const r = await run(FFPROBE(), ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', file]);
     const n = Number(String(r.stdout).trim().split(/[\r\n,]/)[0]); return Number.isFinite(n) ? n : 0;
   } catch (e) {
-    if (e.code === 'ENOENT') throw new Error('找不到 ffprobe：跑 `openshorts install-ffmpeg`（会一并装上），或自行安装后设 OPENSHORTS_FFPROBE');
-    throw new Error(`读不出时长（${file}）：${String(e.stderr || e.message).split('\n').filter(Boolean).slice(-1)[0]?.slice(0, 200)}`);
+    if (e.code === 'ENOENT') throw new Error(T('找不到 ffprobe：跑 `openshorts install-ffmpeg`（会一并装上），或自行安装后设 OPENSHORTS_FFPROBE', 'ffprobe not found: run `openshorts install-ffmpeg` (it installs both), or install it yourself and set OPENSHORTS_FFPROBE'));
+    throw new Error(T(`读不出时长（${file}）：${String(e.stderr || e.message).split('\n').filter(Boolean).slice(-1)[0]?.slice(0, 200)}`, `Could not read the duration of ${file}: ${String(e.stderr || e.message).split('\n').filter(Boolean).slice(-1)[0]?.slice(0, 200)}`));
   }
 }
 // 按二进制路径缓存：装完 `install-ffmpeg` 后 ffmpegPath() 会变，同一进程里不能再用旧结论
@@ -110,7 +120,8 @@ export function imageLayout(iw, ih, w = 1080, h = 1920, { maxZoom = 1.45, minFil
  * 在手机上是很难看下去的。候选本来就取了 3 条、也都打过分，以前只用第一名，另外两条打完分就扔了，
  * 正好拿来切镜头。只有一条候选时就不切（不硬凑），行为和以前完全一样。
  */
-export async function renderSegment({ clip, audio, durationSec, w = 1080, h = 1920, fps = 30, out, clipVolume = 0, signal, kind = 'video', panReverse = false, parts = null }) {
+export async function renderSegment({ clip, audio, durationSec, w = 1080, h = 1920, fps = 30, out, clipVolume = 0, signal, kind = 'video', panReverse = false, parts = null, lang = 'zh' }) {
+  const T = tt(lang);
   const list = parts?.length ? parts : [{ clip, kind, panReverse }];
   const each = durationSec / list.length;
   const prepared = [];
@@ -162,10 +173,10 @@ export async function renderSegment({ clip, audio, durationSec, w = 1080, h = 19
   const args = [...inputs, '-i', audio, '-t', String(durationSec),
     '-filter_complex', `${[...chains, joined, achain].join(';')}`,
     '-map', '[v]', '-map', '[a]', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '20', '-c:a', 'aac', '-b:a', '160k', out];
-  await ff(args, `渲染分段 ${path.basename(out)}`, signal);
+  await ff(args, T(`渲染分段 ${path.basename(out)}`, `Rendering segment ${path.basename(out)}`), signal, T);
   // 出过"退出码 0 但没有声音"的事，所以这里当场验一次，别让无声片一路跑到成片
   const packets = await audioPackets(out);
-  if (!packets) throw new Error(`渲染分段 ${path.basename(out)} 出来没有声音（ffmpeg ${await ffVersion()} 可能不吃这套参数），请提 issue 附上这行`);
+  if (!packets) throw new Error(T(`渲染分段 ${path.basename(out)} 出来没有声音（ffmpeg ${await ffVersion()} 可能不吃这套参数），请提 issue 附上这行`, `Segment ${path.basename(out)} came out silent (this ffmpeg ${await ffVersion()} may not accept these arguments) — please open an issue and include this line`));
   return out;
 }
 
@@ -176,16 +187,25 @@ export async function audioPackets(file) {
 }
 async function ffVersion() { try { return String((await run(FFMPEG(), ['-version'])).stdout).split('\n')[0].replace(/^ffmpeg version /, '').split(' ')[0]; } catch { return '?'; } }
 
-export async function concatSegments(files, out, { signal } = {}) {
+export async function concatSegments(files, out, { signal, lang = 'zh' } = {}) {
+  const T = tt(lang);
   const list = out + '.txt';
   fs.writeFileSync(list, files.map((f) => concatListLine(f)).join('\n'));
-  await ff(['-f', 'concat', '-safe', '0', '-i', list, '-c', 'copy', out], '拼接', signal);
+  await ff(['-f', 'concat', '-safe', '0', '-i', list, '-c', 'copy', out], T('拼接', 'Concatenating'), signal, T);
   fs.rmSync(list, { force: true });
   return out;
 }
 
+/**
+ * AI 角标的文字。按成片语言给——英文片右上角顶一个「AI 生成」，逐帧一看就出戏。
+ * drawtext 的单引号串里不能再出现单引号/反斜杠/冒号；来路虽然是代码常量，仍做一层兜底清洗，
+ * 清干净之后为空就退回 'AI'（生成 `text=''` 会让整条滤镜串失效）。
+ */
+export const drawtextLabel = (text) => String(text ?? '').replace(/['\\:]/g, '').trim() || 'AI';
+
 /** 字幕 + BGM + AI 标识角标；libass 缺失 → 软字幕轨并返回 note */
-export async function finalize({ video, ass, srt, bgm, bgmVolume = 0.2, aiLabel = true, out, w = 1080, h = 1920, signal }) {
+export async function finalize({ video, ass, srt, bgm, bgmVolume = 0.2, aiLabel = true, aiLabelText = 'AI 生成', subLang = 'chi', lang = 'zh', out, w = 1080, h = 1920, signal }) {
+  const T = tt(lang);
   const notes = [];
   const canBurn = ass && (await hasFilter('subtitles'));
   const inputs = ['-i', video]; const fc = [];
@@ -196,17 +216,20 @@ export async function finalize({ video, ass, srt, bgm, bgmVolume = 0.2, aiLabel 
   if (bgm && fs.existsSync(bgm)) { inputs.push('-stream_loop', '-1', '-i', bgm); fc.push(`[1:a]volume=${bgmVolume}[bg];[0:a][bg]amix=inputs=2:duration=first:dropout_transition=2,${norm}[am]`); a = '[am]'; }
   else { fc.push(`[0:a]${norm}[am]`); a = '[am]'; }
   if (canBurn) { fc.push(`[0:v]subtitles='${escapeFilterPath(ass)}'[sv]`); v = '[sv]'; }
-  else if (ass) notes.push('这台 ffmpeg 没有 libass（subtitles 滤镜），字幕只能挂软轨——抖音/视频号上传会丢掉它，纯色底的镜头会是一块空屏。跑 `openshorts install-ffmpeg` 装一份带 libass 的再重出（Homebrew 的 ffmpeg 已不含 libass，重装它没用）');
+  else if (ass) notes.push(T('这台 ffmpeg 没有 libass（subtitles 滤镜），字幕只能挂软轨——抖音/视频号上传会丢掉它，纯色底的镜头会是一块空屏。跑 `openshorts install-ffmpeg` 装一份带 libass 的再重出（Homebrew 的 ffmpeg 已不含 libass，重装它没用）',
+    'This ffmpeg has no libass (the subtitles filter), so captions can only ride as a soft track — short-video platforms drop it on upload and solid-color shots become blank screens. Run `openshorts install-ffmpeg` for a build with libass and re-render (reinstalling Homebrew\'s ffmpeg will not help, it no longer ships libass)'));
   // 角标也按宽度缩放（和字幕同一套 1080 基准），否则 540 宽的项目上会显得很大
   const k = w / 1080; const px = (n) => Math.max(1, Math.round(n * k));
-  if (aiLabel && (await hasFilter('drawtext'))) { fc.push(`${v.startsWith('[') ? v : '[0:v]'}drawtext=text='AI 生成':fontsize=${px(28)}:fontcolor=white@0.7:x=w-tw-${px(36)}:y=${px(36)}[lv]`); v = '[lv]'; }
-  else if (aiLabel) notes.push('ffmpeg 缺 drawtext，AI 标识只写入文件元数据（未叠加角标）；`openshorts install-ffmpeg` 可一并解决');
+  const label = drawtextLabel(aiLabelText);
+  if (aiLabel && (await hasFilter('drawtext'))) { fc.push(`${v.startsWith('[') ? v : '[0:v]'}drawtext=text='${label}':fontsize=${px(28)}:fontcolor=white@0.7:x=w-tw-${px(36)}:y=${px(36)}[lv]`); v = '[lv]'; }
+  else if (aiLabel) notes.push(T('ffmpeg 缺 drawtext，AI 标识只写入文件元数据（未叠加角标）；`openshorts install-ffmpeg` 可一并解决',
+    'This ffmpeg has no drawtext filter, so the AI label goes into the file metadata only (no on-screen badge); `openshorts install-ffmpeg` fixes this too'));
   const args = [...inputs];
   if (srt && !canBurn) args.push('-i', srt);
   if (fc.length) args.push('-filter_complex', fc.join(';'));
   args.push('-map', v, '-map', a);
-  if (srt && !canBurn) args.push('-map', `${bgm ? 2 : 1}:0`, '-c:s', 'mov_text', '-metadata:s:s:0', 'language=chi');
+  if (srt && !canBurn) args.push('-map', `${bgm ? 2 : 1}:0`, '-c:s', 'mov_text', '-metadata:s:s:0', `language=${/^[a-z]{3}$/.test(String(subLang)) ? subLang : 'chi'}`);   // 软字幕轨写死 chi 的话，英文片在播放器里会被标成中文音轨
   args.push('-metadata', 'comment=Generated with OpenShorts; contains AI-generated content', '-c:v', 'libx264', '-preset', 'medium', '-crf', '19', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart', out);
-  await ff(args, '成片合成', signal);
+  await ff(args, T('成片合成', 'Final mux'), signal, T);
   return { out, notes };
 }

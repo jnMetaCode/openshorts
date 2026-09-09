@@ -109,6 +109,7 @@ cd openshorts && npm install && npm run openshorts
 openshorts doctor                                   # 体检：ffmpeg / libass / 中文字体 / ulimit / 各画面来源
 openshorts install-ffmpeg                           # doctor 说缺 libass 时跑这个（字幕才能烧进画面）
 openshorts new koubo-kepu --topic "猫为什么总爱钻纸箱" --voice zh-CN-YunxiNeural --local-dir ./素材
+openshorts new --lang en --topic "why cats squeeze into boxes"   # 出英文片：脚本/音色/字幕断行整条链路按英文来
 openshorts run ~/OpenShorts/猫为什么总爱钻纸箱/project.json   # 0 元：Edge TTS + 素材库/本地素材 + 本机 ffmpeg
 openshorts run ~/OpenShorts/猫为什么总爱钻纸箱/project.json --only s2   # 只重出第 2 镜（换素材），其余复用
 openshorts install-image                             # 本机文生图模型（FLUX.1-schnell，Apache-2.0）：素材库没命中时现画一张

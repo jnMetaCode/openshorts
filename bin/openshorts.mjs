@@ -86,22 +86,29 @@ switch (cmd) {
     break;
   }
   case 'new': {
-    // openshorts new koubo-kepu --topic "…" [--duration 60秒] [--tone 科普讲解] [--voice zh-CN-YunxiNeural] [--local-dir ./素材]
-    const tpl = rest[0] && !rest[0].startsWith('--') ? rest[0] : 'koubo-kepu';
-    if (tpl !== 'koubo-kepu') { console.error(`口播线目前只有 koubo-kepu 一个模板（AI 短剧请用 openshorts drama）`); process.exit(1); }
-    const opt = parseOpts(rest.slice(1));
+    // openshorts new [koubo-kepu|koubo-explainer] --topic "…" [--lang en] [--duration 60秒] [--tone 科普讲解] [--voice zh-CN-YunxiNeural] [--local-dir ./素材]
+    const tpl = rest[0] && !rest[0].startsWith('--') ? rest[0] : '';
+    const opt = parseOpts(rest.slice(tpl ? 1 : 0));
+    const { langSpec, normLang, localizeInputs } = await import('../src/project/lang.mjs');
+    // 模板名与 --lang 是同一件事的两种写法：写 koubo-explainer 等于 --lang en
+    const lang = normLang(tpl === 'koubo-explainer' ? 'en' : (opt.lang ?? 'zh'));
+    const spec = langSpec(lang);
+    if (tpl && !['koubo-kepu', 'koubo-explainer'].includes(tpl)) { console.error(`口播线只有 koubo-kepu（中文）与 koubo-explainer（英文）两个模板（AI 短剧请用 openshorts drama）`); process.exit(1); }
+    // 模板名和 --lang 打架时报错，不猜：`new koubo-kepu --lang en` 静默换成英文模板的话，
+    // 用户拿到一条英文片还以为是自己模板写错了
+    if (tpl === 'koubo-kepu' && normLang(opt.lang ?? 'zh') === 'en') { console.error('koubo-kepu 是中文模板，--lang en 是英文——二选一（英文片直接用 openshorts new --lang en）'); process.exit(1); }
     if (!opt.topic) { console.error('缺 --topic "话题或文案"'); process.exit(1); }
     const { generateKoubo } = await import('../src/pipeline/koubo-script.mjs');
     const { uniqueProjectId } = await import('../src/project/koubo.mjs');
     const { readConfig } = await import('../src/config.mjs');
     const cfg = readConfig();
-    const wf = path.join(root, 'templates', 'koubo-kepu.yaml');
-    const inputs = { topic: opt.topic, duration: opt.duration || '60秒', tone: opt.tone || '科普讲解' };
-    console.log(`✍️  正在写脚本（${inputs.duration} · ${inputs.tone}）…`);
+    const wf = path.join(root, 'templates', spec.template);
+    const inputs = localizeInputs({ topic: opt.topic, duration: opt.duration || '60秒', tone: opt.tone || '科普讲解' }, lang);
+    console.log(`✍️  正在写脚本（${lang === 'en' ? 'English · ' : ''}${inputs.duration} · ${inputs.tone}）…`);
     let g;
     try {
-      g = await generateKoubo({ wf, inputs, log: (m) => console.log(`  ⟳ ${m}`),
-        buildDefaults: { voice: opt.voice || cfg.tts?.voice, captionPreset: opt.captions || 'douyin', localDirs: opt['local-dir'] ? [path.resolve(opt['local-dir'])] : [], bgm: opt.bgm ? path.resolve(opt.bgm) : null },
+      g = await generateKoubo({ wf, inputs, lang, log: (m) => console.log(`  ⟳ ${m}`),
+        buildDefaults: { voice: opt.voice || (String(cfg.tts?.voice ?? '').toLowerCase().startsWith(lang === 'en' ? 'en-' : 'zh-') ? cfg.tts.voice : spec.voice), captionPreset: opt.captions || 'douyin', localDirs: opt['local-dir'] ? [path.resolve(opt['local-dir'])] : [], bgm: opt.bgm ? path.resolve(opt.bgm) : null },
         aoOpts: { quiet: true, outputDir: path.join(cfg.outputDir, '.ao-runs'), ...(() => { const pv = opt.provider || cfg.text?.provider; const md = opt.model || (opt.provider ? undefined : cfg.text?.model); return pv ? { llmOverride: { provider: pv, ...(md ? { model: md } : {}) } } : {}; })() } });
     } catch (e) {
       // 最常见的是没配文本模型 key：一句话说清怎么配，不吐堆栈
@@ -295,6 +302,7 @@ function printHelp(out) {
                   openshorts install-image --list / --model flux-schnell-q4 [--force 重装]
   new       口播科普：openshorts new koubo-kepu --topic "…" [--duration 60秒] [--tone 科普讲解] [--voice …]
             [--captions douyin|clean] [--local-dir 素材夹] [--bgm x.mp3] [--provider deepseek --model deepseek-chat]
+            英文成片：加 --lang en（等同于 openshorts new koubo-explainer）——脚本、音色、字幕断行全部按英文来
   run       出片：openshorts run <project.json> [--only s2,s3]（只重出这几镜，其余复用）
             [--no-local-image]（关掉"素材库没命中就本机出图"，直接退纯色底）
             [--vision-provider agnes --vision-model agnes-2.0-flash]（候选素材看图排序）

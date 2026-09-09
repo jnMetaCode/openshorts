@@ -8,8 +8,9 @@ import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { readConfig, writeConfig, aoHome } from '../src/config.mjs';
 import { sourcesAvailability } from '../src/sources/availability.mjs';
-import { DEFAULT_VOICES, synthesize } from '../src/voice/edge-tts.mjs';
+import { DEFAULT_VOICES, voicesFor, synthesize } from '../src/voice/edge-tts.mjs';
 import { uniqueProjectId } from '../src/project/koubo.mjs';
+import { langSpec, normLang, localizeInputs, tt } from '../src/project/lang.mjs';
 import { generateKoubo } from '../src/pipeline/koubo-script.mjs';
 import { runKoubo } from '../src/pipeline/koubo-run.mjs';
 
@@ -18,6 +19,16 @@ export const kaipian = express.Router();
 const safe = (id) => String(id).replace(/[\\/:*?"<>|]/g, '').replace(/\.\./g, '').trim();
 const projDir = (id) => path.join(readConfig().outputDir, safe(id));
 const mask = (k) => (k ? `${k.slice(0, 4)}…${k.slice(-3)}` : '');
+/**
+ * 报错文案的语言。**优先跟着项目走**：英文项目的报错就该是英文，跟用户此刻界面切到哪儿无关
+ * （报错常常是事后翻日志看的）。项目读不到才看请求上的 lang，最后才回落中文。
+ * 界面把这些 error 原样显示——不在这里定语言的话，英文用户一遇到问题就掉回中文。
+ */
+const reqLang = (req) => normLang(req?.query?.lang ?? req?.body?.lang ?? 'zh');
+const projLang = (id, req) => {
+  try { return normLang(JSON.parse(fs.readFileSync(path.join(projDir(id), 'project.json'), 'utf-8')).lang); }
+  catch { return reqLang(req); }
+};
 
 kaipian.get('/sources', (req, res) => res.json(sourcesAvailability({ lang: req.query.lang === 'en' ? 'en' : 'zh' })));
 kaipian.get('/doctor', async (_req, res, next) => { try { const { doctor } = await import('../src/doctor.mjs'); res.json(await doctor()); } catch (e) { next(e); } });
@@ -27,8 +38,8 @@ kaipian.put('/config', (req, res) => {
   // 输出目录必须真能写：先建、再试写，失败 400——否则下一次出片才在最后一步炸
   if (b.outputDir) {
     const od = path.resolve(String(b.outputDir));
-    if (od === path.parse(od).root) return res.status(400).json({ error: '输出目录不能是文件系统根目录' });
-    try { fs.mkdirSync(od, { recursive: true }); fs.accessSync(od, fs.constants.W_OK); } catch { return res.status(400).json({ error: `输出目录不可写：${od}` }); }
+    if (od === path.parse(od).root) return res.status(400).json({ error: tt(reqLang(req))('输出目录不能是文件系统根目录', 'The output directory cannot be the filesystem root') });
+    try { fs.mkdirSync(od, { recursive: true }); fs.accessSync(od, fs.constants.W_OK); } catch { return res.status(400).json({ error: tt(reqLang(req))(`输出目录不可写：${od}`, `Output directory is not writable: ${od}`) }); }
     b.outputDir = od;
   }
   const next = { ...cur, ...(b.outputDir ? { outputDir: b.outputDir } : {}), tts: { ...cur.tts, ...(b.tts ?? {}) }, vision: { ...(cur.vision ?? {}), ...(b.vision ?? {}) }, text: { ...(cur.text ?? {}), ...(b.text ?? {}) }, stock: { ...cur.stock } };
@@ -52,29 +63,37 @@ kaipian.post('/stock/test', async (req, res) => {
     pixabay: await test(searchPixabay, pick(b.pixabayKey, cur.stock?.pixabayKey)),
   });
 });
-kaipian.get('/voices', (_req, res) => res.json(DEFAULT_VOICES));
+// 出片语言决定音色：英文片配中文音色会把整段英文念成拼音式怪腔（真机试听过一次就明白）
+kaipian.get('/voices', (req, res) => res.json(req.query.lang ? voicesFor(req.query.lang) : DEFAULT_VOICES));
 kaipian.post('/tts/preview', async (req, res, next) => {
   try {
-    const text = String(req.body?.text ?? '你好，这是开片的配音试听。').slice(0, 80);
-    const r = await synthesize(text, { voice: req.body?.voice || 'zh-CN-XiaoxiaoNeural' });
+    const spec = langSpec(req.body?.lang);
+    const text = String(req.body?.text ?? spec.ttsSample).slice(0, 80);
+    const r = await synthesize(text, { voice: req.body?.voice || spec.voice });
     res.json({ dataUrl: `data:audio/mpeg;base64,${r.buffer.toString('base64')}`, durationMs: r.durationMs });
   } catch (e) { next(e); }
 });
 kaipian.post('/new', async (req, res, next) => {
   try {
     const b = req.body ?? {};
-    if (!String(b.topic ?? '').trim()) return res.status(400).json({ error: '请输入话题或文案' });
+    if (!String(b.topic ?? '').trim()) return res.status(400).json({ error: tt(reqLang(req))('请输入话题或文案', 'Enter a topic or a script') });
     const cfg = readConfig();
-    const inputs = { topic: String(b.topic).trim(), duration: b.duration || '60秒', tone: b.tone || '科普讲解' };
+    const lang = normLang(b.lang); const spec = langSpec(lang);
+    // 时长/语气从界面上来的一律是中文选项值（英文只是显示层翻译）——英文模板要的是英文，
+    // 不翻的话提示词里会出现「{{duration}} = 60秒」，模型多半跟着改用中文写正文
+    const inputs = localizeInputs({ topic: String(b.topic).trim(), duration: b.duration || '60秒', tone: b.tone || '科普讲解' }, lang);
     // 侧栏选的模型要真的用上：不传 llmOverride 的话 AO 会用它自己的默认供应商，
     // 用户在界面里选了 agnes 却跑去调 deepseek，报"缺 key"时一头雾水
     const over = cfg.text?.provider ? { llmOverride: { provider: cfg.text.provider, ...(cfg.text.model ? { model: cfg.text.model } : {}) } } : {};
+    // 配的中文音色不能带进英文片：英文文本用中文音色念出来是一口怪腔，
+    // 而 cfg.tts.voice 是全局默认（用户为中文片选的），语言不匹配时按语言回落
+    const voice = b.voice || (String(cfg.tts?.voice ?? '').toLowerCase().startsWith(lang === 'en' ? 'en-' : 'zh-') ? cfg.tts.voice : spec.voice);
     // 与 CLI 同一份编排：脚本长度不达标或 JSON 写坏会自动重写一次（generateKoubo）
-    const g = await generateKoubo({ wf: path.join(root, 'templates', 'koubo-kepu.yaml'), inputs,
-      buildDefaults: { voice: b.voice || cfg.tts?.voice, captionPreset: b.captions || 'douyin', captionStyle: b.captionStyle && typeof b.captionStyle === 'object' ? b.captionStyle : {}, visualSource: b.source || 'stock', localDirs: b.localDir ? [path.resolve(String(b.localDir))] : [], bgm: b.bgm ? path.resolve(String(b.bgm)) : null },
+    const g = await generateKoubo({ wf: path.join(root, 'templates', spec.template), inputs, lang,
+      buildDefaults: { voice, captionPreset: b.captions || 'douyin', captionStyle: b.captionStyle && typeof b.captionStyle === 'object' ? b.captionStyle : {}, visualSource: b.source || 'stock', localDirs: b.localDir ? [path.resolve(String(b.localDir))] : [], bgm: b.bgm ? path.resolve(String(b.bgm)) : null },
       aoOpts: { quiet: true, outputDir: path.join(cfg.outputDir, '.ao-runs'), ...over } });
-    if (!g.ok && g.kind === 'run') return res.status(502).json({ error: '脚本生成失败：' + g.res.steps.filter((s) => s.status === 'failed').map((s) => `${s.id}: ${s.error}`).join('；') });
-    if (!g.ok) return res.status(502).json({ error: `脚本写出来了但解析不了（已自动重写一次仍失败）：${String(g.error.message).split('\n')[0]}。再试一次，或在设置里换个文本模型。` });
+    if (!g.ok && g.kind === 'run') return res.status(502).json({ error: tt(lang)('脚本生成失败：', 'Script generation failed: ') + g.res.steps.filter((s) => s.status === 'failed').map((s) => `${s.id}: ${s.error}`).join(tt(lang)('；', '; ')) });
+    if (!g.ok) return res.status(502).json({ error: tt(lang)(`脚本写出来了但解析不了（已自动重写一次仍失败）：${String(g.error.message).split('\n')[0]}。再试一次，或在设置里换个文本模型。`, `The model wrote a script but it could not be parsed (one automatic rewrite already failed): ${String(g.error.message).split('\n')[0]}. Try again, or pick a different text model in settings.`) });
     const project = g.project;
     project.id = uniqueProjectId(cfg.outputDir, safe(project.id));   // 同话题再跑一次不该覆盖上一条片子
     fs.mkdirSync(projDir(project.id), { recursive: true });
@@ -88,9 +107,9 @@ kaipian.get('/projects', (_req, res) => {
   for (const n of fs.readdirSync(out)) { const f = path.join(out, n, 'project.json'); if (!fs.existsSync(f)) continue; try { const p = JSON.parse(fs.readFileSync(f, 'utf-8')); list.push({ id: p.id, title: p.title, line: p.line, shots: p.shots?.length ?? 0, final: !!p.final?.file, updatedAt: fs.statSync(f).mtime.toISOString() }); } catch { /* skip */ } }
   res.json(list.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)));
 });
-kaipian.get('/projects/:id', (req, res) => { const f = path.join(projDir(req.params.id), 'project.json'); if (!fs.existsSync(f)) return res.status(404).json({ error: '项目不存在' }); res.json(JSON.parse(fs.readFileSync(f, 'utf-8'))); });
+kaipian.get('/projects/:id', (req, res) => { const f = path.join(projDir(req.params.id), 'project.json'); if (!fs.existsSync(f)) return res.status(404).json({ error: tt(reqLang(req))('项目不存在', 'No such project') }); res.json(JSON.parse(fs.readFileSync(f, 'utf-8'))); });
 kaipian.put('/projects/:id', (req, res) => {
-  const f = path.join(projDir(req.params.id), 'project.json'); if (!fs.existsSync(f)) return res.status(404).json({ error: '项目不存在' });
+  const f = path.join(projDir(req.params.id), 'project.json'); if (!fs.existsSync(f)) return res.status(404).json({ error: tt(reqLang(req))('项目不存在', 'No such project') });
   const cur = JSON.parse(fs.readFileSync(f, 'utf-8')); const b = req.body ?? {};
   // 只允许改文案/画面意图/检索词/音色/字幕预设/来源，不允许改路径类字段
   if (Array.isArray(b.shots)) cur.shots = cur.shots.map((s) => { const e = b.shots.find((x) => x.id === s.id); return e ? { ...s, text: String(e.text ?? s.text), query: String(e.query ?? s.query), visualIntent: String(e.visualIntent ?? s.visualIntent), visual: e.resetVisual ? { ...s.visual, file: null, candidateId: null, source: null } : s.visual } : s; });
@@ -104,8 +123,8 @@ kaipian.put('/projects/:id', (req, res) => {
 const running = new Map();   // projectId -> AbortController
 kaipian.get('/projects/:id/run', async (req, res) => {
   const id = safe(req.params.id);
-  const f = path.join(projDir(id), 'project.json'); if (!fs.existsSync(f)) return res.status(404).json({ error: '项目不存在' });
-  if (running.has(id)) return res.status(409).json({ error: '这个项目正在出片，等它跑完或先取消' });
+  const f = path.join(projDir(id), 'project.json'); if (!fs.existsSync(f)) return res.status(404).json({ error: tt(reqLang(req))('项目不存在', 'No such project') });
+  if (running.has(id)) return res.status(409).json({ error: tt(projLang(id, req))('这个项目正在出片，等它跑完或先取消', 'This project is already rendering — wait for it to finish, or cancel it first') });
   res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' });
   const send = (ev, data) => res.write(`event: ${ev}\ndata: ${JSON.stringify(data)}\n\n`);
   const ac = new AbortController(); running.set(id, ac);
@@ -122,7 +141,7 @@ kaipian.get('/projects/:id/run', async (req, res) => {
 });
 kaipian.post('/projects/:id/cancel', (req, res) => {
   const ac = running.get(safe(req.params.id));
-  if (!ac) return res.status(404).json({ error: '这个项目没有在跑' });
+  if (!ac) return res.status(404).json({ error: tt(projLang(safe(req.params.id), req))('这个项目没有在跑', 'This project is not running') });
   ac.abort(); res.json({ ok: true });
 });
 
@@ -178,8 +197,8 @@ kaipian.get('/providers/text', async (_req, res, next) => {
 kaipian.post('/ao-keys', (req, res) => {
   const provider = String(req.body?.provider ?? '').trim();
   const apiKey = String(req.body?.apiKey ?? '').trim();
-  if (!/^[a-z0-9-]{2,32}$/.test(provider)) return res.status(400).json({ error: '供应商 id 不合法' });
-  if (!apiKey || apiKey.includes('…')) return res.status(400).json({ error: '请粘贴完整的 key' });
+  if (!/^[a-z0-9-]{2,32}$/.test(provider)) return res.status(400).json({ error: tt(reqLang(req))('供应商 id 不合法', 'Invalid provider id') });
+  if (!apiKey || apiKey.includes('…')) return res.status(400).json({ error: tt(reqLang(req))('请粘贴完整的 key', 'Paste the full key') });
   writeAoKey(provider, apiKey);
   res.json({ ok: true, saved: Object.keys(readAoKeys()).filter((k) => readAoKeys()[k]?.apiKey) });
 });
@@ -187,7 +206,7 @@ kaipian.post('/ao-keys', (req, res) => {
 /** 存之前先拿它真发一次请求：key 打错、余额没了、模型 id 不对，都在这里就说清楚，别等到出片时才炸 */
 kaipian.post('/ao-keys/test', async (req, res) => {
   const { provider, model, apiKey } = req.body ?? {};
-  if (!provider || !model) return res.status(400).json({ error: '要选供应商和模型' });
+  if (!provider || !model) return res.status(400).json({ error: tt(reqLang(req))('要选供应商和模型', 'Pick a provider and a model') });
   try {
     const { createConnector } = await import('agency-orchestrator');
     const key = apiKey && !String(apiKey).includes('…') ? String(apiKey) : readAoKeys()[provider]?.apiKey;
@@ -298,7 +317,7 @@ kaipian.get('/drama/options', async (_req, res) => {
 });
 kaipian.post('/drama/preflight', async (req, res) => {
   const inputs = dramaInputs(req.body ?? {});
-  if (!inputs.story) return res.status(400).json({ error: '请输入故事' });
+  if (!inputs.story) return res.status(400).json({ error: tt(reqLang(req))('请输入故事', 'Enter a story') });
   const { cli, wf } = aoCli();
   const { status, out } = await runAoCapture([cli, 'plan', wf, ...inputArgs(inputs)]);
   const lines = out.split('\n').map((l) => l.trim()).filter((l) => /^(🎬|🎨|🎙|🎞|·|合计)/.test(l));
@@ -354,10 +373,10 @@ function streamAoRun({ req, res, args, runsDir, onDone }) {
 }
 kaipian.get('/drama/run', (req, res) => {
   const q = req.query; const inputs = dramaInputs(q);
-  if (!inputs.story) return res.status(400).json({ error: '请输入故事' });
+  if (!inputs.story) return res.status(400).json({ error: tt(reqLang(req))('请输入故事', 'Enter a story') });
   // 工作流里 image_model 是必填无默认（定妆图用）：这里不拦的话 AO 会在 spawn 后立刻退出码 1
-  if (!inputs.image_model) return res.status(400).json({ error: '请选择定妆图的图片模型（image_model）——界面在「画面来源」里选，API 传 image_provider / image_model' });
-  if (dramaChild) return res.status(409).json({ error: '已有一条短剧在跑（按秒计费，不允许并行）——等它跑完，或关掉那个页面取消' });
+  if (!inputs.image_model) return res.status(400).json({ error: tt(reqLang(req))('请选择定妆图的图片模型（image_model）——界面在「画面来源」里选，API 传 image_provider / image_model', 'Pick an image model for the character sheet (image_model) — in the UI it is under "Visual sources"; over the API pass image_provider / image_model') });
+  if (dramaChild) return res.status(409).json({ error: tt(reqLang(req))('已有一条短剧在跑（按秒计费，不允许并行）——等它跑完，或关掉那个页面取消', 'A mini-drama is already running (billed per second, no parallel runs) — wait for it, or close that page to cancel') });
   const { cli, wf } = aoCli(); const cfg = readConfig();
   const runsDir = path.join(cfg.outputDir, '.ao-runs'); fs.mkdirSync(runsDir, { recursive: true });
   const args = [cli, 'run', wf, '--output', runsDir, ...inputArgs(inputs)];
@@ -402,11 +421,11 @@ function finishDramaRun({ runDir, inputs, tier, existingId, shotSources, llm = n
 // 单镜重出：AO --resume <上次运行> --from <镜头> [--feedback 意见] [-i video_provider=…]（换来源）。
 // 下游（合成）会自动跟着重跑；上游（剧本/定妆图/其他镜头）原样复用，不再花钱。
 kaipian.get('/projects/:id/drama/redo', (req, res) => {
-  const f = path.join(projDir(req.params.id), 'project.json'); if (!fs.existsSync(f)) return res.status(404).json({ error: '项目不存在' });
+  const f = path.join(projDir(req.params.id), 'project.json'); if (!fs.existsSync(f)) return res.status(404).json({ error: tt(reqLang(req))('项目不存在', 'No such project') });
   const prev = JSON.parse(fs.readFileSync(f, 'utf-8')); const q = req.query;
-  const shot = String(q.shot || ''); if (!/^(shot[123]|character)$/.test(shot)) return res.status(400).json({ error: '只能重出 character / shot1 / shot2 / shot3' });
-  if (!prev.final?.aoRun || !fs.existsSync(prev.final.aoRun)) return res.status(409).json({ error: '找不到上次的 AO 运行目录，无法续跑（可能被清理了）' });
-  if (dramaChild) return res.status(409).json({ error: '已有一条短剧在跑（按秒计费，不允许并行）——等它跑完，或关掉那个页面取消' });
+  const shot = String(q.shot || ''); if (!/^(shot[123]|character)$/.test(shot)) return res.status(400).json({ error: tt(reqLang(req))('只能重出 character / shot1 / shot2 / shot3', 'Only character / shot1 / shot2 / shot3 can be redone') });
+  if (!prev.final?.aoRun || !fs.existsSync(prev.final.aoRun)) return res.status(409).json({ error: tt(reqLang(req))('找不到上次的 AO 运行目录，无法续跑（可能被清理了）', 'Cannot find the previous engine run directory, so there is nothing to resume from (it may have been cleaned up)') });
+  if (dramaChild) return res.status(409).json({ error: tt(reqLang(req))('已有一条短剧在跑（按秒计费，不允许并行）——等它跑完，或关掉那个页面取消', 'A mini-drama is already running (billed per second, no parallel runs) — wait for it, or close that page to cancel') });
   const { cli, wf } = aoCli(); const cfg = readConfig(); const runsDir = path.join(cfg.outputDir, '.ao-runs');
   // 换来源：本镜的 tier 覆盖只影响这次 -i；记进 shotSources 让标注正确
   const inputs = { ...prev.inputs };
@@ -432,7 +451,7 @@ async function localModule() { const main = fileURLToPath(import.meta.resolve('a
 kaipian.get('/local/status', async (_req, res, next) => { try { const m = await localModule(); res.json({ ...m.localSdcppStatus(), catalog: m.LOCAL_MODELS, license: 'MiniMax-H3 Community License（含适用地域与用途限制）：https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/LICENSE' }); } catch (e) { next(e); } });
 kaipian.get('/local/install', async (req, res) => {
   const q = req.query; const what = String(q.what || ''); const modelId = String(q.model || 'minimax-h3-q2');
-  if (q.agree !== '1') return res.status(400).json({ error: '下载前需确认已阅读 MiniMax-H3 Community License 与 stable-diffusion.cpp 的 MIT 许可' });
+  if (q.agree !== '1') return res.status(400).json({ error: tt(reqLang(req))('下载前需确认已阅读 MiniMax-H3 Community License 与 stable-diffusion.cpp 的 MIT 许可', 'Confirm you have read the MiniMax-H3 Community License and the MIT license of stable-diffusion.cpp before downloading') });
   res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' });
   const send = (ev, data) => res.write(`event: ${ev}\ndata: ${JSON.stringify(data)}\n\n`);
   const ac = new AbortController(); req.on('close', () => ac.abort());
@@ -459,16 +478,16 @@ kaipian.get('/local/install', async (req, res) => {
 });
 // 链接 → 正文（口播线输入）：只抓公开页，超时 20 s，正文 ≤ 6000 字
 import { fetchArticle } from '../src/input/url-text.mjs';
-kaipian.post('/fetch-url', async (req, res, next) => { try { res.json(await fetchArticle(String(req.body?.url ?? '').trim())); } catch (e) { res.status(400).json({ error: e.message }); } });
+kaipian.post('/fetch-url', async (req, res, next) => { try { res.json(await fetchArticle(String(req.body?.url ?? '').trim(), { lang: reqLang(req) })); } catch (e) { res.status(400).json({ error: e.message }); } });
 
 // 批量（口播线）：SSE，逐版进度；产物在 <项目>/variants/<id>/
 import { planVariants, runBatch } from '../src/pipeline/batch.mjs';
 kaipian.get('/projects/:id/batch', async (req, res) => {
-  const f = path.join(projDir(req.params.id), 'project.json'); if (!fs.existsSync(f)) return res.status(404).json({ error: '项目不存在' });
-  const project = JSON.parse(fs.readFileSync(f, 'utf-8')); if (project.line !== 'koubo') return res.status(400).json({ error: '批量目前只支持口播线' });
+  const f = path.join(projDir(req.params.id), 'project.json'); if (!fs.existsSync(f)) return res.status(404).json({ error: tt(reqLang(req))('项目不存在', 'No such project') });
+  const project = JSON.parse(fs.readFileSync(f, 'utf-8')); const T = tt(normLang(project.lang)); if (project.line !== 'koubo') return res.status(400).json({ error: T('批量目前只支持口播线', 'Batch versions are only supported on the talking-head line') });
   const split = (x) => (x ? String(x).split(',').map((t) => t.trim()).filter(Boolean) : []);
   const variants = planVariants({ voices: split(req.query.voices), captions: split(req.query.captions), rates: split(req.query.rates).map(Number) }, project);
-  if (variants.length > 12) return res.status(400).json({ error: '一次最多 12 版' });
+  if (variants.length > 12) return res.status(400).json({ error: T('一次最多 12 版', 'At most 12 versions at a time') });
   res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' });
   const send = (ev, data) => res.write(`event: ${ev}\ndata: ${JSON.stringify(data)}\n\n`);
   send('plan', { variants });
@@ -481,7 +500,7 @@ kaipian.get('/projects/:id/batch', async (req, res) => {
 import { makePublishPack, PLATFORMS } from '../src/publish/pack.mjs';
 kaipian.get('/platforms', (_req, res) => res.json(PLATFORMS));
 kaipian.post('/projects/:id/publish-pack', (req, res) => {
-  const f = path.join(projDir(req.params.id), 'project.json'); if (!fs.existsSync(f)) return res.status(404).json({ error: '项目不存在' });
+  const f = path.join(projDir(req.params.id), 'project.json'); if (!fs.existsSync(f)) return res.status(404).json({ error: tt(reqLang(req))('项目不存在', 'No such project') });
   try { const r = makePublishPack(JSON.parse(fs.readFileSync(f, 'utf-8')), { platform: req.body?.platform || 'douyin' }); res.json({ ...r, zipName: r.zip ? path.basename(r.zip) : null }); } catch (e) { res.status(400).json({ error: e.message }); }
 });
 

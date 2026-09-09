@@ -15,7 +15,7 @@ export function planVariants({ voices = [], captions = [], rates = [] }, base) {
   // 点号也不能留：留了 ".." 就还能往上跳；语速本来就是数字，小数点换成下划线。
   const clean = (x) => String(x).replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 40) || 'v';
   const rateTag = (r) => String(Number(r)).replace('.', '_');
-  for (const v of vs) for (const c of cs) for (const r of rs) out.push({ id: `${clean(v.replace(/^zh-CN-|Neural$/g, ''))}-${clean(c)}${Number(r) !== 1 ? `-x${rateTag(r)}` : ''}`, voice: v, captions: c, rate: Number(r) });
+  for (const v of vs) for (const c of cs) for (const r of rs) out.push({ id: `${clean(v.replace(/^(zh-CN|en-US|en-GB|en-AU)-|Neural$/g, ''))}-${clean(c)}${Number(r) !== 1 ? `-x${rateTag(r)}` : ''}`, voice: v, captions: c, rate: Number(r) });
   return out;
 }
 

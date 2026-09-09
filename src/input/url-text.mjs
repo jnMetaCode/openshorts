@@ -19,6 +19,7 @@ export function extractArticle(html, url = '') {
   return { title: text(title), text: t, chars: [...t].length, url };
 }
 
+import { tt } from '../project/lang.mjs';
 import dns from 'node:dns/promises';
 import net from 'node:net';
 /** 内网 / 环回 / 链路本地 / 元数据地址一律拒绝——本机服务也不该替页面去访问内网（SSRF） */
@@ -34,8 +35,11 @@ export async function assertPublicHost(url, { resolve = (h) => dns.lookup(h, { a
   if (addrs.some((a) => isPrivateAddress(a.address))) throw new Error('不抓本机或内网地址');
 }
 
-export async function fetchArticle(url, { fetchImpl = fetch, maxChars = 6000, resolve } = {}) {
-  if (!/^https?:\/\//i.test(url)) throw new Error('请输入 http(s) 链接');
+export async function fetchArticle(url, { fetchImpl = fetch, maxChars = 6000, resolve, lang = 'zh' } = {}) {
+  // 报错与截断提示都要跟着出片语言走：截断那句会**跟正文一起**被塞进提示词，
+  // 一句中文混进英文模板，模型多半跟着改用中文写正文
+  const T = tt(lang);
+  if (!/^https?:\/\//i.test(url)) throw new Error(T('请输入 http(s) 链接', 'Enter an http(s) link'));
   // 重定向逐跳自己走：redirect:'follow' 只校验第一跳，公网域名 302 到 169.254.169.254 或
   // 127.0.0.1 就把上面的校验全绕过了。20s 是整条链的总限时，不是每跳各 20s——
   // 否则慢吞吞吐 301 的站能把"超时 20s"的承诺拖成 2 分钟
@@ -45,13 +49,13 @@ export async function fetchArticle(url, { fetchImpl = fetch, maxChars = 6000, re
     await assertPublicHost(cur, resolve ? { resolve } : {});
     r = await fetchImpl(cur, { headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh) AppleWebKit/537.36 OpenShorts/2.0', Accept: 'text/html,*/*' }, redirect: 'manual', signal: deadline });
     if (![301, 302, 303, 307, 308].includes(r.status)) break;
-    const loc = r.headers.get('location'); if (!loc) throw new Error(`抓取失败 HTTP ${r.status}（重定向没给目标）`);
-    if (hop >= 5) throw new Error('重定向次数过多');
+    const loc = r.headers.get('location'); if (!loc) throw new Error(T(`抓取失败 HTTP ${r.status}（重定向没给目标）`, `Fetch failed with HTTP ${r.status} (redirect gave no target)`));
+    if (hop >= 5) throw new Error(T('重定向次数过多', 'Too many redirects'));
     cur = new URL(loc, cur).href;
   }
-  if (!r.ok) throw new Error(`抓取失败 HTTP ${r.status}`);
+  if (!r.ok) throw new Error(T(`抓取失败 HTTP ${r.status}`, `Fetch failed with HTTP ${r.status}`));
   const a = extractArticle(await r.text(), url);
-  if (a.chars < 80) throw new Error('抓到的正文太短（可能需要登录或是纯前端渲染页）——请把文章内容直接粘贴进来');
-  if (a.chars > maxChars) a.text = [...a.text].slice(0, maxChars).join('') + '\n…（已截断到 ' + maxChars + ' 字）';
+  if (a.chars < 80) throw new Error(T('抓到的正文太短（可能需要登录或是纯前端渲染页）——请把文章内容直接粘贴进来', 'The extracted text is too short (the page may need a login, or renders entirely in the browser) — paste the article text in directly'));
+  if (a.chars > maxChars) a.text = [...a.text].slice(0, maxChars).join('') + T(`\n…（已截断到 ${maxChars} 字）`, `\n… (truncated at ${maxChars} characters)`);
   return a;
 }

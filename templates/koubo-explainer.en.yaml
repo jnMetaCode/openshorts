@@ -1,0 +1,75 @@
+name: "Talking-head explainer (EN)"
+description: "Topic or draft → segmented narration script (hook / points / outro, one visual intent + stock query each) → titles / tags / publish note. Visuals, voice-over, captions and compositing are done by OpenShorts from the project JSON. English twin of 口播科普——keep the two in sync when either changes."
+agents_dir: "agency-agents"
+llm:
+  provider: "deepseek"
+  model: "deepseek-chat"
+  # Give the budget room: reasoning models (Agnes / DeepSeek-Reasoner and friends) emit
+  # hundreds to thousands of thinking tokens first. Too small a budget and the whole
+  # allowance goes to thinking while visible content comes back empty — that really
+  # happened on the meta step, and the result was a video with no title, no tags, no note.
+  max_tokens: 4000
+
+inputs:
+  - name: topic
+    label: "Topic or script"
+    required: true
+  - name: duration
+    label: "Target length"
+    options: ["45 seconds", "60 seconds", "90 seconds"]
+    default: "60 seconds"
+  - name: tone
+    label: "Tone"
+    options: ["explainer", "sharp opinion", "casual talk"]
+    default: "explainer"
+
+steps:
+  - id: script
+    role: "marketing/marketing-content-creator"
+    name: "Narration script"
+    emoji: "✍️"
+    task: |
+      Write a {{duration}} vertical short-video narration script about «{{topic}}». Tone: {{tone}}.
+      Output one JSON object only — no explanation, no code fences:
+      {"hook": "opening hook (readable in ≤ 3 seconds; one counter-intuitive line or a question)",
+       "segments": [
+         {"id": "s1", "text": "the narration for this segment (spoken English, 1–2 sentences, readable in 8 seconds)",
+          "visualIntent": "what this segment should show the viewer (one sentence)",
+          "query": "english stock footage query, concrete nouns, 3-6 words",
+          "imagePrompt": "english text-to-image prompt: one concrete scene, subject + setting + lighting, 10-20 words",
+          "emphasis": ["1–2 keywords to highlight in the captions"]}
+       ],
+       "outro": "closing line (takeaway + a follow / call to action)"}
+      Rules: 3–5 segments (the hook and outro are not counted, though each also gets its own visual); one visual intent per segment; `query` must be something a stock library can actually find (e.g. "cat inside cardboard box close up"), never an abstract word (e.g. "psychology");
+      `query` and `imagePrompt` are used for different things: `query` searches the stock library by keyword (shorter is better), `imagePrompt` is handed to the local text-to-image model when nothing is found, so it must describe one complete, paintable scene (subject + setting + lighting), not an abstract concept; `imagePrompt` must never ask for text, labels or chart annotations in the picture (text-to-image models spell them wrong — on a real run "Magnetic" came out as "Magectic") — express a contrast or a structure with pure shapes instead (two globes, a dashed path); the captions will carry the words;
+      total narration = target seconds × 2.9 words (the measured Edge TTS rate for English voices), and it **must** land inside ±10%: 45 seconds → 117–144 words, 60 seconds → 157–191 words, 90 seconds → 235–287 words. Writing short makes the video visibly shorter than asked and writing long overshoots the same way (on real runs both happened in Chinese with the equivalent rule);
+      no film/TV IP, no celebrity names, no descriptions of real people's likenesses; **the narration must be plain spoken English** — no Chinese characters or other non-Latin script anywhere in `text` or `hook` or `outro` (an English voice mangles or skips them, and they show up as tofu boxes in the captions); no formulas, no code, no symbols a TTS engine cannot pronounce.
+    assert:
+      contains: ["\"segments\"", "\"hook\"", "\"outro\""]
+      min_bytes: 300
+      max_bytes: 5000
+    acceptance: |
+      1. The hook is a counter-intuitive statement or a question, not a "hey everyone" greeting
+      2. Every segment's text is conversational and readable within 8 seconds
+      3. Every segment's query is a concrete, searchable English shot description (a noun subject and a setting), not an abstract concept
+      4. Every text is plain spoken English with no Chinese or other non-Latin characters
+      5. hook + all segment texts + outro total within ±10% of «target seconds × 2.9 words» (outside that range the length is wrong — send it back for a rewrite)
+      6. No film/TV IP names and no celebrity names anywhere
+    output: segments_json
+
+  - id: meta
+    role: "marketing/marketing-tiktok-strategist"
+    name: "Titles & publishing"
+    emoji: "📣"
+    task: |
+      Given the narration script below, write the publishing info. Output one JSON object only — no explanation, no code fences:
+      {"titles": ["title 1", "title 2", "title 3"], "tags": ["tag1", "…5 in total, no # sign"],
+       "publishNote": "one-line publishing note (≤ 25 words)", "aiLabel": "This video contains AI-generated visuals and voice-over"}
+      Rules: titles ≤ 12 words, hooky but not misleading; tags are the common hot terms on the platform; publishNote is written for the person doing the posting.
+
+      {{segments_json}}
+    assert:
+      contains: ["\"titles\"", "\"tags\""]
+      max_bytes: 2000
+    output: meta_json
+    depends_on: [script]

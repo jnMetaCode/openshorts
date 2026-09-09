@@ -1,5 +1,6 @@
 import fsSync from 'node:fs';
 import pathSync from 'node:path';
+import { langSpec, normLang, textLength } from './lang.mjs';
 /**
  * 口播线项目 JSON（架构 §2）：由 AO 跑完「口播科普」模板的结果（segments_json / meta_json）构建。
  * 镜头 = 钩子 + 各段 + 收尾；每镜先只带文案与画面意图，画面/配音/字幕由 run 阶段填。纯函数。
@@ -39,7 +40,8 @@ export function parseJsonLoose(text) {
   }
 }
 
-export function buildKouboProject(aoResult, { id, topic, inputs = {}, output = { w: 1080, h: 1920, fps: 30, platform: 'douyin' }, defaults = {} } = {}) {
+export function buildKouboProject(aoResult, { id, topic, inputs = {}, output = { w: 1080, h: 1920, fps: 30, platform: 'douyin' }, defaults = {}, lang = 'zh' } = {}) {
+  const L = normLang(lang); const spec = langSpec(L);
   const step = (sid) => aoResult.steps?.find((s) => s.id === sid);
   const script = parseJsonLoose(step('script')?.output);
   // meta 失败以前是默默吞掉的：用户拿到一条没有标题、没有话题、没有发布说明的片子，一句提示都没有。
@@ -57,20 +59,21 @@ export function buildKouboProject(aoResult, { id, topic, inputs = {}, output = {
   return {
     schemaVersion: 2,
     id: id ?? slug(topic ?? aoResult.name ?? 'koubo'),
-    template: 'koubo-kepu', line: 'koubo',
+    // 模板名跟着语言走：英文项目标成 koubo-kepu 的话，事后查"这条片是哪个模板出的"会查错
+    template: spec.template.replace(/\.yaml$/, ''), line: 'koubo', lang: L,
     title: (meta.titles ?? [])[0] ?? topic ?? '',
     topic: topic ?? inputs.topic ?? '',
     inputs,
     output,
-    voice: { provider: 'edge-tts', voice: defaults.voice ?? 'zh-CN-XiaoxiaoNeural', rate: 1.0 },
-    captions: { preset: defaults.captionPreset ?? 'douyin', maxChars: 16, style: defaults.captionStyle ?? {} },
+    voice: { provider: 'edge-tts', voice: defaults.voice ?? spec.voice, rate: 1.0 },
+    captions: { preset: defaults.captionPreset ?? 'douyin', maxChars: defaults.captionMaxChars ?? spec.captionMaxChars, style: defaults.captionStyle ?? {} },
     defaults: { visualSource: defaults.visualSource ?? 'stock', cutEverySec: defaults.cutEverySec ?? 4, localDirs: defaults.localDirs ?? [] },
     bgm: defaults.bgm ? { file: defaults.bgm, volume: 0.2 } : null,
     shots,
-    publish: { titles: meta.titles ?? [], tags: meta.tags ?? [], note: meta.publishNote ?? '', aiLabel: true, aiLabelText: meta.aiLabel ?? '本视频含 AI 生成内容',
+    publish: { titles: meta.titles ?? [], tags: meta.tags ?? [], note: meta.publishNote ?? '', aiLabel: true, aiLabelText: meta.aiLabel ?? (L === 'en' ? 'This video contains AI-generated content' : '本视频含 AI 生成内容'),
       ...(metaError ? { error: `标题/话题/发布说明没生成（${metaError}）——片子照常能出，发布信息要自己填` } : {}) },
     provenance: [],
-    scriptWarnings: scriptWarnings(shots, inputs.duration),
+    scriptWarnings: scriptWarnings(shots, inputs.duration, L),
     ao: { file: aoResult.file ?? null, success: !!aoResult.success, totalTokens: aoResult.totalTokens ?? null },
   };
 }
@@ -102,28 +105,49 @@ export function uniqueProjectId(outputDir, id, fsImpl) {
  * 真机同一个话题两次生成分别是 278 字（落在 60 秒的 243–297 区间内）和 183 字（短 32%）。
  * 提示词管不住的事，至少不能让它悄悄过去：写少了成片就是比你要的短一大截。
  */
-// Edge TTS 实测语速（字/秒）。三处按它算：这里的门槛、koubo-script 的重写反馈、
-// 模板 yaml 里手写的字数区间（yaml 是文本导不了常量，改这里要同步模板文案）
+// Edge TTS 实测语速。三处按它算：这里的门槛、koubo-script 的重写反馈、
+// 模板 yaml 里手写的字数/词数区间（yaml 是文本导不了常量，改这里要同步模板文案）。
+// 语速本身在 lang.mjs 的 LANG_SPEC 里（中文 4.5 字/秒、英文 2.9 词/秒，都是本机实测）。
 export const CHARS_PER_SEC = 4.5;
 export const LENGTH_TARGET_TOL = 0.10;   // 对模型**要求**的目标区间（模板与重写反馈用它）
 export const LENGTH_GATE_TOL = 0.12;     // 实际**放行**门槛：比要求松 2 个点，模型压线也算过
-export function lengthWarning(shots, duration) {
+/** 目标时长对应的长度区间（中文=字，英文=词）。模板、重写反馈、放行门槛共用一把尺子。 */
+export function lengthRange(duration, lang = 'zh', tol = LENGTH_TARGET_TOL) {
   const target = Number(String(duration ?? '').match(/\d+/)?.[0]);
   if (!target) return null;
-  const chars = shots.reduce((n, s) => n + String(s.text ?? '').length, 0);
-  const secs = chars / CHARS_PER_SEC;
+  const per = langSpec(lang).perSec;
+  return { target, lo: Math.round(target * per * (1 - tol)), hi: Math.round(target * per * (1 + tol)) };
+}
+export function scriptLength(shots, lang = 'zh') {
+  return shots.reduce((n, s) => n + textLength(s.text, lang), 0);
+}
+export function lengthWarning(shots, duration, lang = 'zh') {
+  const target = Number(String(duration ?? '').match(/\d+/)?.[0]);
+  if (!target) return null;
+  const L = normLang(lang);
+  const n = scriptLength(shots, L);
+  const secs = n / langSpec(L).perSec;
   const off = (secs - target) / target;
   if (Math.abs(off) <= LENGTH_GATE_TOL) return null;
-  return `脚本 ${chars} 字 ≈ ${secs.toFixed(0)} 秒，而目标是 ${target} 秒（${off > 0 ? '长' : '短'} ${Math.abs(off * 100).toFixed(0)}%）——重新生成一次通常就对了`;
+  if (L === 'en') return `Script is ${n} words ≈ ${secs.toFixed(0)} s, but the target is ${target} s (${off > 0 ? 'long' : 'short'} by ${Math.abs(off * 100).toFixed(0)}%) — regenerating usually fixes it`;
+  return `脚本 ${n} 字 ≈ ${secs.toFixed(0)} 秒，而目标是 ${target} 秒（${off > 0 ? '长' : '短'} ${Math.abs(off * 100).toFixed(0)}%）——重新生成一次通常就对了`;
 }
 
-export function scriptWarnings(shots, duration) {
+export function scriptWarnings(shots, duration, lang = 'zh') {
+  const L = normLang(lang);
   const out = [];
-  const len = lengthWarning(shots, duration);
+  const len = lengthWarning(shots, duration, L);
   if (len) out.push(len);
-  for (const s of shots) {
+  // 夹生外文检查只对中文片有意义——英文片整篇都是拉丁字母，逐镜报一遍等于把警告区刷屏
+  if (L === 'zh') for (const s of shots) {
     const latin = [...new Set((String(s.text).match(/[A-Za-z]{2,}/g) ?? []).filter((w) => w !== w.toUpperCase()))];
     if (latin.length) out.push(`镜头 ${s.id} 的口播里夹了英文单词「${latin.join('、')}」——配音会念出英文，字幕上也是拉丁字母`);
+  }
+  // 英文片反过来要防中文漏进去：模型偶尔会把中文提示词里的词直接抄进正文，
+  // 英文音色遇到汉字会整段跳过不念（真机上中文片夹英文就是这么出戏的，反向同理）
+  if (L === 'en') for (const s of shots) {
+    const cjk = [...new Set((String(s.text).match(/[一-鿿]+/g) ?? []))];
+    if (cjk.length) out.push(`Shot ${s.id} contains Chinese text “${cjk.join(' / ')}” — an English voice will mangle or skip it`);
   }
   return out;
 }

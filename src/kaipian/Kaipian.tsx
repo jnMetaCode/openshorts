@@ -11,6 +11,13 @@ type Project = {id: string; title: string; topic: string; line?: string; tier?: 
 
 const api = async <T,>(url: string, init?: RequestInit): Promise<T> => { const r = await fetch(url, {headers: {'Content-Type': 'application/json'}, ...init}); const j = await r.json(); if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`); return j; };
 const fileUrl = (p: Project, abs: string) => `/api/kaipian/projects/${encodeURIComponent(p.id)}/file/${encodeURIComponent(abs.split('/').pop() || '')}`;
+/**
+ * 按优先级挑一个当前语言清单里**真存在**的音色：配置里存的默认 → 用户这次选的 → 清单第一个。
+ * 不做这层过滤的话，界面切到英文后会拿中文音色去念英文；只看配置的话，
+ * 英文模式下每次 refresh 又会把用户刚选的音色打回第一个（配置存的永远是中文那支）。
+ */
+const pickVoice = (list: Voice[], ...preferred: Array<string | undefined>) =>
+  preferred.find((p) => p && list.some((v) => v.id === p)) ?? list[0]?.id ?? preferred.find(Boolean) ?? '';
 
 export const Kaipian = () => {
   const [lang, setLangState] = useState<Lang>(getLang());
@@ -66,8 +73,10 @@ export const Kaipian = () => {
   const runningEs = useRef<EventSource | null>(null);
 
   const refresh = async () => {
-    const [s, v, a, c, ps] = await Promise.all([api<Sources>(`/api/kaipian/sources?lang=${lang}`), api<Voice[]>('/api/kaipian/voices'), api<any>('/api/kaipian/ao-status'), api<any>('/api/kaipian/config'), api<any>('/api/kaipian/projects')]);
-    setSources(s); setVoices(v); setAoStatus(a); setCfg(c); setProjects(ps); if (c?.tts?.voice) setVoice(c.tts.voice);
+    const [s, v, a, c, ps] = await Promise.all([api<Sources>(`/api/kaipian/sources?lang=${lang}`), api<Voice[]>(`/api/kaipian/voices?lang=${lang}`), api<any>('/api/kaipian/ao-status'), api<any>('/api/kaipian/config'), api<any>('/api/kaipian/projects')]);
+    // 存在配置里的音色是用户为**中文**片选的；界面切到英文后不能照用（英文文本配中文音色是一口怪腔）
+    setSources(s); setVoices(v); setAoStatus(a); setCfg(c); setProjects(ps);
+    setVoice((cur) => pickVoice(v, c?.tts?.voice, cur));
     api<any>('/api/kaipian/drama/options').then(setDramaOpts).catch(() => {});
     api<any>('/api/kaipian/drama/providers').then(setProviders).catch(() => {});
     api<any>('/api/kaipian/local/status').then(setLocalSt).catch(() => {});
@@ -75,8 +84,9 @@ export const Kaipian = () => {
     api<any>('/api/kaipian/local-image').then(setGen).catch(() => {});
     api<any>('/api/kaipian/providers/text').then((r) => { setTextProv(r); setVis({provider: r.vision?.provider ?? '', model: r.vision?.model ?? ''}); if (r.text?.provider) setMdl((m) => (m.provider ? m : {provider: r.text.provider, model: r.text.model ?? '', apiKey: ''})); }).catch(() => {});
   };
-  // 切换语言后 sources 的 reason 由服务端按 lang 重新给（其余接口语言无关，不重取）
+  // 切换语言后 sources 的 reason 由服务端按 lang 重新给；音色表也换一批（英文片要英文音色）
   useEffect(() => { api<Sources>(`/api/kaipian/sources?lang=${lang}`).then(setSources).catch(() => {}); }, [lang]);
+  useEffect(() => { api<Voice[]>(`/api/kaipian/voices?lang=${lang}`).then((v) => { setVoices(v); setVoice((cur) => pickVoice(v, cur)); }).catch(() => {}); }, [lang]);
   useEffect(() => {
     refresh().catch((e) => setError(String(e.message)));
     // ?project=<id> 深链：直接打开某个项目（做完的落在第 4 步，没做完的落在第 3 步）
@@ -84,8 +94,8 @@ export const Kaipian = () => {
     if (id) openProject(id).catch((e) => setError(String(e.message)));
   }, []);
 
-  const grabUrl = async () => { setBusy(t('抓取文章…')); setError(''); try { const a = await api<{title: string; text: string; chars: number}>('/api/kaipian/fetch-url', {method: 'POST', body: JSON.stringify({url: articleUrl})}); setTopic(`${a.title ? a.title + '\n\n' : ''}${a.text}`); } catch (e: any) { setError(e.message); } finally { setBusy(''); } };
-  const preview = async () => { setBusy(t('试听中…')); try { const r = await api<{dataUrl: string}>('/api/kaipian/tts/preview', {method: 'POST', body: JSON.stringify({voice, text: topic.slice(0, 40) || '你有没有发现，猫为什么总爱钻纸箱？'})}); if (audioRef.current) { audioRef.current.src = r.dataUrl; await audioRef.current.play(); } } catch (e: any) { setError(e.message); } finally { setBusy(''); } };
+  const grabUrl = async () => { setBusy(t('抓取文章…')); setError(''); try { const a = await api<{title: string; text: string; chars: number}>('/api/kaipian/fetch-url', {method: 'POST', body: JSON.stringify({url: articleUrl, lang})}); setTopic(`${a.title ? a.title + '\n\n' : ''}${a.text}`); } catch (e: any) { setError(e.message); } finally { setBusy(''); } };
+  const preview = async () => { setBusy(t('试听中…')); try { const r = await api<{dataUrl: string}>('/api/kaipian/tts/preview', {method: 'POST', body: JSON.stringify({voice, lang, text: topic.slice(0, 40) || t('你有没有发现，猫为什么总爱钻纸箱？')})}); if (audioRef.current) { audioRef.current.src = r.dataUrl; await audioRef.current.play(); } } catch (e: any) { setError(e.message); } finally { setBusy(''); } };
   const [keyTest, setKeyTest] = useState('');
   const saveKeys = async () => {
     // 保存后立刻探活：填错的 key 别等到出片时才发现（真发一次最小检索，各占 1 次配额）。
@@ -102,14 +112,15 @@ export const Kaipian = () => {
   };
   const createProject = async () => {
     setError(''); setBusy(t('AI 正在写脚本（20–60 秒）…'));
-    try { const p = await api<Project>('/api/kaipian/new', {method: 'POST', body: JSON.stringify({topic, duration, tone, voice, captions, captionStyle: capStyle, source, localDir})}); setProject(p); setStep(3); await refresh(); }
+    try { const p = await api<Project>('/api/kaipian/new', {method: 'POST', body: JSON.stringify({topic, duration, tone, voice, captions, captionStyle: capStyle, source, localDir, lang})}); setProject(p); setStep(3); await refresh(); }
     catch (e: any) { setError(e.message); } finally { setBusy(''); }
   };
   const saveShots = async () => { if (!project) return; const p = await api<Project>(`/api/kaipian/projects/${encodeURIComponent(project.id)}`, {method: 'PUT', body: JSON.stringify({shots: project.shots.map((s) => ({id: s.id, text: s.text, query: s.query, visualIntent: s.visualIntent})), voice: {voice}, captions: {preset: captions, style: capStyle}})}); setProject(p); };
   // only 传镜头 id 就是「只重出这几镜」：其余镜头的配音与分段按指纹复用，不重配音也不重花时间
   const runProject = async (only?: string[]) => {
-    if (!project) return; await saveShots(); setLog([]); setBusy(only ? `重出 ${only.join('、')}…` : '出片中…'); setError('');
-    const q = only?.length ? `?only=${encodeURIComponent(only.join(','))}` : '';
+    if (!project) return; await saveShots(); setLog([]); setBusy(only ? `${t('重出')} ${only.join(lang === 'en' ? ', ' : '、')}…` : t('出片中…')); setError('');
+    // lang 要带上：服务端的报错按项目语言给，但项目还没建时（或读不到）就靠这个参数
+    const q = `?lang=${lang}${only?.length ? `&only=${encodeURIComponent(only.join(','))}` : ''}`;
     const es = new EventSource(`/api/kaipian/projects/${encodeURIComponent(project.id)}/run${q}`);
     runningEs.current = es;
     es.addEventListener('log', (e: any) => setLog((l) => [...l, JSON.parse(e.data).m]));
@@ -119,21 +130,22 @@ export const Kaipian = () => {
   const cancelRun = async () => {
     if (!project) return;
     runningEs.current?.close(); runningEs.current = null;   // 关掉 SSE，服务端据此中止 ffmpeg
-    try { await api(`/api/kaipian/projects/${encodeURIComponent(project.id)}/cancel`, {method: 'POST'}); } catch { /* 已经停了 */ }
-    setBusy(''); setLog((l) => [...l, '已取消（进度已存盘，再点出片会接着来）']);
+    try { await api(`/api/kaipian/projects/${encodeURIComponent(project.id)}/cancel?lang=${lang}`, {method: 'POST'}); } catch { /* 已经停了 */ }
+    setBusy(''); setLog((l) => [...l, t('已取消（进度已存盘，再点出片会接着来）')]);
   };
   const dramaBody = () => ({story, genre, style, tier, video_ratio: ratio, ...(tier === 'cloud' ? cloud : {image_provider: cloud.image_provider, image_model: cloud.image_model})});
   const dramaPreflight = async () => { setError(''); setBusy(t('估算花费…')); try { const r = await api<{lines: string[]; ok: boolean; raw?: string}>('/api/kaipian/drama/preflight', {method: 'POST', body: JSON.stringify(dramaBody())}); setPreflight(r.ok ? r.lines : [r.raw || t('预览失败')]); setStep(2); } catch (e: any) { setError(e.message); } finally { setBusy(''); } };
   const dramaRun = () => {
-    setLog([]); setBusy(tier === 'local' ? '本地出片中（每镜约 3–4 分钟，共 3 镜 + 定妆图）…' : '云端出片中（通常 3–8 分钟）…'); setError(''); setStep(3);
+    setLog([]); setBusy(tier === 'local' ? t('本地出片中（每镜约 3–4 分钟，共 3 镜 + 定妆图）…') : t('云端出片中（通常 3–8 分钟）…')); setError(''); setStep(3);
     const qs = new URLSearchParams(Object.entries(dramaBody()).filter(([, v]) => v !== '' && v != null).map(([k, v]) => [k, String(v)]));
+    qs.set('lang', lang);
     const es = new EventSource(`/api/kaipian/drama/run?${qs}`);
     es.addEventListener('log', (e: any) => setLog((l) => [...l, JSON.parse(e.data).m]));
     es.addEventListener('done', async (e: any) => { es.close(); const {id} = JSON.parse(e.data); const p = await api<Project>(`/api/kaipian/projects/${encodeURIComponent(id)}`); setProject(p); setBusy(''); setStep(4); await refresh(); });
     es.addEventListener('error', (e: any) => { try { setError(JSON.parse(e.data).m); } catch { setError(t('出片中断')); } es.close(); setBusy(''); });
   };
   const dramaRedo = (shot: string, feedback: string, tierSel: 'same' | 'local' | 'cloud') => {
-    if (!project) return; setLog([]); setError(''); setBusy(`重出 ${shot} 中…`); setRedo(null);
+    if (!project) return; setLog([]); setError(''); setBusy(`${t('重出')} ${shot}…`); setRedo(null);
     const qs = new URLSearchParams({shot, feedback, ...(tierSel !== 'same' ? {tier: tierSel} : {}), ...(tierSel === 'cloud' ? {video_provider: cloud.video_provider, video_model: cloud.video_model, video_resolution: cloud.video_resolution, video_duration: cloud.video_duration} : {})});
     const es = new EventSource(`/api/kaipian/projects/${encodeURIComponent(project.id)}/drama/redo?${qs}`);
     es.addEventListener('log', (e: any) => setLog((l) => [...l, JSON.parse(e.data).m]));
@@ -190,13 +202,13 @@ export const Kaipian = () => {
   };
   const runBatch = () => {
     if (!project) return; setBatchResults([]); setLog([]); setBusy(t('批量出片中…')); setError('');
-    const es = new EventSource(`/api/kaipian/projects/${encodeURIComponent(project.id)}/batch?voices=${encodeURIComponent(batchVoices.join(','))}&captions=${encodeURIComponent(batchCaptions.join(','))}`);
+    const es = new EventSource(`/api/kaipian/projects/${encodeURIComponent(project.id)}/batch?lang=${lang}&voices=${encodeURIComponent(batchVoices.join(','))}&captions=${encodeURIComponent(batchCaptions.join(','))}`);
     es.addEventListener('log', (e: any) => setLog((l) => [...l, JSON.parse(e.data).m]));
     es.addEventListener('variant', (e: any) => setBatchResults((r) => [...r, JSON.parse(e.data)]));
     es.addEventListener('done', () => { es.close(); setBusy(''); });
     es.addEventListener('error', (e: any) => { try { setError(JSON.parse(e.data).m); } catch { setError(t('批量中断')); } es.close(); setBusy(''); });
   };
-  const makePack = async () => { if (!project) return; setBusy(t('打发布包…')); try { setPack(await api(`/api/kaipian/projects/${encodeURIComponent(project.id)}/publish-pack`, {method: 'POST', body: JSON.stringify({platform})})); } catch (e: any) { setError(e.message); } finally { setBusy(''); } };
+  const makePack = async () => { if (!project) return; setBusy(t('打发布包…')); try { setPack(await api(`/api/kaipian/projects/${encodeURIComponent(project.id)}/publish-pack`, {method: 'POST', body: JSON.stringify({platform, lang})})); } catch (e: any) { setError(e.message); } finally { setBusy(''); } };
   const openProject = async (id: string) => { const p = await api<Project>(`/api/kaipian/projects/${encodeURIComponent(id)}`); setProject(p); setStep(p.final ? 4 : 3); };
   const copy = (t: string) => navigator.clipboard?.writeText(t);
 
