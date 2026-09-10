@@ -73,11 +73,21 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
 
       # 闸：确认界面产物真的被打进包（缺了就是白屏包，绝不发）
+      #
+      # 必须用 -ipath 而不是 -path：mac 的 .app 里是 Contents/**Resources**（大写 R），
+      # win/linux 是 resources/（小写）。写死小写的话这道闸在 mac 上永远匹配不到——
+      # 第一次推 desktop-v0.1.0 时就是这么把一个**界面完好**的 mac 包judged成白屏包拒发的
+      # （win/linux 反而顺利通过）。也就是说这道闸在 mac 上从来没真正生效过。
       - name: Verify UI landed in packaged app
         shell: bash
         run: |
-          found=$(find desktop/release -path "*resources/app/dist/index.html" | head -1)
-          if [ -z "$found" ]; then echo "::error::resources/app/dist/index.html 不在包里——白屏包，拒发"; exit 1; fi
+          found=$(find desktop/release -ipath "*resources/app/dist/index.html" | head -1)
+          if [ -z "$found" ]; then
+            echo "::error::resources/app/dist/index.html 不在包里——白屏包，拒发"
+            echo "--- desktop/release 里实际有的 index.html ---"
+            find desktop/release -iname index.html | head -20
+            exit 1
+          fi
           echo "UI in package: $found"
 
       - name: Generate checksums
