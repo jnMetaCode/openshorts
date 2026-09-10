@@ -41,6 +41,8 @@ Requires Node.js 20+ and FFmpeg (an npm package is coming; until then use the so
 | Video | Pipeline | Length | Case study |
 | --- | --- | --- | --- |
 | *Why do onions make you cry* | Narrated · CC stock + **local FLUX frames** · vision gatekeeping · **$0, 0 keys** | 60s | [docs/cases/koubo-onion](docs/cases/koubo-onion/) |
+| *Why cats squeeze into boxes* | Narrated · **the English pipeline** — script, voice, word-aware captions and publish pack all English | 56s | [docs/cases/koubo-en-cat-box](docs/cases/koubo-en-cat-box/) |
+| *A compass does not point north* (zh) | Narrated · **5 of 7 shots had every stock candidate rejected** by the visual check → painted locally · **$0, 0 keys** | 43s | [docs/cases/koubo-compass](docs/cases/koubo-compass/) |
 | *Why cats love boxes* | Narrated · keyless stock · Edge TTS (earlier build, kept for contrast) | 37s | [docs/cases/koubo-cat-box](docs/cases/koubo-cat-box/) |
 | *Late-night convenience store* (local draft) | AI drama · on-device sd.cpp · MiniMax-H3 Q2 · **$0** | 7s | [docs/cases/drama-convenience-store](docs/cases/drama-convenience-store/) |
 | *Late-night convenience store* (cloud final) | AI drama · Agnes `agnes-video-2.5-flash` | 13s | same case — draft vs. final, one script |

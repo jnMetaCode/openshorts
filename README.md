@@ -69,6 +69,8 @@ AI 拆出的每一镜都摊开给你：**口播文案**、**画面意图**、**�
 | 成片 | 路线 | 时长 | 案例 |
 | --- | --- | --- | --- |
 | 《为什么切洋葱会流眼泪》 | 口播科普 · CC 素材 + **本机 FLUX 出图** · 看图把关 · 一镜切多段 · **0 元 0 key** | 60s | [docs/cases/koubo-onion](docs/cases/koubo-onion/) |
+| 《指南针指的真不是正北》 | 口播科普 · **7 镜里 5 镜的素材被看图把关全判不及格** → 全部本机现画 · **0 元 0 key** | 43s | [docs/cases/koubo-compass](docs/cases/koubo-compass/) |
+| *Why cats squeeze into boxes* | 口播科普 · **英文成片线**（脚本 / 音色 / 字幕断行 / 发布包全英文） | 56s | [docs/cases/koubo-en-cat-box](docs/cases/koubo-en-cat-box/) |
 | 《猫为什么总爱钻纸箱》 | 口播科普 · 免 key 素材 · Edge TTS（**早期版本**，字幕与画面都不如上面那条，留作对照） | 37s | [docs/cases/koubo-cat-box](docs/cases/koubo-cat-box/) |
 | 《深夜便利店》本地草稿档 | AI 短剧 · 本地 sd.cpp · MiniMax-H3 Q2 · **0 元** | 7s | [docs/cases/drama-convenience-store](docs/cases/drama-convenience-store/) |
 | 《深夜便利店》云端成片档 | AI 短剧 · Agnes agnes-video-2.5-flash | 13s | 同上（同一故事的草稿 vs 成片对照） |
