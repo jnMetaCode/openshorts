@@ -33,18 +33,38 @@
   .btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
   .btn.pri:hover{background:var(--accent2);text-decoration:none}
   .btn:hover{text-decoration:none;border-color:#c9c4ba}
-  .hero{display:grid;grid-template-columns:1.15fr .85fr;gap:48px;align-items:center;padding:72px 0 56px}
-  .hero h1{font-size:40px;line-height:1.22;margin:0 0 18px;font-weight:800}
-  .hero h1 .hl{color:var(--accent)}
-  .hero p.lead{font-size:18px;color:var(--ink2);margin:0 0 28px}
+  /* 首屏：满宽深色 + 三条真成片并排。
+     一个做竖版短视频的产品，最强的资产就是片子本身——原来它只有一个 300px 手机框，
+     四条真成片全压在折叠线以下。深色也顺便把通篇米白卡片的单调断开。 */
+  .heroband{background:#15171b;color:#f5f2ec;border-bottom:1px solid #23262b;overflow:hidden;position:relative}
+  .heroband:before{content:"";position:absolute;inset:-40% -10% auto;height:70%;
+    background:radial-gradient(60% 60% at 70% 0%,rgba(194,65,12,.28),transparent 70%);pointer-events:none}
+  .hero{display:grid;grid-template-columns:1.02fr .98fr;gap:44px;align-items:center;padding:76px 0 68px;position:relative}
+  /* grid 子项默认 min-width:auto:窄屏下横向滚动的成片墙会把这一列撑到比视口还宽,
+     整页跟着横向溢出、正文被切在屏幕外(截图才看出来的)。必须显式压成 0。 */
+  .hero>div{min-width:0}
+  .hero h1{font-size:clamp(34px,4.6vw,52px);line-height:1.12;margin:0 0 20px;font-weight:800;letter-spacing:-.5px}
+  .hero h1 .hl{color:#fb923c}
+  .hero p.lead{font-size:17.5px;color:#c8c2b8;margin:0 0 28px;max-width:30em}
+  .hero p.lead b{color:#f5f2ec}
   .hero .acts{display:flex;gap:12px;flex-wrap:wrap}
-  .phone{justify-self:center;width:min(300px,80vw);border-radius:22px;overflow:hidden;border:6px solid #23262b;background:#000;box-shadow:0 24px 60px rgba(0,0,0,.18)}
-  .phone video{display:block;width:100%;height:auto}
-  .phone-cap{text-align:center;font-size:12.5px;color:var(--ink2);margin-top:10px}
-  .stats{display:flex;border:1px solid var(--line);border-radius:12px;background:var(--card);overflow:hidden;margin:8px 0 0}
-  .stats div{flex:1;text-align:center;padding:16px 8px;border-left:1px solid var(--line)}
+  .heroband .btn{background:transparent;border-color:#3a3f47;color:#e8e3da}
+  .heroband .btn:hover{border-color:#5b626c}
+  .heroband .btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+  /* 成片墙：中间那条抬高一点，避免三块等高像证件照 */
+  .wall{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;align-items:end;min-width:0}
+  .wall figure{margin:0}
+  .wall video{display:block;width:100%;aspect-ratio:9/16;object-fit:cover;background:#000;
+    border-radius:14px;border:1px solid #2b2f36;box-shadow:0 18px 44px rgba(0,0,0,.45)}
+  .wall figure:nth-child(2) video{transform:translateY(-22px)}
+  /* 说明文字行数不同会把 figure 撑成不同高度,align-items:end 之后三条视频顶部就参差不齐。
+     给它一个下限,让三块等高(截图逮到的)。 */
+  .wall figcaption{font-size:11.5px;color:#9aa0a8;margin-top:8px;line-height:1.5;min-height:3em}
+  .wall figure:nth-child(2) figcaption{transform:translateY(-22px)}
+  .stats{display:flex;gap:0;border:1px solid #2b2f36;border-radius:12px;background:rgba(255,255,255,.03);overflow:hidden;margin:26px 0 0}
+  .stats div{flex:1;text-align:center;padding:14px 8px;border-left:1px solid #2b2f36}
   .stats div:first-child{border-left:0}
-  .stats b{display:block;font-size:22px} .stats span{font-size:12.5px;color:var(--ink2)}
+  .stats b{display:block;font-size:21px;color:#f5f2ec;letter-spacing:-.3px} .stats span{font-size:12px;color:#9aa0a8}
   section{padding:64px 0} section.alt{background:var(--card);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
   h2{font-size:28px;margin:0 0 8px;font-weight:800}
   .sub{color:var(--ink2);margin:0 0 36px;font-size:15.5px}
@@ -77,6 +97,10 @@
   pre{background:#22262c;color:#e8e6e1;border-radius:12px;padding:20px 22px;font:13.5px/1.9 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;overflow-x:auto;margin:0}
   pre .c{color:#8a949e} pre .g{color:#7ec48a}
   .qs{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start}
+  /* pre 自己有 overflow-x:auto,但 grid 子项默认 min-width:auto——最长那行代码照样把整列
+     撑到比视口还宽,窄屏下整页横向溢出、正文被切在屏幕外。压成 0 才真的能滚。
+     (窄屏截图 + 注入探针量出来的:视口 500,文档宽 580,元凶是这几个代码块。) */
+  .qs>div{min-width:0}
   .note{font-size:13px;color:var(--ink2);margin-top:14px;line-height:1.7}
   footer{border-top:1px solid var(--line);padding:36px 0 48px;color:var(--ink2);font-size:13.5px}
   footer .row{display:flex;gap:24px;flex-wrap:wrap;align-items:center}
@@ -86,10 +110,17 @@
   .six .t{padding:12px 16px;font-size:13px;color:var(--ink2)}
   @media (max-width:860px){
     .hero{grid-template-columns:1fr;padding:44px 0 36px}
-    .hero h1{font-size:31px}
     .steps,.lines,.qs{grid-template-columns:1fr}
     .gal{grid-template-columns:1fr 1fr}
     .stats{flex-wrap:wrap} .stats div{min-width:45%}
+    /* 窄屏三条并排每条只剩 100px 出头,字幕看不清——改成横向滑动,第二条也别再抬高 */
+    .wall{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;
+      padding-bottom:6px;-webkit-overflow-scrolling:touch}
+    .wall figure{flex:0 0 62%;scroll-snap-align:center}
+    .wall figure:nth-child(2) video,.wall figure:nth-child(2) figcaption{transform:none}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .wall figure:nth-child(2) video,.wall figure:nth-child(2) figcaption{transform:none}
   }
 </style>
 </head>
@@ -105,7 +136,7 @@
   <a href="../" title="中文版">中文</a>
 </div></header>
 
-<div class="wrap">
+<div class="heroband"><div class="wrap">
   <div class="hero">
     <div>
       <h1>One sentence in,<br>a <span class="hl">publishable</span> short video out</h1>
@@ -119,19 +150,29 @@
       </div>
       <div class="stats">
         <div><b>$0</b><span>free path, end to end</span></div>
-        <div><b>202</b><span>tests · 3-OS CI</span></div>
-        <div><b>2</b><span>pipelines: narrated / drama</span></div>
+        <div><b>230</b><span>tests · 3-OS CI</span></div>
+        <div><b>EN / 中文</b><span>the whole pipeline</span></div>
         <div><b>MIT</b><span>licensed</span></div>
       </div>
     </div>
     <div>
-      <div class="phone">
-        <video src="../assets/onion-60s.mp4" autoplay muted loop playsinline preload="metadata"></video>
+      <div class="wall">
+        <figure>
+          <video src="../assets/en-cat-box.mp4" autoplay muted loop playsinline preload="metadata"></video>
+          <figcaption>"Why cats squeeze into boxes" 56s<br>English script, voice and captions</figcaption>
+        </figure>
+        <figure>
+          <video src="../assets/onion-60s.mp4" autoplay muted loop playsinline preload="metadata"></video>
+          <figcaption>"Why onions make you cry" 60s<br>2 of 6 shots painted locally</figcaption>
+        </figure>
+        <figure>
+          <video src="../assets/compass.mp4" autoplay muted loop playsinline preload="metadata"></video>
+          <figcaption>"A compass doesn't point north" 43s<br>5 of 7 shots painted locally</figcaption>
+        </figure>
       </div>
-      <div class="phone-cap">"Why do onions make you cry" · 60s · generated for $0 with 0 keys<br>2 of 6 shots were painted locally by FLUX when stock had nothing</div>
     </div>
   </div>
-</div>
+</div></div>
 
 <section class="alt" id="steps"><div class="wrap">
   <h2>Four steps from idea to publish pack</h2>
