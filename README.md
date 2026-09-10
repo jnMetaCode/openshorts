@@ -3,8 +3,34 @@
 **文案进，成片出。** 一条本地优先的开源短视频生产线：给一个话题，它写脚本、找画面、配音、烧字幕、出成片和发布文案——
 **默认零成本跑通第一条**，花多少钱、等多久，运行前就告诉你。
 
-<p align="center"><img src="docs/cases/koubo-onion/onion-12s.gif" width="260" alt="《为什么切洋葱会流眼泪》——0 元 0 key 生成"></p>
-<p align="center"><sub>上面这条 60 秒的片子：0 元、0 个付费 key，6 镜里 2 镜是素材库没货时本机现画的 · <a href="docs/cases/koubo-onion/">看完整案例</a></sub></p>
+<table align="center">
+<tr>
+<td width="50%" valign="middle" align="center">
+<a href="docs/cases/koubo-onion/"><img src="docs/cases/koubo-onion/onion-12s.gif" width="196" alt="《为什么切洋葱会流眼泪》"></a><br>
+<b>《为什么切洋葱会流眼泪》</b><br>
+<sub>口播 60s · 0 元 0 key · 6 镜里 2 镜本机现画</sub>
+</td>
+<td width="50%" valign="middle" align="center">
+<a href="docs/cases/koubo-en-cat-box/"><img src="docs/cases/koubo-en-cat-box/en-cat-box-9s.gif" width="196" alt="Why cats squeeze into cardboard boxes"></a><br>
+<b>Why cats squeeze into boxes</b><br>
+<sub>英文成片线 · 56s · 脚本 / 音色 / 字幕全英文</sub>
+</td>
+</tr>
+<tr>
+<td width="50%" valign="middle" align="center">
+<a href="docs/cases/koubo-compass/"><img src="docs/cases/koubo-compass/compass-9s.gif" width="196" alt="《指南针指的真不是正北》"></a><br>
+<b>《指南针指的真不是正北》</b><br>
+<sub>43s · 7 镜里 5 镜的素材被看图把关退回、改本机现画</sub>
+</td>
+<td width="50%" valign="middle" align="center">
+<a href="docs/cases/drama-convenience-store/"><img src="docs/cases/drama-convenience-store/local-draft-q2.gif" width="300" alt="《深夜便利店》AI 短剧"></a><br>
+<b>《深夜便利店》</b><br>
+<sub>AI 短剧线 · 本机 sd.cpp 草稿档 · 0 元</sub>
+</td>
+</tr>
+</table>
+
+<p align="center"><sub>四条都由 OpenShorts 实际生成，点图进各自案例页（含模型原话、素材署名、质检输出，以及哪一镜不行）。</sub></p>
 <p align="center"><b><a href="https://jnmetacode.github.io/openshorts/">🌐 官网 · 看真实成片</a></b> · <a href="https://github.com/jnMetaCode/openshorts/releases">下载发布包</a> · <a href="README.en.md">English</a></p>
 
 ![License](https://img.shields.io/badge/license-MIT-green) ![Node](https://img.shields.io/badge/node-%E2%89%A520-brightgreen) ![Tests](https://img.shields.io/badge/tests-230%20passing-brightgreen) ![CI](https://img.shields.io/badge/CI-ubuntu%20%7C%20macOS%20%7C%20windows-brightgreen) ![Format](https://img.shields.io/badge/format-9%3A16%20%7C%2016%3A9-blue)

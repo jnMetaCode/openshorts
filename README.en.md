@@ -2,8 +2,34 @@
 
 **Copy in, video out.** A local-first, open-source short-video production line: give it a topic and it writes the script, finds the footage, voices it, burns in subtitles, and hands you a finished video plus publish copy — **the first video costs $0 by default**, and it tells you cost and wait time *before* running.
 
-<p align="center"><img src="docs/cases/koubo-onion/onion-12s.gif" width="260" alt="'Why do onions make you cry' — generated for $0 with 0 keys"></p>
-<p align="center"><sub>The 60-second video above: $0, zero paid keys; 2 of its 6 shots were painted on-device when stock libraries had nothing · <a href="docs/cases/koubo-onion/">full case study</a></sub></p>
+<table align="center">
+<tr>
+<td width="50%" valign="middle" align="center">
+<a href="docs/cases/koubo-en-cat-box/"><img src="docs/cases/koubo-en-cat-box/en-cat-box-9s.gif" width="196" alt="Why cats squeeze into cardboard boxes"></a><br>
+<b>Why cats squeeze into boxes</b><br>
+<sub>English pipeline · 56s · script, voice and captions all English</sub>
+</td>
+<td width="50%" valign="middle" align="center">
+<a href="docs/cases/koubo-onion/"><img src="docs/cases/koubo-onion/onion-12s.gif" width="196" alt="Why do onions make you cry"></a><br>
+<b>Why do onions make you cry (zh)</b><br>
+<sub>60s · $0, 0 paid keys · 2 of 6 shots painted on-device</sub>
+</td>
+</tr>
+<tr>
+<td width="50%" valign="middle" align="center">
+<a href="docs/cases/koubo-compass/"><img src="docs/cases/koubo-compass/compass-9s.gif" width="196" alt="A compass does not point north"></a><br>
+<b>A compass doesn't point north (zh)</b><br>
+<sub>43s · every stock candidate for 5 of 7 shots was rejected, then painted locally</sub>
+</td>
+<td width="50%" valign="middle" align="center">
+<a href="docs/cases/drama-convenience-store/"><img src="docs/cases/drama-convenience-store/local-draft-q2.gif" width="300" alt="Late-night convenience store, AI drama"></a><br>
+<b>Late-night convenience store</b><br>
+<sub>AI mini-drama · on-device sd.cpp draft tier · $0</sub>
+</td>
+</tr>
+</table>
+
+<p align="center"><sub>All four were actually produced by OpenShorts. Click a clip for its case study — the model's own words, footage credits, the quality check, and which shots fell short.</sub></p>
 <p align="center"><b><a href="https://jnmetacode.github.io/openshorts/en/">🌐 Website · watch real output</a></b> · <a href="https://github.com/jnMetaCode/openshorts/releases">Download release</a> · <a href="README.md">中文文档</a></p>
 
 ![License](https://img.shields.io/badge/license-MIT-green) ![Node](https://img.shields.io/badge/node-%E2%89%A520-brightgreen) ![Tests](https://img.shields.io/badge/tests-230%20passing-brightgreen) ![CI](https://img.shields.io/badge/CI-ubuntu%20%7C%20macOS%20%7C%20windows-brightgreen) ![Format](https://img.shields.io/badge/format-9%3A16%20%7C%2016%3A9-blue)
