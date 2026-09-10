@@ -7,7 +7,7 @@ type Sources = {stock: Src; image: Src; local: Src; cloud: Src; layered: Src; to
 type Voice = {id: string; label: string};
 type Shot = {id: string; text: string; visualIntent: string; query: string; emphasis: string[]; durationSec: number | null; status: string; visual: {source: string | null; file: string | null; author?: string | null; license?: string}};
 type DramaShot = {id: string; kind: 'video' | 'image'; order: number; durationSec: number | null; visual: {source: string; provider: string | null; model: string | null; file: string}; verification: {pass: boolean; failed: string[]; reworked: boolean} | null; status: string; stepName: string};
-type Project = {id: string; title: string; topic: string; line?: string; tier?: string; inputs?: Record<string, string>; shots: Shot[]; scriptWarnings?: string[]; voice: {voice: string; rate: number}; captions: {preset: string}; defaults: {visualSource: string; localDirs: string[]}; publish: {titles: string[]; tags: string[]; note: string; aiLabelText: string}; final?: {file: string; srt: string; cover: string | null; publish: string; durationSec: number; notes: string[]; quality?: {pass: boolean; warnings: number; items: Array<{id: string; status: string; msg: string}>}} | null; provenance: Array<{shot: string; source: string; author?: string | null; license?: string; page?: string | null}>};
+type Project = {id: string; title: string; topic: string; line?: string; lang?: string; tier?: string; inputs?: Record<string, string>; shots: Shot[]; scriptWarnings?: string[]; voice: {voice: string; rate: number}; captions: {preset: string}; defaults: {visualSource: string; localDirs: string[]}; publish: {titles: string[]; tags: string[]; note: string; aiLabelText: string}; final?: {file: string; srt: string; cover: string | null; publish: string; durationSec: number; notes: string[]; quality?: {pass: boolean; warnings: number; items: Array<{id: string; status: string; msg: string}>}} | null; provenance: Array<{shot: string; source: string; author?: string | null; license?: string; page?: string | null}>};
 
 const api = async <T,>(url: string, init?: RequestInit): Promise<T> => { const r = await fetch(url, {headers: {'Content-Type': 'application/json'}, ...init}); const j = await r.json(); if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`); return j; };
 const fileUrl = (p: Project, abs: string) => `/api/kaipian/projects/${encodeURIComponent(p.id)}/file/${encodeURIComponent(abs.split('/').pop() || '')}`;
@@ -96,6 +96,12 @@ export const Kaipian = () => {
 
   const grabUrl = async () => { setBusy(t('抓取文章…')); setError(''); try { const a = await api<{title: string; text: string; chars: number}>('/api/kaipian/fetch-url', {method: 'POST', body: JSON.stringify({url: articleUrl, lang})}); setTopic(`${a.title ? a.title + '\n\n' : ''}${a.text}`); } catch (e: any) { setError(e.message); } finally { setBusy(''); } };
   const preview = async () => { setBusy(t('试听中…')); try { const r = await api<{dataUrl: string}>('/api/kaipian/tts/preview', {method: 'POST', body: JSON.stringify({voice, lang, text: topic.slice(0, 40) || t('你有没有发现，猫为什么总爱钻纸箱？')})}); if (audioRef.current) { audioRef.current.src = r.dataUrl; await audioRef.current.play(); } } catch (e: any) { setError(e.message); } finally { setBusy(''); } };
+  // 配置栏默认收起。原来它常驻 1/4 屏宽、每一屏都在——连"你的片子做好了"那一屏都还挂着
+  // 两套模型配置。第一次用的人第一眼看到的是一堆下拉框,那是设置,不是主流程。
+  const [showCfg, setShowCfg] = useState(false);
+  // 打开一个英文项目、而界面是中文时,成片页会中英混排(标签中文、内容与质检英文)。
+  // 不强制切,给一条可关掉的提示——语言是用户的选择,不是我们替他定的。
+  const [enHintOff, setEnHintOff] = useState(false);
   const [keyTest, setKeyTest] = useState('');
   const saveKeys = async () => {
     // 保存后立刻探活：填错的 key 别等到出片时才发现（真发一次最小检索，各占 1 次配额）。
@@ -239,6 +245,7 @@ export const Kaipian = () => {
     const row = (label: string, ok: boolean, text: string) =>
       <div className={`kp-stat ${ok ? 'ok' : 'bad'}`}><b>{label}</b><span>{ok ? '✅ ' : '⛔ '}{text}</span></div>;
     return <aside className="kp-aside">
+      <div className="kp-aside-top"><b>{t('设置')}</b><button onClick={() => setShowCfg(false)} title={t('收起')}>×</button></div>
       <h4>{t('这台机器')}</h4>
       {row('ffmpeg', !!ff?.subtitles, ff ? (ff.found ? (ff.subtitles ? `${ff.version}${t(' 可烧字幕')}` : t('缺 libass，字幕烧不进画面')) : t('没找到')) : '…')}
       {ff && ff.found && !ff.subtitles && <button onClick={installFfmpeg} disabled={!!dl}>{t('装一份带 libass 的（40 MB）')}</button>}
@@ -284,6 +291,22 @@ export const Kaipian = () => {
     </aside>;
   };
 
+  /** 收起态的一行状态摘要：只回答"这台机器现在能不能出片",细节点开设置再看 */
+  const StatusStrip = () => {
+    const visionOn = !!(textProv?.vision?.provider && textProv?.vision?.model);
+    const chip = (label: string, ok: boolean, title: string) =>
+      <span className={`kp-chip ${ok ? 'ok' : 'bad'}`} title={title}>{ok ? '✓' : '⛔'} {label}</span>;
+    return <div className="kp-strip">
+      {chip('ffmpeg', !!ff?.subtitles, ff?.subtitles ? `${ff.version}` : t('缺 libass，字幕烧不进画面'))}
+      {chip(t('文本模型'), !!aoStatus?.hasTextKey, aoStatus?.hasTextKey ? [...(aoStatus.saved ?? []), ...(aoStatus.envs ?? [])].join(', ') : t('没配，第 1 步写不了脚本'))}
+      {chip(t('看图把关'), visionOn, visionOn ? `${textProv!.vision.provider} / ${textProv!.vision.model}` : t('没开——画面只按检索词字面匹配'))}
+      {chip(t('本机出图'), !!gen?.ok, gen?.ok ? String(gen.ready) : t('没装模型，找不到素材时退纯色底'))}
+      {chip(t('素材源'), !!sources?.stock?.ok, sources?.stock?.reason ?? '')}
+      <span className="kp-strip-sp"/>
+      <button className="kp-cfgbtn" onClick={() => setShowCfg(true)}>⚙ {t('设置')}</button>
+    </div>;
+  };
+
   const SrcCard = ({k, label, hint}: {k: keyof Omit<Sources, 'tools'>; label: string; hint: string}) => { const s = sources?.[k]; return <div className={`kp-src ${s?.ok ? 'ok' : 'off'}`}><b>{s?.ok ? '✅' : '⛔'} {label}</b><small>{s?.reason ?? '…'}</small><em>{hint}</em></div>; };
 
   return <div className="kp">
@@ -295,18 +318,36 @@ export const Kaipian = () => {
         <a href="/editor">{t('图层动画编辑器（v1）')}</a>
       </nav>
     </header>
+    {project?.lang === 'en' && lang === 'zh' && !enHintOff && <div className="kp-langhint">
+      <span>{'This project is in English, but the interface is Chinese.'}</span>
+      <button onClick={() => { setLang('en'); setLangState('en'); }}>Switch to English</button>
+      <button className="ghost" onClick={() => setEnHintOff(true)}>保持中文</button>
+    </div>}
+    <div className={`kp-shell ${showCfg ? '' : 'wide'}`}><div className="kp-main">
     <Steps/>
     {error && <div className="kp-error" onClick={() => setError('')}>{error} ×</div>}
     {busy && <div className="kp-busy">{busy}</div>}
-    <div className="kp-shell"><div className="kp-main">
+    {!showCfg && <StatusStrip/>}
 
     {step === 1 && <section className="kp-card">
       <div className="kp-lines">
-        <button className={line === 'koubo' ? 'active' : ''} onClick={() => setLine('koubo')}><b>{t('口播短视频')}</b><small>{t('科普 / 观点 / 带货 · 默认零成本')}</small></button>
-        <button className={line === 'drama' ? 'active' : ''} onClick={() => setLine('drama')}><b>{t('AI 短剧')}</b><small>{t('一段故事 → 三镜成片 · 本地草稿 / 云端成片')}</small></button>
+        {/* 缩略图是真成片抽的帧（指南针 / 深夜便利店）——两条线长什么样，看图比看字快 */}
+        <button className={line === 'koubo' ? 'active' : ''} onClick={() => setLine('koubo')}>
+          <img src="/kp/line-koubo.jpg" alt="" loading="lazy"/>
+          <span><b>{t('口播短视频')}</b><small>{t('科普 / 观点 / 带货 · 默认零成本')}</small></span></button>
+        <button className={line === 'drama' ? 'active' : ''} onClick={() => setLine('drama')}>
+          <img src="/kp/line-drama.jpg" alt="" loading="lazy"/>
+          <span><b>{t('AI 短剧')}</b><small>{t('一段故事 → 三镜成片 · 本地草稿 / 云端成片')}</small></span></button>
       </div>
       {line === 'koubo' ? <>
         <label>{t('话题或文案')}<textarea value={topic} onChange={(e) => setTopic(e.target.value)} rows={5} placeholder={t('例如：猫为什么总爱钻纸箱？也可以直接粘一整段文案，AI 会按它分段。')}/></label>
+        {!topic.trim() && <div className="kp-samples">
+          <span>{t('试试这个：')}</span>
+          {(lang === 'en'
+            ? ['why cats squeeze into cardboard boxes', 'why the sky is blue', 'why onions make you cry']
+            : ['猫为什么总爱钻纸箱', '为什么切洋葱会流眼泪', '指南针为什么不指正北']
+          ).map((x) => <button key={x} onClick={() => setTopic(x)}>{x}</button>)}
+        </div>}
         <div className="kp-inline" style={{marginTop: 6}}><input value={articleUrl} onChange={(e) => setArticleUrl(e.target.value)} placeholder={t('或粘一个文章链接（公众号 / 博客 / 新闻），抓正文当素材')}/><button onClick={grabUrl} disabled={!articleUrl.trim() || !!busy}>{t('抓正文')}</button></div>
         <div className="kp-row">
           <label>{t('目标时长')}<select value={duration} onChange={(e) => setDuration(e.target.value)}>{['45秒', '60秒', '90秒'].map((d) => <option key={d} value={d}>{t(d)}</option>)}</select></label>
@@ -507,7 +548,7 @@ export const Kaipian = () => {
         </div>
       </div>
     </section>}
-    </div><Aside/></div>
+    </div>{showCfg && <Aside/>}</div>
     <footer className="kp-foot">{t('产物在 ')}<code>{cfg?.outputDir ?? '~/OpenShorts'}</code>{t(' · key 只存本机 · 成片默认带 AI 生成标识 · ')}<a href="https://github.com/jnMetaCode/openshorts" target="_blank" rel="noreferrer">GitHub</a></footer>
   </div>;
 };

@@ -69,3 +69,67 @@ body:has(.kp){overflow:auto}
 /* 项目列表：标题来自模型，同话题出几版会完全重名，第二行给 id + 时间 */
 .kp-aside .kp-projs li span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .kp-aside .kp-projs li em{display:block;font-style:normal;color:#6d645b;font-size:10px;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* ───────── 结构：配置栏默认收起，主区拿回全宽 ─────────
+   原来 .kp-aside 常驻 340px、每一屏都在——连"你的片子做好了"那一屏都还挂着两套模型配置。
+   第一次用的人第一眼看到的是一堆下拉框，那是设置，不是主流程。
+   收起态只留一行状态摘要回答"这台机器现在能不能出片"。 */
+.kp-shell.wide{grid-template-columns:minmax(0,1fr)}
+.kp-strip{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:12px 24px 0;padding:9px 12px;
+  background:#17130f;border:1px solid #382f27;border-radius:10px;font-size:12px}
+.kp-chip{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:99px;
+  background:#211a15;border:1px solid #33291f;color:#a99b8e;white-space:nowrap;cursor:help}
+.kp-chip.ok{color:#a7c39f;border-color:#31432e}
+.kp-chip.bad{color:#e0938b;border-color:#5c332e;background:#2a1a17}
+.kp-strip-sp{flex:1}
+.kp-cfgbtn{border:1px solid #4a3c30;border-radius:7px;padding:6px 12px;background:#241e19;color:#d8cabc;cursor:pointer;font-size:12px}
+.kp-cfgbtn:hover{border-color:#6b584a;color:#f0e4d5}
+.kp-aside-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #2a2420}
+.kp-aside-top b{font-size:13px;color:#f3dfca}
+.kp-aside-top button{border:0;background:transparent;color:#877d72;font-size:18px;line-height:1;cursor:pointer;padding:0 4px}
+.kp-aside-top button:hover{color:#e0938b}
+
+/* 英文项目 + 中文界面 → 成片页会中英混排。给一条可关掉的提示，不强制切。 */
+.kp-langhint{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:12px 24px 0;padding:10px 14px;
+  background:#221b15;border:1px solid #6d4f3f;border-left:3px solid #d9a441;border-radius:8px;font-size:12px;color:#e4d6c6}
+.kp-langhint button{border:1px solid #7a5c3e;border-radius:6px;padding:5px 11px;background:#d9a441;color:#2b2014;cursor:pointer;font-size:12px;font-weight:600}
+.kp-langhint button.ghost{background:transparent;color:#c9b8a5;border-color:#4a3c30;font-weight:400}
+
+/* ───────── 视觉：层级 ─────────
+   原来标题 15px / 正文 13px 一路平下来，主行动按钮（下一步）和配置按钮（验证并保存）
+   一样醒目——层级全靠颜色一个红撑着。这里把字号对比拉开、按钮分主次。 */
+.kp-card h3{font-size:20px;letter-spacing:-.2px;color:#f3e6d6}
+.kp-card h3 small{font-size:12.5px}
+.kp-card h4{font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:#8d8073}
+.kp-steps li{padding:11px 12px;font-size:13px;transition:border-color .15s,color .15s}
+.kp-steps li span{width:24px;height:24px;font-size:12px;font-weight:600}
+.kp-steps li.active{background:#241a16;box-shadow:inset 0 0 0 1px #ce4a3f}
+.kp-steps li.can{cursor:pointer}.kp-steps li.can:hover{border-color:#6b584a;color:#d8cabc}
+/* 主行动实心、够大；配置类按钮降为幽灵样式,不跟主行动抢 */
+.kp-actions .primary{padding:11px 22px;font-size:13px;font-weight:600;box-shadow:0 6px 16px rgba(167,45,36,.35)}
+.kp-aside .primary{background:transparent;border-color:#6b4a44;color:#e0a99f;font-weight:400;box-shadow:none}
+.kp-aside .primary:hover{border-color:#a7554b;color:#f0c4ba}
+
+/* 两条线的选择卡：加真成片缩略图,长什么样看图比看字快 */
+.kp-lines button{display:flex;gap:12px;align-items:center;padding:12px}
+.kp-lines button img{width:52px;height:92px;object-fit:cover;border-radius:6px;background:#000;flex:0 0 auto}
+.kp-lines button span{display:block;min-width:0}
+.kp-lines button b{font-size:15px}
+.kp-lines button.active{box-shadow:inset 0 0 0 1px #ce4a3f}
+
+/* 第一屏「试试这个」：空输入框旁边给三条真跑过的话题,点一下就填 */
+.kp-samples{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:8px;font-size:12px;color:#877d72}
+.kp-samples button{border:1px dashed #4a3c30;border-radius:99px;padding:4px 11px;background:transparent;color:#c9b8a5;cursor:pointer;font-size:12px}
+.kp-samples button:hover{border-style:solid;border-color:#a7554b;color:#f0e4d5}
+
+/* ───────── 容器对齐 ─────────
+   收起配置栏后主区变全宽,但各块的宽度约定不一致:steps 用 padding、card 用 margin,
+   于是步骤条右边界 1156、卡片右边界 1207,差 50px——截图上一眼看得出没对齐。
+   统一成"同一个最大宽度 + 居中",宽屏上不再左靠、右边不再空一条。 */
+.kp-shell.wide .kp-main>*{max-width:1180px;margin-left:auto;margin-right:auto}
+.kp-shell.wide .kp-steps{padding-left:0;padding-right:0;width:calc(100% - 48px);max-width:1132px}
+.kp-shell.wide .kp-card,.kp-shell.wide .kp-strip,
+.kp-shell.wide .kp-error,.kp-shell.wide .kp-busy,.kp-shell.wide .kp-foot,.kp-shell.wide .kp-langhint{
+  margin-left:auto;margin-right:auto;width:calc(100% - 48px);max-width:1132px}
+/* 按钮文字不该被挤成两行（"抓正文"曾断成"抓正/文"） */
+.kp-inline button,.kp-actions button,.kp-cfgbtn{white-space:nowrap}
