@@ -128,3 +128,23 @@ jobs:
             desktop/release/*.AppImage
             desktop/release/SHA256SUMS-*.txt
           generate_release_notes: true
+          # 校验说明必须写清楚"只下一个文件时怎么校验"：SHA256SUMS-mac.txt 里有 arm64 和 x64 两行,
+          # 用户只会下自己那个架构,直接 `shasum -c` 会对另一行报 FAILED open or read 并以退出码 1 结束——
+          # 看起来像下载被篡改了。--ignore-missing 在 macOS 自带的 shasum 上可用(实测)。
+          body: |
+            桌面安装包(未签名,首次打开需在「系统设置 → 隐私与安全性」放行)。
+
+            **校验下载**(在下载目录执行,只校验你下的那个文件):
+
+            ```bash
+            # macOS
+            shasum -a 256 --ignore-missing -c SHA256SUMS-mac.txt
+            # Linux
+            sha256sum --ignore-missing -c SHA256SUMS-linux.txt
+            ```
+
+            ```powershell
+            # Windows PowerShell
+            (Get-FileHash .\OpenShorts.Setup.0.1.0.exe -Algorithm SHA256).Hash.ToLower()
+            # 与 SHA256SUMS-win.txt 里的那一行比对
+            ```
