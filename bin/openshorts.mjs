@@ -29,7 +29,9 @@ const [cmd = 'open', ...rest] = process.argv.slice(2);
  *   1. `OPENSHORTS_LANG=en|zh` —— 显式指定，最优先
  *   2. 系统 locale 明确是中文（zh_*）—— 中文
  *   3. 系统 locale 明确是别的语言   —— 英文
- *   4. locale 根本没设              —— 中文（这个项目的主场）
+ *   4. locale 没设、或是 C / POSIX  —— 中文（这个项目的主场）
+ *      `C`/`POSIX` 的字面意思就是"不做本地化",不是"用户说英语"——
+ *      Docker、CI、cron 里普遍是这个值,拿它当英语会让一堆中文用户的容器突然说英文。
  *
  * **故意不认 `--lang`**：那个开关在 `new` 里的含义是"片子说什么话"，
  * 让它顺带切掉终端语言是两件事搅在一起——中文用户出一条英文片，
@@ -39,7 +41,7 @@ const cliLang = (() => {
   const explicit = process.env.OPENSHORTS_LANG;
   if (explicit) return /^zh/i.test(explicit) ? 'zh' : 'en';
   const loc = process.env.LC_ALL || process.env.LC_MESSAGES || process.env.LANG || '';
-  if (!loc) return 'zh';
+  if (!loc || /^(C|POSIX)(\.|@|$)/i.test(loc)) return 'zh';
   return /^zh/i.test(loc) ? 'zh' : 'en';
 })();
 const T = (zh, en) => (cliLang === 'en' ? en ?? zh : zh);

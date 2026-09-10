@@ -470,6 +470,11 @@ test('CLI 语言判定：显式 > 系统 locale > 中文兜底，且不认 --lan
   assert.match(help({ LANG: 'en_US.UTF-8' }), /^Usage: openshorts/, '系统 locale 是英文 → 英文');
   assert.match(help({ LANG: 'zh_CN.UTF-8' }), /^用法：openshorts/, '系统 locale 是中文 → 中文');
   assert.match(help({}), /^用法：openshorts/, 'locale 没设 → 中文（这个项目的主场，不能让老用户莫名变英文）');
+  // C / POSIX 的字面意思是"不做本地化"，不是"用户说英语"——Docker / CI / cron 里普遍是这个值。
+  // 把它当英语会让一堆中文用户的容器突然说英文。
+  for (const loc of ['C', 'C.UTF-8', 'POSIX']) {
+    assert.match(help({ LANG: loc }), /^用法：openshorts/, `LANG=${loc} 应视为"没设"→ 中文`);
+  }
   assert.match(help({ LANG: 'en_US.UTF-8', OPENSHORTS_LANG: 'zh' }), /^用法：openshorts/, '显式指定压过 locale');
   assert.match(help({ LANG: 'zh_CN.UTF-8', OPENSHORTS_LANG: 'en' }), /^Usage: openshorts/);
   // --lang 在 new 里的含义是"片子说什么话",不该顺带切掉终端语言:
@@ -509,4 +514,25 @@ test('本机出图的档位标签与许可证说明也跟着语言走（sources 
   assert.match(en.models[0].reason, /needs ≥ 12 GB RAM/);
   assert.match(zh.models[0].reason, /需要 ≥ 12 GB 内存/, '中文侧一字未变');
   assert.match(zh.models[0].label, /轻档/);
+});
+
+/**
+ * 防的是这次真栽的事：CLI 改成跟随系统 locale 之后,**本机全绿、CI 全红**——
+ * CI runner 上 LANG=en_US.UTF-8,于是断言中文原话的老用例集体失败。
+ * 这条把"跑测试的机器 locale 不同"这个变量本身钉死。
+ */
+test('断言中文原话的 CLI 用例必须钉住语言，不能被机器 locale 掀翻', () => {
+  const src = fs.readFileSync(path.join(root, 'tests', 'cli-exit.test.mjs'), 'utf-8');
+  assert.match(src, /OPENSHORTS_LANG: 'zh'/, 'cli-exit 的断言是中文原话，必须显式钉住语言');
+  // 真跑一遍:把环境伪装成 CI runner(LANG=en_US.UTF-8),同时带上 cli-exit 用的那个钉子,
+  // 输出必须仍是中文——这才证明钉子真的压得住机器 locale。
+  // (不能从这里 spawn `node --test`:Node 会判为递归调用直接跳过,拿回一个空输出,
+  //  断言反而"看起来失败"。第一版就是这么写的。)
+  const { spawnSync: sp } = spawnSyncMod;
+  const bin = path.join(root, 'bin', 'openshorts.mjs');
+  const ci = { ...process.env, LANG: 'en_US.UTF-8', LC_ALL: 'en_US.UTF-8' };
+  const pinned = sp(process.execPath, [bin, 'help'], { encoding: 'utf-8', env: { ...ci, OPENSHORTS_LANG: 'zh' } });
+  assert.match(pinned.stdout, /^用法：openshorts/, 'CI 的 locale 下，钉住 zh 后必须仍是中文');
+  const unpinned = sp(process.execPath, [bin, 'help'], { encoding: 'utf-8', env: ci });
+  assert.match(unpinned.stdout, /^Usage: openshorts/, '不钉的话就会跟着 CI 的 locale 变英文——这正是当初 CI 全红的原因');
 });

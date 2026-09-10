@@ -5,7 +5,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const bin = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'bin', 'openshorts.mjs');
-const cli = (...args) => spawnSync(process.execPath, [bin, ...args], { encoding: 'utf-8', timeout: 30000 });
+// 这些用例断言的是中文原话,必须**显式钉住语言**:CLI 现在跟随系统 locale,
+// 而 CI runner 上 LANG=en_US.UTF-8 —— 不钉的话本机全绿、CI 全红(真栽过一次)。
+const cli = (...args) => spawnSync(process.execPath, [bin, ...args],
+  { encoding: 'utf-8', timeout: 30000, env: { ...process.env, OPENSHORTS_LANG: 'zh' } });
 
 test('打错命令要 exit 1：脚本和 CI 不能把 rnu 当成功', () => {
   const r = cli('rnu');
