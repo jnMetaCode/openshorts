@@ -21,6 +21,29 @@ await applyAoKeysToEnv();
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const [cmd = 'open', ...rest] = process.argv.slice(2);
 
+/**
+ * 命令行输出用哪种语言。界面早就双语、片子也双语了，但 CLI 一直只说中文——
+ * 英文用户装完敲第一条命令看到的是一屏中文，这是"能装"和"能用"之间最后一道墙。
+ *
+ * 判定顺序**故意保守**，不能让现有中文用户莫名其妙变英文：
+ *   1. `OPENSHORTS_LANG=en|zh` —— 显式指定，最优先
+ *   2. 系统 locale 明确是中文（zh_*）—— 中文
+ *   3. 系统 locale 明确是别的语言   —— 英文
+ *   4. locale 根本没设              —— 中文（这个项目的主场）
+ *
+ * **故意不认 `--lang`**：那个开关在 `new` 里的含义是"片子说什么话"，
+ * 让它顺带切掉终端语言是两件事搅在一起——中文用户出一条英文片，
+ * 不该因此看到一屏英文提示。
+ */
+const cliLang = (() => {
+  const explicit = process.env.OPENSHORTS_LANG;
+  if (explicit) return /^zh/i.test(explicit) ? 'zh' : 'en';
+  const loc = process.env.LC_ALL || process.env.LC_MESSAGES || process.env.LANG || '';
+  if (!loc) return 'zh';
+  return /^zh/i.test(loc) ? 'zh' : 'en';
+})();
+const T = (zh, en) => (cliLang === 'en' ? en ?? zh : zh);
+
 function aoBin() {
   // AO 的 exports 只声明了 ESM 的 `import` 条件（CJS require.resolve 会报 NOT_EXPORTED），
   // 用 import.meta.resolve 拿 dist/index.js，再反推包目录
@@ -40,12 +63,12 @@ function parseOpts(a) { const o = {}; for (let i = 0; i < a.length; i++) if (a[i
 function readProject(pf) {
   let raw;
   try { raw = fs.readFileSync(pf, 'utf-8'); }
-  catch { console.error(`⛔ 找不到项目文件：${pf}`); process.exit(1); }
+  catch { console.error(T(`⛔ 找不到项目文件：${pf}`, `⛔ Project file not found: ${pf}`)); process.exit(1); }
   try {
     const p = JSON.parse(raw);
-    if (!p || typeof p !== 'object' || !Array.isArray(p.shots)) { console.error(`⛔ ${pf} 不是开片的项目文件（里面没有 shots）`); process.exit(1); }
+    if (!p || typeof p !== 'object' || !Array.isArray(p.shots)) { console.error(T(`⛔ ${pf} 不是开片的项目文件（里面没有 shots）`, `⛔ ${pf} is not an OpenShorts project file (no "shots" in it)`)); process.exit(1); }
     return p;
-  } catch (e) { console.error(`⛔ ${pf} 不是合法 JSON：${e.message.split('\n')[0]}`); process.exit(1); }
+  } catch (e) { console.error(T(`⛔ ${pf} 不是合法 JSON：${e.message.split('\n')[0]}`, `⛔ ${pf} is not valid JSON: ${e.message.split('\n')[0]}`)); process.exit(1); }
 }
 
 switch (cmd) {
@@ -57,20 +80,21 @@ switch (cmd) {
   }
   case 'sources': {
     const { sourcesAvailability } = await import('../src/sources/availability.mjs');
-    const a = sourcesAvailability();
+    const a = sourcesAvailability({ lang: cliLang });   // 不传的话状态说明会是中文——英文用户只看得懂标签、看不懂原因
     const { sdImageStatus } = await import('../src/local/sd-image.mjs');
-    const g = await sdImageStatus().catch(() => null);
-    const line = (ok, label, reason) => console.log(`  ${ok ? '✅' : '⛔'} ${label.padEnd(6, '　')} ${reason}`);
-    console.log('\n口播短视频的画面来源');
-    line(a.stock.ok, '素材库', a.stock.reason);
-    line(!!g?.ok, '本机出图', g?.ok ? `${g.models.find((m) => m.id === g.ready)?.label} 就绪（素材库没命中时顶上，不花钱）`
-      : g?.cliFound ? `模型没下（openshorts install-image，${g.models.find((m) => m.usable)?.sizeGB ?? '?'} GB，Apache-2.0 可商用）`
-      : '未装（openshorts install-image；不装的话找不到素材的镜头退纯色底）');
-    console.log('\nAI 短剧的画面来源');
-    line(a.image.ok, '云端出图', a.image.reason);
-    line(a.local.ok, '本机出片', a.local.reason);
-    line(a.cloud.ok, '云端出片', a.cloud.reason);
-    console.log(`\n工具：ffmpeg ${a.tools.ffmpeg ? '✓' : '✗'} · whisper-cli ${a.tools.whisper ? '✓' : '✗'} · imagemagick ${a.tools.magick ? '✓' : '✗'}\n`);
+    const g = await sdImageStatus({ lang: cliLang }).catch(() => null);
+    // 中文标签按全角空格补齐,英文标签按半角——混用会让整列歪掉
+    const line = (ok, label, reason) => console.log(`  ${ok ? '✅' : '⛔'} ${cliLang === 'en' ? label.padEnd(12) : label.padEnd(6, '　')} ${reason}`);
+    console.log(T('\n口播短视频的画面来源', '\nVisual sources for talking-head shorts'));
+    line(a.stock.ok, T('素材库', 'Stock'), a.stock.reason);
+    line(!!g?.ok, T('本机出图', 'Local gen'), g?.ok ? T(`${g.models.find((m) => m.id === g.ready)?.label} 就绪（素材库没命中时顶上，不花钱）`, `${g.models.find((m) => m.id === g.ready)?.label} ready (covers stock misses, free)`)
+      : g?.cliFound ? T(`模型没下（openshorts install-image，${g.models.find((m) => m.usable)?.sizeGB ?? '?'} GB，Apache-2.0 可商用）`, `model not downloaded (openshorts install-image, ${g.models.find((m) => m.usable)?.sizeGB ?? '?'} GB, Apache-2.0)`)
+      : T('未装（openshorts install-image；不装的话找不到素材的镜头退纯色底）', 'not installed (openshorts install-image; without it, shots with no footage fall back to a solid color)'));
+    console.log(T('\nAI 短剧的画面来源', '\nVisual sources for the AI mini-drama line'));
+    line(a.image.ok, T('云端出图', 'Cloud image'), a.image.reason);
+    line(a.local.ok, T('本机出片', 'Local video'), a.local.reason);
+    line(a.cloud.ok, T('云端出片', 'Cloud video'), a.cloud.reason);
+    console.log(`\n${T('工具：', 'Tools: ')}ffmpeg ${a.tools.ffmpeg ? '✓' : '✗'} · whisper-cli ${a.tools.whisper ? '✓' : '✗'} · imagemagick ${a.tools.magick ? '✓' : '✗'}\n`);
     break;
   }
   case 'drama': {
@@ -93,18 +117,18 @@ switch (cmd) {
     // 模板名与 --lang 是同一件事的两种写法：写 koubo-explainer 等于 --lang en
     const lang = normLang(tpl === 'koubo-explainer' ? 'en' : (opt.lang ?? 'zh'));
     const spec = langSpec(lang);
-    if (tpl && !['koubo-kepu', 'koubo-explainer'].includes(tpl)) { console.error(`口播线只有 koubo-kepu（中文）与 koubo-explainer（英文）两个模板（AI 短剧请用 openshorts drama）`); process.exit(1); }
+    if (tpl && !['koubo-kepu', 'koubo-explainer'].includes(tpl)) { console.error(T('口播线只有 koubo-kepu（中文）与 koubo-explainer（英文）两个模板（AI 短剧请用 openshorts drama）', 'The talking-head line has only two templates: koubo-kepu (Chinese) and koubo-explainer (English). For AI mini-drama use `openshorts drama`.')); process.exit(1); }
     // 模板名和 --lang 打架时报错，不猜：`new koubo-kepu --lang en` 静默换成英文模板的话，
     // 用户拿到一条英文片还以为是自己模板写错了
-    if (tpl === 'koubo-kepu' && normLang(opt.lang ?? 'zh') === 'en') { console.error('koubo-kepu 是中文模板，--lang en 是英文——二选一（英文片直接用 openshorts new --lang en）'); process.exit(1); }
-    if (!opt.topic) { console.error('缺 --topic "话题或文案"'); process.exit(1); }
+    if (tpl === 'koubo-kepu' && normLang(opt.lang ?? 'zh') === 'en') { console.error(T('koubo-kepu 是中文模板，--lang en 是英文——二选一（英文片直接用 openshorts new --lang en）', 'koubo-kepu is the Chinese template and --lang en asks for English — pick one (for an English film just run `openshorts new --lang en`)')); process.exit(1); }
+    if (!opt.topic) { console.error(T('缺 --topic "话题或文案"', 'Missing --topic "a topic or a script"')); process.exit(1); }
     const { generateKoubo } = await import('../src/pipeline/koubo-script.mjs');
     const { uniqueProjectId } = await import('../src/project/koubo.mjs');
     const { readConfig } = await import('../src/config.mjs');
     const cfg = readConfig();
     const wf = path.join(root, 'templates', spec.template);
     const inputs = localizeInputs({ topic: opt.topic, duration: opt.duration || '60秒', tone: opt.tone || '科普讲解' }, lang);
-    console.log(`✍️  正在写脚本（${lang === 'en' ? 'English · ' : ''}${inputs.duration} · ${inputs.tone}）…`);
+    console.log(T(`✍️  正在写脚本（${lang === 'en' ? 'English · ' : ''}${inputs.duration} · ${inputs.tone}）…`, `✍️  Writing the script (${lang === 'en' ? 'English · ' : 'Chinese · '}${inputs.duration} · ${inputs.tone})…`));
     let g;
     try {
       g = await generateKoubo({ wf, inputs, lang, log: (m) => console.log(`  ⟳ ${m}`),
@@ -113,47 +137,51 @@ switch (cmd) {
     } catch (e) {
       // 最常见的是没配文本模型 key：一句话说清怎么配，不吐堆栈
       console.error(`\n⛔ ${e.message.split('\n')[0]}`);
-      console.error('   写脚本要一个文本模型：设环境变量（如 DEEPSEEK_API_KEY）再运行，或在 AO 的 ~/.ao 配置里存一次 key；也可以加 --provider ollama --model <本地模型> 走本地。');
+      console.error(T('   写脚本要一个文本模型：设环境变量（如 DEEPSEEK_API_KEY）再运行，或在 AO 的 ~/.ao 配置里存一次 key；也可以加 --provider ollama --model <本地模型> 走本地。',
+        '   Writing a script needs one text model: set an env var (e.g. DEEPSEEK_API_KEY) and run again, or store a key once in the engine config under ~/.ao. To stay offline: --provider ollama --model <local model>.'));
       process.exit(1);
     }
-    if (!g.ok && g.kind === 'run') { console.error('脚本步骤失败：', g.res.steps.filter((s) => s.status === 'failed').map((s) => `${s.id}: ${s.error}`).join('; ')); process.exit(1); }
+    if (!g.ok && g.kind === 'run') { console.error(T('脚本步骤失败：', 'Script step failed:'), g.res.steps.filter((s) => s.status === 'failed').map((s) => `${s.id}: ${s.error}`).join('; ')); process.exit(1); }
     if (!g.ok) {
       // 已经自动重写过一次还是解析不了。别甩原始堆栈——脚本花了 token，
       // 把原始输出落盘、告诉用户在哪、告诉他怎么换模型。
-      const dump = path.join(cfg.outputDir, `失败脚本-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '')}.txt`);
+      const dump = path.join(cfg.outputDir, `${T('失败脚本', 'failed-script')}-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '')}.txt`);
       try { fs.mkdirSync(cfg.outputDir, { recursive: true }); fs.writeFileSync(dump, (g.res.steps ?? []).map((st) => `── ${st.id} (${st.status}) ──\n${st.output ?? ''}`).join('\n\n')); } catch { /* 落盘失败就算了 */ }
-      console.error(`\n⛔ 脚本写出来了，但解析不了（自动重写一次仍失败）：${g.error.message}`);
-      console.error(`   原始输出留在：${dump}`);
-      console.error(`   再跑一次，或换个模型：--provider deepseek --model deepseek-chat`);
+      console.error(T(`\n⛔ 脚本写出来了，但解析不了（自动重写一次仍失败）：${g.error.message}`, `\n⛔ The model wrote a script but it could not be parsed (one automatic rewrite already failed): ${g.error.message}`));
+      console.error(T(`   原始输出留在：${dump}`, `   Raw output saved to: ${dump}`));
+      console.error(T('   再跑一次，或换个模型：--provider deepseek --model deepseek-chat', '   Run it again, or switch models: --provider deepseek --model deepseek-chat'));
       process.exit(1);
     }
     const project = g.project;
     project.id = uniqueProjectId(cfg.outputDir, project.id);   // 同话题再跑一次不该覆盖上一条片子
     const dir = path.join(cfg.outputDir, project.id); fs.mkdirSync(dir, { recursive: true });
     const pf = path.join(dir, 'project.json'); fs.writeFileSync(pf, JSON.stringify(project, null, 2));
-    console.log(`✓ 项目已建：${pf}\n  ${project.shots.length} 个镜头 · 标题候选：${project.publish.titles[0] ?? '（无）'}`);
+    console.log(T(`✓ 项目已建：${pf}\n  ${project.shots.length} 个镜头 · 标题候选：${project.publish.titles[0] ?? '（无）'}`,
+      `✓ Project created: ${pf}\n  ${project.shots.length} shots · first title: ${project.publish.titles[0] ?? '(none)'}`));
     if (project.publish.error) console.log(`  ⚠️ ${project.publish.error}`);
     for (const x of project.scriptWarnings ?? []) console.log(`  ⚠️ ${x}`);
-    console.log(`  下一步：openshorts run "${pf}"`);
+    console.log(T(`  下一步：openshorts run "${pf}"`, `  Next: openshorts run "${pf}"`));
     break;
   }
   case 'run': {
-    const pf = rest[0]; if (!pf) { console.error('用法：openshorts run <project.json>'); process.exit(1); }
+    const pf = rest[0]; if (!pf) { console.error(T('用法：openshorts run <project.json>', 'Usage: openshorts run <project.json>')); process.exit(1); }
     const project = readProject(pf);
-    if (project.line !== 'koubo') { console.error('run 只支持口播线项目（AI 短剧请用 openshorts drama）'); process.exit(1); }
+    if (project.line !== 'koubo') { console.error(T('run 只支持口播线项目（AI 短剧请用 openshorts drama）', '`run` only handles talking-head projects (for AI mini-drama use `openshorts drama`)')); process.exit(1); }
     const { runKoubo } = await import('../src/pipeline/koubo-run.mjs');
     const t0 = Date.now();
     const o = parseOpts(rest.slice(1));
     const { readConfig: rc } = await import('../src/config.mjs'); const c = rc();
     const vision = o['vision-provider'] ? { provider: o['vision-provider'], model: o['vision-model'] || '' } : c.vision;
-    if (vision?.provider) console.log(`  🔍 素材候选看图排序：${vision.provider} / ${vision.model}`);
+    if (vision?.provider) console.log(T(`  🔍 素材候选看图排序：${vision.provider} / ${vision.model}`, `  🔍 Visual ranking of footage candidates: ${vision.provider} / ${vision.model}`));
     const only = o.only ? String(o.only).split(',').map((x) => x.trim()).filter(Boolean) : null;
     let p;
     try {
       p = await runKoubo(project, { outDir: path.dirname(path.resolve(pf)), log: (m) => console.log('  ' + m), vision, only,
         localImage: o['no-local-image'] ? false : (o['local-image-model'] || 'auto') });
-    } catch (e) { console.error(`\n⛔ 出片失败：${e.message}`); process.exit(1); }
-    console.log(`\n✓ 成片：${p.final.file}（${p.final.durationSec.toFixed(1)}s，${((Date.now() - t0) / 1000).toFixed(0)}s 出片）\n  字幕：${p.final.srt}\n  封面：${p.final.cover ?? '无'}\n  发布文案：${p.final.publish}`);
+    } catch (e) { console.error(T(`\n⛔ 出片失败：${e.message}`, `\n⛔ Rendering failed: ${e.message}`)); process.exit(1); }
+    // 耗时用的是墙上时间:跨机器休眠会报出离谱数字(真机上报过 39477s,其实那台机睡了 10.8 小时)
+    console.log(T(`\n✓ 成片：${p.final.file}（${p.final.durationSec.toFixed(1)}s，${((Date.now() - t0) / 1000).toFixed(0)}s 出片）\n  字幕：${p.final.srt}\n  封面：${p.final.cover ?? '无'}\n  发布文案：${p.final.publish}`,
+      `\n✓ Video: ${p.final.file} (${p.final.durationSec.toFixed(1)}s, rendered in ${((Date.now() - t0) / 1000).toFixed(0)}s wall-clock)\n  Captions: ${p.final.srt}\n  Cover: ${p.final.cover ?? 'none'}\n  Publish copy: ${p.final.publish}`));
     for (const n of p.final.notes) console.log(`  ⚠️ ${n}`);
     // 质检结论必须落到屏幕和退出码上。以前只在日志里写"有问题，N 条提醒"，
     // 具体条目只有网页端显示——CLI/CI 里出一条"观众看不到字幕"的片子，这里还是 ✓ + exit 0。
@@ -161,36 +189,38 @@ switch (cmd) {
     if (q) {
       const icon = { warn: '⚠️', fail: '⛔' };
       for (const it of q.items.filter((x) => x.status !== 'pass')) console.log(`  ${icon[it.status] ?? '·'} ${it.msg}`);
-      if (!q.pass) { console.error(`\n⛔ 质检未过（上面 ⛔ 的条目）。文件已生成，但按这个状态发出去观众会看到问题。`); process.exitCode = 1; }
+      if (!q.pass) { console.error(T('\n⛔ 质检未过（上面 ⛔ 的条目）。文件已生成，但按这个状态发出去观众会看到问题。', '\n⛔ Quality check failed (the ⛔ items above). The files exist, but published as-is your viewers will see the problem.')); process.exitCode = 1; }
     }
     break;
   }
   case 'batch': {
     // openshorts batch <project.json> --voices a,b --captions douyin,clean --rates 1,1.1
-    const pf = rest[0]; if (!pf) { console.error('用法：openshorts batch <project.json> --voices zh-CN-XiaoxiaoNeural,zh-CN-YunxiNeural [--captions douyin,clean] [--rates 1,1.1]'); process.exit(1); }
+    const pf = rest[0]; if (!pf) { console.error(T('用法：openshorts batch <project.json> --voices zh-CN-XiaoxiaoNeural,zh-CN-YunxiNeural [--captions douyin,clean] [--rates 1,1.1]', 'Usage: openshorts batch <project.json> --voices en-US-AvaNeural,en-GB-SoniaNeural [--captions douyin,clean] [--rates 1,1.1]')); process.exit(1); }
     const o = parseOpts(rest.slice(1)); const split = (x) => (x ? String(x).split(',').map((t) => t.trim()).filter(Boolean) : []);
     const project = readProject(pf);
-    if (project.line !== 'koubo') { console.error('批量目前只支持口播线项目'); process.exit(1); }
+    if (project.line !== 'koubo') { console.error(T('批量目前只支持口播线项目', 'Batch mode currently supports talking-head projects only')); process.exit(1); }
     const { planVariants, runBatch } = await import('../src/pipeline/batch.mjs');
     const variants = planVariants({ voices: split(o.voices), captions: split(o.captions), rates: split(o.rates).map(Number) }, project);
-    console.log(`共 ${variants.length} 版：${variants.map((v) => v.id).join('、')}`);
+    console.log(T(`共 ${variants.length} 版：${variants.map((v) => v.id).join('、')}`, `${variants.length} version(s): ${variants.map((v) => v.id).join(', ')}`));
     const t0 = Date.now();
     const { readConfig: rcb } = await import('../src/config.mjs');
     const results = await runBatch(project, variants, { baseDir: path.dirname(path.resolve(pf)), log: (m) => console.log('  ' + m), vision: rcb().vision });
     const okN = results.filter((r) => r.ok).length;
-    console.log(`\n${okN ? '✓' : '⛔'} ${okN}/${results.length} 版完成，${((Date.now() - t0) / 1000).toFixed(0)}s`);
-    for (const r of results) console.log(`  ${r.ok ? '✅' : '⛔'} ${r.id}${r.ok ? `  ${r.file}（${r.durationSec?.toFixed(1)}s${r.quality ? `，质检${r.quality.pass ? '通过' : '有问题'}`: ''}）` : `  ${r.error}`}`);
+    console.log(T(`\n${okN ? '✓' : '⛔'} ${okN}/${results.length} 版完成，${((Date.now() - t0) / 1000).toFixed(0)}s`,
+      `\n${okN ? '✓' : '⛔'} ${okN}/${results.length} version(s) done in ${((Date.now() - t0) / 1000).toFixed(0)}s`));
+    for (const r of results) console.log(`  ${r.ok ? '✅' : '⛔'} ${r.id}${r.ok ? `  ${r.file}${T(`（${r.durationSec?.toFixed(1)}s${r.quality ? `，质检${r.quality.pass ? '通过' : '有问题'}` : ''}）`, ` (${r.durationSec?.toFixed(1)}s${r.quality ? `, quality check ${r.quality.pass ? 'passed' : 'found issues'}` : ''})`)}` : `  ${r.error}`}`);
     if (okN < results.length) process.exitCode = 1;   // 以前"✓ 0/3 版完成"也 exit 0，脚本里全灭都当成功
     break;
   }
   case 'export': {
     // openshorts export <project.json> [--platform douyin|shipinhao|bilibili|shorts]
-    const pf = rest[0]; const o = parseOpts(rest.slice(1)); if (!pf) { console.error('用法：openshorts export <project.json> [--platform douyin]'); process.exit(1); }
+    const pf = rest[0]; const o = parseOpts(rest.slice(1)); if (!pf) { console.error(T('用法：openshorts export <project.json> [--platform douyin]', 'Usage: openshorts export <project.json> [--platform douyin|shipinhao|bilibili|shorts]')); process.exit(1); }
     const { makePublishPack } = await import('../src/publish/pack.mjs');
     let r;
     try { r = makePublishPack(readProject(pf), { platform: o.platform || 'douyin' }); }
     catch (e) { console.error(`⛔ ${e.message}`); process.exit(1); }   // 典型：还没出片就 export
-    console.log(`✓ 发布包：${r.dir}${r.zip ? `\n  zip：${r.zip}` : ''}\n  ${r.files.join('、')}`);
+    console.log(T(`✓ 发布包：${r.dir}${r.zip ? `\n  zip：${r.zip}` : ''}\n  ${r.files.join('、')}`,
+      `✓ Publish pack: ${r.dir}${r.zip ? `\n  zip: ${r.zip}` : ''}\n  ${r.files.join(', ')}`));
     for (const x of r.warnings ?? []) console.log(`  ⚠️ ${x}`);
     break;
   }
@@ -198,36 +228,44 @@ switch (cmd) {
     // 口播线的钱永远是 0，运行前真正想知道的是**要等多久**。
     // 旧版按 shot.visual.cost 判断，而新项目压根还没有 visual，于是永远输出"全部不花钱"，等于没说。
     // 下面的秒数是今天真机量的：6 镜纯检索 104s / 加看图把关 122s / 每镜本机出图约 57s。
-    const pf = rest[0]; if (!pf) { console.error('用法：openshorts estimate <project.json>'); process.exit(1); }
+    const pf = rest[0]; if (!pf) { console.error(T('用法：openshorts estimate <project.json>', 'Usage: openshorts estimate <project.json>')); process.exit(1); }
     const project = readProject(pf);
     const { readConfig: rc2 } = await import('../src/config.mjs'); const c2 = rc2();
     const n = project.shots.length;
     const paid = project.shots.filter((s) => s.visual?.cost && s.visual.cost.kind !== 'free').length;
     const done = project.shots.filter((s) => s.render?.segment).length;
     const visionOn = !!(c2.vision?.provider && c2.vision?.model);
-    let gen = null; try { const m = await import('../src/local/sd-image.mjs'); gen = await m.sdImageStatus(); } catch { /* 没装 */ }
+    let gen = null; try { const m = await import('../src/local/sd-image.mjs'); gen = await m.sdImageStatus({ lang: cliLang }); } catch { /* 没装 */ }
 
-    console.log(`\n${project.title || project.id} · ${n} 个镜头${done ? `（已渲好 ${done} 个，重跑只补差的）` : ''}`);
+    console.log(`\n${project.title || project.id} · ${T(`${n} 个镜头`, `${n} shots`)}${done ? T(`（已渲好 ${done} 个，重跑只补差的）`, ` (${done} already rendered; a re-run only fills the gaps)`) : ''}`);
     if (project.line !== 'koubo') {
       // 短剧线的画面来自云端出图/出片，钱和时间都由供应商决定——照搬口播线的算法只会算出错的数
-      console.log(`这是 AI 短剧线：画面走${project.tier === 'local' ? '本机出片（不花钱，每镜约 3–4 分钟）' : '云端出图/出片，按各家计费'}。`);
-      console.log(`本次输入：${project.inputs?.video_provider ?? '?'} / ${project.inputs?.video_model ?? '?'} · ${project.inputs?.video_duration ?? '?'} 秒一镜 · ${n} 镜${paid ? `（已出过 ${paid} 镜）` : ''}`);
-      console.log(`准确花费跑这条看：openshorts drama --plan -i story="…"（它会按供应商报价逐镜列出来）\n`);
+      console.log(T(`这是 AI 短剧线：画面走${project.tier === 'local' ? '本机出片（不花钱，每镜约 3–4 分钟）' : '云端出图/出片，按各家计费'}。`,
+        `This is the AI mini-drama line: visuals come from ${project.tier === 'local' ? 'on-device rendering (free, ~3–4 min per shot)' : 'cloud image/video providers, billed by each vendor'}.`));
+      console.log(T(`本次输入：${project.inputs?.video_provider ?? '?'} / ${project.inputs?.video_model ?? '?'} · ${project.inputs?.video_duration ?? '?'} 秒一镜 · ${n} 镜${paid ? `（已出过 ${paid} 镜）` : ''}`,
+        `Inputs: ${project.inputs?.video_provider ?? '?'} / ${project.inputs?.video_model ?? '?'} · ${project.inputs?.video_duration ?? '?'}s per shot · ${n} shots${paid ? ` (${paid} already rendered)` : ''}`));
+      console.log(T('准确花费跑这条看：openshorts drama --plan -i story="…"（它会按供应商报价逐镜列出来）\n',
+        'For the exact cost run: openshorts drama --plan -i story="…" (it prices every shot against the provider\'s rates)\n'));
       break;
     }
-    console.log(`花费：0 元 —— Edge TTS 免费、CC 素材免费、合成用本机 ffmpeg`);
+    console.log(T('花费：0 元 —— Edge TTS 免费、CC 素材免费、合成用本机 ffmpeg', 'Cost: $0 — Edge TTS is free, CC footage is free, compositing runs on your own ffmpeg'));
     const todo = n - done;                       // 已经渲好的镜头会按指纹复用，不重做
     const perGen = 57;                           // 真机：FLUX Q2 576×1024 约 56–57 秒一张
     if (!todo) {
-      console.log(`耗时：约 15 秒 —— 所有镜头都能复用，只需重新合成（改了文案 / 音色 / 画面的镜头会自动重做）`);
+      console.log(T('耗时：约 15 秒 —— 所有镜头都能复用，只需重新合成（改了文案 / 音色 / 画面的镜头会自动重做）',
+        'Time: ~15 s — every shot can be reused, only the final mux re-runs (shots whose text / voice / visual changed are redone automatically)'));
     } else {
       const base = Math.round((visionOn ? 20 : 17) * todo);
-      const mins = (sec) => (sec < 90 ? `${Math.round(sec)} 秒` : `${Math.round(sec / 60)} 分钟`);
-      console.log(`耗时：约 ${mins(base)}起（要跑 ${todo} 个镜头${done ? `，另外 ${done} 个复用` : ''}）`);
-      if (gen?.ok) console.log(`      素材库没命中的镜头会本机出图，每镜再加约 ${perGen} 秒（最坏 ${todo} 镜全画 ≈ ${mins(base + todo * perGen)}）`);
-      else console.log(`      素材库没命中的镜头会退纯色底（装了本机出图模型就能改成现画一张：openshorts install-image）`);
+      const mins = (sec) => (sec < 90 ? T(`${Math.round(sec)} 秒`, `${Math.round(sec)} s`) : T(`${Math.round(sec / 60)} 分钟`, `${Math.round(sec / 60)} min`));
+      console.log(T(`耗时：约 ${mins(base)}起（要跑 ${todo} 个镜头${done ? `，另外 ${done} 个复用` : ''}）`,
+        `Time: from ~${mins(base)} (${todo} shots to render${done ? `, ${done} reused` : ''})`));
+      if (gen?.ok) console.log(T(`      素材库没命中的镜头会本机出图，每镜再加约 ${perGen} 秒（最坏 ${todo} 镜全画 ≈ ${mins(base + todo * perGen)}）`,
+        `      Shots with no stock hit are painted locally, ~${perGen} s each (worst case, all ${todo} painted ≈ ${mins(base + todo * perGen)})`));
+      else console.log(T('      素材库没命中的镜头会退纯色底（装了本机出图模型就能改成现画一张：openshorts install-image）',
+        '      Shots with no stock hit fall back to a solid color (install the local image model to paint one instead: openshorts install-image)'));
     }
-    console.log(`看图把关：${visionOn ? `已开 ${c2.vision.provider}/${c2.vision.model} —— 不贴合的素材会被拦下，转本机出图` : '没开 —— 画面只按检索词字面匹配，可能配错（侧栏或 config.vision 里配）'}`);
+    console.log(T(`看图把关：${visionOn ? `已开 ${c2.vision.provider}/${c2.vision.model} —— 不贴合的素材会被拦下，转本机出图` : '没开 —— 画面只按检索词字面匹配，可能配错（侧栏或 config.vision 里配）'}`,
+      `Visual check: ${visionOn ? `on, ${c2.vision.provider}/${c2.vision.model} — footage that does not fit is rejected and painted locally instead` : 'off — visuals are picked by literal keyword match and can be plain wrong (configure it in the sidebar or config.vision)'}`));
     console.log('');
     break;
   }
@@ -235,14 +273,16 @@ switch (cmd) {
     // Homebrew 的 ffmpeg 已不含 libass ⇒ 字幕烧不进画面。装一份带 libass 的到 ~/.openshorts/bin，只对开片生效。
     const { installFfmpeg, ffmpegCaps } = await import('../src/media/ffmpeg.mjs');
     const before = await ffmpegCaps();
-    if (before.subtitles && !parseOpts(rest).force) { console.log(`✅ 当前 ffmpeg ${before.version} 已经能烧字幕（${before.bin}），不用装。要强制重装加 --force`); break; }
+    if (before.subtitles && !parseOpts(rest).force) { console.log(T(`✅ 当前 ffmpeg ${before.version} 已经能烧字幕（${before.bin}），不用装。要强制重装加 --force`,
+      `✅ Your ffmpeg ${before.version} can already burn subtitles (${before.bin}) — nothing to install. Add --force to reinstall anyway.`)); break; }
     let lastFile = '';
     try {
       const caps = await installFfmpeg({
         onLog: (m) => console.log('  ' + m),
         onProgress: (p) => { if (p.total && p.file !== lastFile) { lastFile = p.file; } if (p.total) process.stdout.write(`\r  ${p.file} ${(p.bytes / 1048576).toFixed(0)}/${(p.total / 1048576).toFixed(0)} MB   `); if (p.done) process.stdout.write('\n'); },
       });
-      console.log(`\n✓ 装好了：${caps.bin}（ffmpeg ${caps.version}）\n  字幕可烧进画面 · AI 标识角标可叠加。之前出的片重跑一次 openshorts run 就有字了。`);
+      console.log(T(`\n✓ 装好了：${caps.bin}（ffmpeg ${caps.version}）\n  字幕可烧进画面 · AI 标识角标可叠加。之前出的片重跑一次 openshorts run 就有字了。`,
+        `\n✓ Installed: ${caps.bin} (ffmpeg ${caps.version})\n  Captions can now be burned in and the AI badge overlaid. Re-run \`openshorts run\` on an older project to get its subtitles.`));
     } catch (e) { console.error(`\n⛔ ${e.message}`); process.exit(1); }
     break;
   }
@@ -250,31 +290,34 @@ switch (cmd) {
     // 本地文生图：素材库没命中时用它顶上，不花钱、不联网、模型 Apache-2.0 可商用
     const o = parseOpts(rest);
     const m = await import('../src/local/sd-image.mjs');
-    const st = await m.sdImageStatus();
+    const st = await m.sdImageStatus({ lang: cliLang });
     if (o.list || rest.includes('--list')) {   // 列目录不该依赖二进制装没装
-      console.log(`\n本地出图档位（模型目录 ${st.modelsDir}，内存 ${st.memGB} GB）`);
+      console.log(T(`\n本地出图档位（模型目录 ${st.modelsDir}，内存 ${st.memGB} GB）`, `\nLocal image-generation tiers (models in ${st.modelsDir}, ${st.memGB} GB RAM)`));
       for (const x of st.models) console.log(`  ${x.present ? '✅' : x.usable ? '⬜' : '⛔'} ${x.id.padEnd(18)} ${x.label} · ${x.sizeGB} GB · ${x.reason}`);
-      console.log(`\n许可证：${st.license}`);
-      console.log(`sd-cli：${st.cliFound ? `✅ ${st.cli}` : '⬜ 还没装，装模型时会一并装上（约 30 MB，MIT）'}`);
-      console.log(`装：openshorts install-image --model ${m.pickImageModel(st)?.id ?? 'flux-schnell-q2'}`);
+      console.log(T(`\n许可证：${st.license}`, `\nLicence: ${st.license}`));
+      console.log(`sd-cli: ${st.cliFound ? `✅ ${st.cli}` : T('⬜ 还没装，装模型时会一并装上（约 30 MB，MIT）', '⬜ not installed — it comes along when you install a model (~30 MB, MIT)')}`);
+      console.log(T(`装：openshorts install-image --model ${m.pickImageModel(st)?.id ?? 'flux-schnell-q2'}`, `Install: openshorts install-image --model ${m.pickImageModel(st)?.id ?? 'flux-schnell-q2'}`));
       break;
     }
     const want = o.model || m.pickImageModel(st)?.id;
     const tier = st.models.find((x) => x.id === want);
-    if (!tier) { console.error(`⛔ 未知档位 ${want}（openshorts install-image --list 看有哪些）`); process.exit(1); }
+    if (!tier) { console.error(T(`⛔ 未知档位 ${want}（openshorts install-image --list 看有哪些）`, `⛔ Unknown tier ${want} (run \`openshorts install-image --list\` to see them)`)); process.exit(1); }
     if (!tier.usable) { console.error(`⛔ ${tier.reason}`); process.exit(1); }
-    if (tier.present && !o.force) { console.log(`✅ ${tier.label} 已经装好了。要重装加 --force`); break; }
-    console.log(`将下载 ${tier.label}，共约 ${tier.sizeGB} GB 到 ${st.modelsDir}${st.cliFound ? '' : '\n（顺带装 sd-cli，约 30 MB，MIT）'}\n许可证：${st.license}`);
+    if (tier.present && !o.force) { console.log(T(`✅ ${tier.label} 已经装好了。要重装加 --force`, `✅ ${tier.label} is already installed. Add --force to reinstall.`)); break; }
+    console.log(T(`将下载 ${tier.label}，共约 ${tier.sizeGB} GB 到 ${st.modelsDir}${st.cliFound ? '' : '\n（顺带装 sd-cli，约 30 MB，MIT）'}\n许可证：${st.license}`,
+      `About to download ${tier.label}, ~${tier.sizeGB} GB into ${st.modelsDir}${st.cliFound ? '' : '\n(sd-cli comes along, ~30 MB, MIT)'}\nLicence: ${st.license}`));
     try {
       await m.installSdImage({ model: want, onLog: (x) => console.log('  ' + x),
         onProgress: (p) => { if (p.total) process.stdout.write(`\r  ${p.file} ${(p.bytes / 1073741824).toFixed(2)}/${(p.total / 1073741824).toFixed(2)} GB   `); if (p.done) process.stdout.write('\n'); } });
-      console.log(`\n✓ 装好了。以后 openshorts run 遇到素材库没命中的镜头，会本机现画一张而不是退纯色底（加 --no-local-image 可关掉）。`);
+      console.log(T('\n✓ 装好了。以后 openshorts run 遇到素材库没命中的镜头，会本机现画一张而不是退纯色底（加 --no-local-image 可关掉）。',
+        '\n✓ Installed. From now on, when `openshorts run` finds no stock footage for a shot it paints one locally instead of falling back to a solid color (--no-local-image turns this off).'));
     } catch (e) { console.error(`\n⛔ ${e.message}`); process.exit(1); }
     break;
   }
   case 'doctor': {
     const { doctor, formatDoctor } = await import('../src/doctor.mjs');
-    console.log('\nOpenShorts 体检'); console.log(formatDoctor(await doctor())); console.log('\nAO 引擎体检（文本/出图/出片供应商）：');
+    console.log(T('\nOpenShorts 体检', '\nOpenShorts health check')); console.log(formatDoctor(await doctor()));
+    console.log(T('\nAO 引擎体检（文本/出图/出片供应商）：', '\nEngine health check (text / image / video providers):'));
     runAO(['doctor', ...rest]); break;
   }
   case 'version': case '-v': case '--version': {
@@ -286,13 +329,37 @@ switch (cmd) {
     printHelp(console.log); break;
   default:
     // 打错命令（rnu、bacth…）不能 exit 0——脚本和 CI 会把它当成功
-    console.error(`⛔ 未知命令：${cmd}\n`);
+    console.error(T(`⛔ 未知命令：${cmd}\n`, `⛔ Unknown command: ${cmd}\n`));
     printHelp(console.error);
     process.exit(1);
 }
 
 function printHelp(out) {
-  out(`用法：openshorts [open|sources|new|run|batch|export|estimate|drama|install-ffmpeg|install-image|doctor|version]
+  out(cliLang === 'en' ? `Usage: openshorts [open|sources|new|run|batch|export|estimate|drama|install-ffmpeg|install-image|doctor|version]
+  open      start the local server and open the browser (default)
+  sources   what this machine can use for visuals (stock / AI images / local gen / cloud video)
+  drama     AI mini-drama: runs the engine's drama workflow (args pass through to \`ao run\`;
+            --validate / --plan check or price it without rendering, -i inputs still apply)
+  doctor    environment health check (delegates to \`ao doctor\`)
+  install-ffmpeg  install an ffmpeg **with libass** into ~/.openshorts/bin — Homebrew's no longer
+                  ships it, and without libass subtitles cannot be burned in [--force to reinstall]
+  install-image   install the local text-to-image model (FLUX.1-schnell, Apache-2.0): paints a frame
+                  when stock has nothing. --list / --model flux-schnell-q4 [--force]
+  new       English film:  openshorts new --lang en --topic "…" [--duration 45s|60s|90s] [--tone explainer]
+            Chinese film:  openshorts new --topic "…"
+            [--voice en-US-AvaNeural] [--captions douyin|clean] [--local-dir ./footage] [--bgm x.mp3]
+            [--provider deepseek --model deepseek-chat]
+            --lang picks the language of the **film** (script, voice, caption line-breaking).
+  run       render: openshorts run <project.json> [--only s2,s3]  (redo just those shots, reuse the rest)
+            [--no-local-image]  (do not paint locally on a stock miss — fall back to a solid color)
+            [--vision-provider agnes --vision-model agnes-2.0-flash]  (score footage candidates by looking at them)
+            Exit code is 1 when the quality check fails (e.g. subtitles not burned in); files are still written.
+  estimate  what this project will cost and how long it will take (talking-head line is always $0 — time is the real cost)
+  export    publish pack: openshorts export <project.json> --platform douyin|shipinhao|bilibili|shorts
+            (mp4 + cover + SRT + copy; never auto-posts)
+  batch     versions: openshorts batch <project.json> --voices a,b [--captions douyin,clean] [--rates 1,1.1]
+
+  This CLI speaks your system locale. Force it with OPENSHORTS_LANG=zh|en.` : `用法：openshorts [open|sources|new|run|batch|export|estimate|drama|install-ffmpeg|install-image|doctor|version]
   open      起本地服务并打开浏览器（默认）
   sources   看这台机器能用哪些画面来源（素材库 / AI 配图 / 本地生成 / 云端出片）
   drama     AI 短剧：跑 AO 短剧流水线（参数透传给 ao run；--validate / --plan 只检查不出片，-i 输入照常带上）
@@ -309,5 +376,7 @@ function printHelp(out) {
             质检未过（如字幕没烧进画面）时退出码为 1，文件照常生成
   estimate  看这个项目要不要花钱、大概等多久（口播线钱恒为 0，真正的成本是时间）
   export    发布包：openshorts export <project.json> --platform douyin|shipinhao|bilibili|shorts（mp4+封面+SRT+文案，不自动发布）
-  batch     批量：openshorts batch <project.json> --voices a,b [--captions douyin,clean] [--rates 1,1.1]`);
+  batch     批量：openshorts batch <project.json> --voices a,b [--captions douyin,clean] [--rates 1,1.1]
+
+  终端语言跟随系统 locale，可用 OPENSHORTS_LANG=zh|en 强制指定。`);
 }

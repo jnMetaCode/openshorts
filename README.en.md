@@ -16,7 +16,7 @@ npm run openshorts      # opens the GUI at http://127.0.0.1:4174
 
 Requires Node.js 20+ and FFmpeg (an npm package is coming; until then use the source checkout or a [release bundle](https://github.com/jnMetaCode/openshorts/releases)). **Run `openshorts doctor` right after installing** — it tells you what this machine can produce today and exactly what is missing.
 
-> **Note**: the GUI has an English toggle (the EN button top-right, or open with `?lang=en`). With it on, the whole talking-head line runs in English — script, voice, word-aware captions, render log, errors, quality notes and the publish pack. Still Chinese: the `openshorts` CLI's own output, and live log lines coming from the AO engine subprocess (the AI mini-drama line runs on a Chinese workflow, so its script is Chinese too).
+> **Note**: the GUI has an English toggle (the EN button top-right, or open with `?lang=en`). With it on, the whole talking-head line runs in English — script, voice, word-aware captions, render log, errors, quality notes and the publish pack. The CLI speaks your system locale too — force it with `OPENSHORTS_LANG=en` (or `zh`). Still Chinese: live log lines coming from the AO engine subprocess, and the AI mini-drama line (it runs on a Chinese workflow, so its script is Chinese).
 
 ## Two pipelines
 

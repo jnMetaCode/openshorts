@@ -13,6 +13,7 @@
  *
  * 二进制复用装 H3 时那份 sd-cli，模型也放同一个目录，不重复下载、不另立门户。
  */
+import { normLang } from '../project/lang.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -41,16 +42,19 @@ const AE = ['ae.safetensors', `${HF}/second-state/FLUX.1-schnell-GGUF/resolve/ma
 /** 档位。sizeGB 是四个文件加起来的下载量，minMemGB 是跑得动的最低内存。 */
 export const SD_IMAGE_MODELS = [
   {
-    id: 'flux-schnell-q2', label: 'FLUX.1-schnell Q2（轻档，12 GB+ 内存）', minMemGB: 12, sizeGB: 6.4,
+    id: 'flux-schnell-q2', label: 'FLUX.1-schnell Q2（轻档，12 GB+ 内存）', labelEn: 'FLUX.1-schnell Q2 (light, 12 GB+ RAM)', minMemGB: 12, sizeGB: 6.4,
     diffusion: 'flux1-schnell-Q2_K.gguf', t5: 't5-v1_1-xxl-encoder-Q3_K_M.gguf',
   },
   {
-    id: 'flux-schnell-q4', label: 'FLUX.1-schnell Q4（标准档，16 GB+ 内存）', minMemGB: 16, sizeGB: 10.0,
+    id: 'flux-schnell-q4', label: 'FLUX.1-schnell Q4（标准档，16 GB+ 内存）', labelEn: 'FLUX.1-schnell Q4 (standard, 16 GB+ RAM)', minMemGB: 16, sizeGB: 10.0,
     diffusion: 'flux1-schnell-Q4_0.gguf', t5: 't5-v1_1-xxl-encoder-Q5_K_M.gguf',
   },
 ];
 
 export const LICENSE_NOTE = 'FLUX.1-schnell 权重与 T5-XXL 编码器均为 Apache-2.0（可商用），clip_l 为 MIT';
+export const LICENSE_NOTE_EN = 'FLUX.1-schnell weights and the T5-XXL encoder are Apache-2.0 (commercial use allowed); clip_l is MIT';
+/** 许可证说明会显示在 `install-image --list` 与下载前的确认里——那是用户要据此决定装不装的信息 */
+export const licenseNote = (lang) => (normLang(lang) === 'en' ? LICENSE_NOTE_EN : LICENSE_NOTE);
 
 /** 一个档位要下的四个文件：[本地文件名, 下载地址] */
 export const modelFiles = (m) => [
@@ -70,20 +74,26 @@ export async function sdImagePaths() {
 }
 
 /** memGB 可注入：测试不该依赖跑在什么机器上（CI 的 macOS runner 只有 7 GB，比最低档还低） */
-export async function sdImageStatus({ memGB: memOverride } = {}) {
+export async function sdImageStatus({ memGB: memOverride, lang = 'zh' } = {}) {
   const { cli, modelsDir } = await sdImagePaths();
   const cliFound = fs.existsSync(cli);
   const memGB = memOverride ?? Math.round(os.totalmem() / 1024 ** 3);
+  // 档位标签与状态说明会直接出现在 `openshorts sources` / `install-image --list` 上,
+  // 英文用户看得懂 "Local gen" 这个标签,看不懂后面那串中文
+  const en = normLang(lang) === 'en';
   const models = SD_IMAGE_MODELS.map((m) => {
     // 要看大小不能只看存在：下载中断会留下 0 字节的壳，只查 existsSync 会把它当"已装"
     // （本机的 H3 模型目录就是这样——4 个 0 字节文件，AO 的状态里报 present:true）
     const missing = modelFiles(m).map(([n]) => n).filter((n) => { try { return fs.statSync(path.join(modelsDir, n)).size < 1024; } catch { return true; } });
     const enoughMem = memGB >= m.minMemGB;
-    return { id: m.id, label: m.label, sizeGB: m.sizeGB, present: missing.length === 0, missing,
-      usable: enoughMem, reason: !enoughMem ? `需要 ≥ ${m.minMemGB} GB 内存（本机 ${memGB} GB）` : missing.length ? `缺 ${missing.length} 个模型文件（共 ${m.sizeGB} GB）` : '就绪' };
+    return { id: m.id, label: en ? (m.labelEn ?? m.label) : m.label, sizeGB: m.sizeGB, present: missing.length === 0, missing,
+      usable: enoughMem,
+      reason: !enoughMem ? (en ? `needs ≥ ${m.minMemGB} GB RAM (this machine has ${memGB} GB)` : `需要 ≥ ${m.minMemGB} GB 内存（本机 ${memGB} GB）`)
+        : missing.length ? (en ? `${missing.length} model file(s) missing (${m.sizeGB} GB total)` : `缺 ${missing.length} 个模型文件（共 ${m.sizeGB} GB）`)
+          : (en ? 'ready' : '就绪') };
   });
   const ready = cliFound && models.find((m) => m.present && m.usable);
-  return { ok: !!ready, cli, cliFound, modelsDir, memGB, models, ready: ready?.id ?? null, license: LICENSE_NOTE };
+  return { ok: !!ready, cli, cliFound, modelsDir, memGB, models, ready: ready?.id ?? null, license: licenseNote(lang) };
 }
 
 /** 按内存挑一个能跑的档位（present 的优先，否则给出该装哪个） */

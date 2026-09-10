@@ -9,6 +9,7 @@ import { generateKoubo } from '../src/pipeline/koubo-script.mjs';
 import { LANG_SPEC, langSpec, localizeInputs, textLength } from '../src/project/lang.mjs';
 import { voicesFor } from '../src/voice/edge-tts.mjs';
 import { spawnSync } from 'node:child_process';
+import * as spawnSyncMod from 'node:child_process';
 
 const hasFfmpeg = spawnSync('ffmpeg', ['-version']).status === 0;
 
@@ -454,4 +455,58 @@ test('老项目自愈：出片结束时把已不在片中的署名清掉，并�
     '片中没用到的素材不能留在版权说明里，但本机出图的署名不能被误删（漏署比多署更严重）');
   assert.ok((r.final.notes ?? []).some((n) => /清掉 1 条/.test(n)), `清理要说出来，实际 notes：${JSON.stringify(r.final.notes)}`);
   fs.rmSync(d, { recursive: true, force: true });
+});
+
+/**
+ * CLI 的语言。界面早就双语、片子也双语了,但命令行一直只说中文——
+ * 英文用户装完敲第一条命令看到一屏中文,这是"能装"和"能用"之间最后一道墙。
+ */
+test('CLI 语言判定：显式 > 系统 locale > 中文兜底，且不认 --lang（那是片子的语言）', () => {
+  const { execFileSync } = spawnSyncMod;
+  const bin = path.join(root, 'bin', 'openshorts.mjs');
+  const help = (env, args = ['--help']) => execFileSync(process.execPath, [bin, ...args],
+    { env: { PATH: process.env.PATH, HOME: process.env.HOME, ...env }, encoding: 'utf8' });
+
+  assert.match(help({ LANG: 'en_US.UTF-8' }), /^Usage: openshorts/, '系统 locale 是英文 → 英文');
+  assert.match(help({ LANG: 'zh_CN.UTF-8' }), /^用法：openshorts/, '系统 locale 是中文 → 中文');
+  assert.match(help({}), /^用法：openshorts/, 'locale 没设 → 中文（这个项目的主场，不能让老用户莫名变英文）');
+  assert.match(help({ LANG: 'en_US.UTF-8', OPENSHORTS_LANG: 'zh' }), /^用法：openshorts/, '显式指定压过 locale');
+  assert.match(help({ LANG: 'zh_CN.UTF-8', OPENSHORTS_LANG: 'en' }), /^Usage: openshorts/);
+  // --lang 在 new 里的含义是"片子说什么话",不该顺带切掉终端语言:
+  // 中文用户出一条英文片,不该因此看到一屏英文提示。
+  // (用真实用法测:`new --lang en` 缺 --topic 会报错,看那句报错是中文还是英文)
+  let out = '';
+  try { execFileSync(process.execPath, [bin, 'new', '--lang', 'en'], { env: { PATH: process.env.PATH, HOME: process.env.HOME, LANG: 'zh_CN.UTF-8' }, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }); }
+  catch (e) { out = String(e.stdout ?? '') + String(e.stderr ?? ''); }
+  assert.match(out, /缺 --topic/, '--lang 是片子的语言，不是 CLI 的语言——中文用户出英文片，提示仍该是中文');
+});
+
+test('CLI 报错跟着语言走（英文用户撞到的第一批消息）', () => {
+  const { execFileSync } = spawnSyncMod;
+  const bin = path.join(root, 'bin', 'openshorts.mjs');
+  const run = (env, args) => {
+    try { return execFileSync(process.execPath, [bin, ...args], { env: { PATH: process.env.PATH, HOME: process.env.HOME, ...env }, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }); }
+    catch (e) { return String(e.stdout ?? '') + String(e.stderr ?? ''); }
+  };
+  const en = { OPENSHORTS_LANG: 'en' }, zh = { OPENSHORTS_LANG: 'zh' };
+  assert.match(run(en, ['run']), /Usage: openshorts run/);
+  assert.match(run(zh, ['run']), /用法：openshorts run/);
+  assert.match(run(en, ['run', '/nope/x.json']), /Project file not found/);
+  assert.match(run(en, ['new']), /Missing --topic/);
+  assert.match(run(en, ['bacth']), /Unknown command/);
+  // 英文下不该漏出中文（帮助屏会跟在未知命令后面一起打印）
+  const unknown = run(en, ['bacth']);
+  assert.ok(!/[一-鿿]/.test(unknown), `英文 CLI 输出里混着中文：\n${unknown.slice(0, 300)}`);
+});
+
+test('本机出图的档位标签与许可证说明也跟着语言走（sources / install-image 都会露出来）', async () => {
+  const { sdImageStatus } = await import('../src/local/sd-image.mjs');
+  const en = await sdImageStatus({ lang: 'en', memGB: 8 });
+  const zh = await sdImageStatus({ lang: 'zh', memGB: 8 });
+  assert.ok(!/[一-鿿]/.test(en.models[0].label), `英文档位标签里有中文：${en.models[0].label}`);
+  assert.ok(!/[一-鿿]/.test(en.models[0].reason), `英文状态说明里有中文：${en.models[0].reason}`);
+  assert.ok(!/[一-鿿]/.test(en.license), `英文许可证说明里有中文：${en.license}`);
+  assert.match(en.models[0].reason, /needs ≥ 12 GB RAM/);
+  assert.match(zh.models[0].reason, /需要 ≥ 12 GB 内存/, '中文侧一字未变');
+  assert.match(zh.models[0].label, /轻档/);
 });
