@@ -7,7 +7,7 @@
 <p align="center"><sub>上面这条 60 秒的片子：0 元、0 个付费 key，6 镜里 2 镜是素材库没货时本机现画的 · <a href="docs/cases/koubo-onion/">看完整案例</a></sub></p>
 <p align="center"><b><a href="https://jnmetacode.github.io/openshorts/">🌐 官网 · 看真实成片</a></b> · <a href="https://github.com/jnMetaCode/openshorts/releases">下载发布包</a> · <a href="README.en.md">English</a></p>
 
-![License](https://img.shields.io/badge/license-MIT-green) ![Node](https://img.shields.io/badge/node-%E2%89%A520-brightgreen) ![Tests](https://img.shields.io/badge/tests-202%20passing-brightgreen) ![CI](https://img.shields.io/badge/CI-ubuntu%20%7C%20macOS%20%7C%20windows-brightgreen) ![Format](https://img.shields.io/badge/format-9%3A16%20%7C%2016%3A9-blue)
+![License](https://img.shields.io/badge/license-MIT-green) ![Node](https://img.shields.io/badge/node-%E2%89%A520-brightgreen) ![Tests](https://img.shields.io/badge/tests-230%20passing-brightgreen) ![CI](https://img.shields.io/badge/CI-ubuntu%20%7C%20macOS%20%7C%20windows-brightgreen) ![Format](https://img.shields.io/badge/format-9%3A16%20%7C%2016%3A9-blue)
 
 ```bash
 git clone https://github.com/jnMetaCode/openshorts.git
@@ -134,7 +134,12 @@ cd desktop && npm install && npm run dist:mac   # 或 dist:win；产物在 deskt
 
 打出的 app 自带 Node 运行时，双击即用：本地引擎自动启动（端口 4174 起自动顺延），
 v1 的工程与产物写在系统的应用数据目录（`OPENSHORTS_V1_DATA`），开片自己的成片仍在 `~/OpenShorts`。
-**三平台安装包**（mac dmg / win exe / linux AppImage）随 `desktop-v*` 标签自动构建并发到 Releases。
+
+**不想自己打包就直接下**：[desktop-v0.1.0](https://github.com/jnMetaCode/openshorts/releases/tag/desktop-v0.1.0)
+提供 mac（arm64 / x64 dmg）、Windows（exe）、Linux（AppImage）四个安装包和 SHA256 校验和，
+随 `desktop-v*` 标签自动构建。安装包**未签名**，首次打开需在「系统设置 → 隐私与安全性」放行。
+> 老实说一句验证程度：**mac arm64 包我们真下下来装过并跑通**（校验和 OK、codesign 通过、
+> 界面与接口正常）；**win / linux 包只经过 CI 构建与"界面已落包"检查，没有人工实测过**。
 
 ---
 

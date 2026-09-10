@@ -6,7 +6,7 @@
 <p align="center"><sub>The 60-second video above: $0, zero paid keys; 2 of its 6 shots were painted on-device when stock libraries had nothing · <a href="docs/cases/koubo-onion/">full case study</a></sub></p>
 <p align="center"><b><a href="https://jnmetacode.github.io/openshorts/en/">🌐 Website · watch real output</a></b> · <a href="https://github.com/jnMetaCode/openshorts/releases">Download release</a> · <a href="README.md">中文文档</a></p>
 
-![License](https://img.shields.io/badge/license-MIT-green) ![Node](https://img.shields.io/badge/node-%E2%89%A520-brightgreen) ![Tests](https://img.shields.io/badge/tests-202%20passing-brightgreen) ![CI](https://img.shields.io/badge/CI-ubuntu%20%7C%20macOS%20%7C%20windows-brightgreen) ![Format](https://img.shields.io/badge/format-9%3A16%20%7C%2016%3A9-blue)
+![License](https://img.shields.io/badge/license-MIT-green) ![Node](https://img.shields.io/badge/node-%E2%89%A520-brightgreen) ![Tests](https://img.shields.io/badge/tests-230%20passing-brightgreen) ![CI](https://img.shields.io/badge/CI-ubuntu%20%7C%20macOS%20%7C%20windows-brightgreen) ![Format](https://img.shields.io/badge/format-9%3A16%20%7C%2016%3A9-blue)
 
 ```bash
 git clone https://github.com/jnMetaCode/openshorts.git
@@ -16,7 +16,7 @@ npm run openshorts      # opens the GUI at http://127.0.0.1:4174
 
 Requires Node.js 20+ and FFmpeg (an npm package is coming; until then use the source checkout or a [release bundle](https://github.com/jnMetaCode/openshorts/releases)). **Run `openshorts doctor` right after installing** — it tells you what this machine can produce today and exactly what is missing.
 
-> **Note**: the GUI has an English toggle (the EN button top-right, or open with `?lang=en`). Engine log lines and some machine-status values remain Chinese for now.
+> **Note**: the GUI has an English toggle (the EN button top-right, or open with `?lang=en`). With it on, the whole talking-head line runs in English — script, voice, word-aware captions, render log, errors, quality notes and the publish pack. Still Chinese: the `openshorts` CLI's own output, and live log lines coming from the AO engine subprocess (the AI mini-drama line runs on a Chinese workflow, so its script is Chinese too).
 
 ## Two pipelines
 
@@ -72,8 +72,15 @@ cd desktop && npm install && npm run dist:mac   # or dist:win; output in desktop
 The packaged app ships its own Node runtime: double-click and the local engine starts
 (port 4174, auto-incrementing if taken). v1 editor data lives in the OS app-data directory
 (`OPENSHORTS_V1_DATA`); your videos stay in `~/OpenShorts` as always.
-**Installers for all three platforms** (mac dmg / win exe / linux AppImage) are built and
-published to Releases by pushing a `desktop-v*` tag.
+
+**Or just download one**: [desktop-v0.1.0](https://github.com/jnMetaCode/openshorts/releases/tag/desktop-v0.1.0)
+ships mac (arm64 / x64 dmg), Windows (exe) and Linux (AppImage) installers plus SHA256 sums,
+built automatically from a `desktop-v*` tag. The installers are **unsigned** — on macOS you
+have to allow the app once under System Settings → Privacy & Security.
+> How far these were verified, honestly: **the mac arm64 build was downloaded, installed and
+> run by us** (checksum OK, `codesign --verify --deep --strict` passes, UI and API respond);
+> the **win / linux installers have only been through CI and the "UI landed in the package"
+> gate — nobody has actually installed them**.
 
 
 ## Sister projects
