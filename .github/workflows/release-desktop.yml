@@ -90,6 +90,22 @@ jobs:
           fi
           echo "UI in package: $found"
 
+      # 先把产物名规范成 ASCII,再算校验和。
+      # 不做这一步的话:electron-builder 出的是「开片 OpenShorts-0.1.0-arm64.dmg」,
+      # 而 GitHub 上传时会把中文前缀和空格改掉(变成 OpenShorts-0.1.0-arm64.dmg),
+      # 于是 SHA256SUMS 里记的文件名和用户下到的对不上——照常规 `shasum -c` 校验会看到
+      # FAILED open or read,一个完好的安装包被报成"可能被篡改",比不给校验和更糟。
+      # (desktop-v0.1.0 首发就是这样,下下来实测过。)
+      - name: Normalize artifact names (ASCII)
+        shell: bash
+        working-directory: desktop/release
+        run: |
+          shopt -s nullglob
+          for f in *.dmg *.exe *.AppImage; do
+            n=$(printf '%s' "$f" | LC_ALL=C sed 's/[^ -~]//g' | sed 's/^ *//; s/ *$//' | tr ' ' '.' | sed 's/\.\.*/./g')
+            if [ -n "$n" ] && [ "$f" != "$n" ]; then mv -- "$f" "$n"; echo "renamed: $f -> $n"; fi
+          done
+
       - name: Generate checksums
         shell: bash
         working-directory: desktop/release
