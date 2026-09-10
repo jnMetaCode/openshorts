@@ -75,6 +75,18 @@ The packaged app ships its own Node runtime: double-click and the local engine s
 **Installers for all three platforms** (mac dmg / win exe / linux AppImage) are built and
 published to Releases by pushing a `desktop-v*` tag.
 
+
+## Sister projects
+
+Part of the「AI不止语」open-source ecosystem — independent tools that compose well:
+
+- [agency-agents-zh](https://github.com/jnMetaCode/agency-agents-zh) ![](https://img.shields.io/github/stars/jnMetaCode/agency-agents-zh?style=flat&label=%E2%AD%90) — 277 plug-and-play AI expert personas
+- [superpowers-zh](https://github.com/jnMetaCode/superpowers-zh) ![](https://img.shields.io/github/stars/jnMetaCode/superpowers-zh?style=flat&label=%E2%AD%90) — 20 skills that teach AI how to work (TDD / debugging / code review)
+- [agency-orchestrator](https://github.com/jnMetaCode/agency-orchestrator) ![](https://img.shields.io/github/stars/jnMetaCode/agency-orchestrator?style=flat&label=%E2%AD%90) — one prompt → 276 specialists collaborate; **this repo's script planning runs on it**
+- [shellward](https://github.com/jnMetaCode/shellward) — compliance/security middleware for AI projects, zero-dep
+- [ai-shortfilm-prompts](https://github.com/jnMetaCode/ai-shortfilm-prompts) — cinematic video prompts for Sora / Kling / Seedance
+- [local-agent-toolkit](https://github.com/jnMetaCode/local-agent-toolkit) — memory · skills · tracing for agents, all local
+
 ## Docs & internals
 
 - v2 product/architecture/decision docs: [`docs/v2/`](docs/v2/00-README.md) (Chinese)
