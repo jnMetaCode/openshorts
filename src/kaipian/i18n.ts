@@ -105,7 +105,7 @@ const EN: Record<string, string> = {
   '打发布包…': 'Building publish pack…', '抓取文章…': 'Fetching article…', '验证模型…': 'Testing model…', '批量出片中…': 'Batch rendering…',
   'ffmpeg 下载中断，可重试': 'ffmpeg download interrupted — retry', '出片中断': 'Rendering interrupted', '批量中断': 'Batch interrupted',
   '你有没有发现，猫为什么总爱钻纸箱？': 'Ever wondered why cats always squeeze into cardboard boxes?',
-  '设置': 'Settings', '收起': 'Collapse', '试试这个：': 'Try one: ',
+  '出片时按检索词找': 'found by this query at render time', '设置': 'Settings', '收起': 'Collapse', '试试这个：': 'Try one: ',
   '出片中…': 'Rendering…', '重出': 'Redoing', '已取消（进度已存盘，再点出片会接着来）': 'Cancelled (progress saved — hitting Render again picks up where it stopped)',
   '本地出片中（每镜约 3–4 分钟，共 3 镜 + 定妆图）…': 'Rendering locally (~3–4 min per shot; 3 shots + the character sheet)…',
   '云端出片中（通常 3–8 分钟）…': 'Rendering in the cloud (usually 3–8 min)…',

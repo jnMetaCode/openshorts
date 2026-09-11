@@ -133,3 +133,19 @@ body:has(.kp){overflow:auto}
   margin-left:auto;margin-right:auto;width:calc(100% - 48px);max-width:1132px}
 /* 按钮文字不该被挤成两行（"抓正文"曾断成"抓正/文"） */
 .kp-inline button,.kp-actions button,.kp-cfgbtn{white-space:nowrap}
+
+/* ───────── 第 3 屏：叫"预览与调整",就得先能看见 ─────────
+   原来每镜只有三个文本框,配的是哪张画面完全看不到——"调整"无从谈起。
+   左边给一列缩略:出过片的显示它实际用的那张,没出片的显示占位说明。 */
+.kp-shot-body{display:grid;grid-template-columns:76px minmax(0,1fr);gap:14px;align-items:start}
+.kp-shot-thumb{width:76px;aspect-ratio:9/16;border-radius:7px;overflow:hidden;background:#0f0d0b;
+  border:1px solid #33291f;display:grid;place-items:center}
+.kp-shot-thumb img,.kp-shot-thumb video{width:100%;height:100%;object-fit:cover;display:block}
+.kp-shot-noimg{padding:6px;font-size:10px;line-height:1.4;color:#6d645b;text-align:center;border:1px dashed #3a3028;
+  border-radius:6px;margin:6px}
+.kp-shot-fields{min-width:0}
+/* 口播文案是主,画面意图/检索词是辅——原来三块等重,读不出主次 */
+.kp-shot-fields textarea{font-size:14px;line-height:1.65;color:#efe3d5}
+.kp-shot-fields .kp-row label{font-size:11px}
+.kp-shot-fields .kp-row input{font-size:12px;color:#c9b8a5}
+@media (max-width:820px){.kp-shot-body{grid-template-columns:1fr}.kp-shot-thumb{width:64px}}

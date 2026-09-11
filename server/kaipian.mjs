@@ -240,11 +240,28 @@ kaipian.get('/ffmpeg/install', async (req, res) => {
   catch (e) { send('error', { m: e.message }); }
   res.end();
 });
-kaipian.get('/projects/:id/file/:name', (req, res) => {
-  const dir = projDir(req.params.id); let f = path.resolve(dir, safe(req.params.name));
-  if (!fs.existsSync(f) && fs.existsSync(path.join(dir, 'assets', safe(req.params.name)))) f = path.join(dir, 'assets', safe(req.params.name));
-  if (!f.startsWith(dir) || !fs.existsSync(f)) return res.status(404).end();
-  res.sendFile(f);
+/**
+ * 项目里的文件。原来只认项目根目录和 assets/,而**每镜的画面根本不在那儿**——
+ * 本机出图落在 `<项目>/work/`,检索来的素材落在 `~/.openshorts/cache/stock/`。
+ * 于是第 3 屏给每镜配缩略图时全是破图(真机截图才看见:成片能放、每镜画面 404)。
+ *
+ * 放开这两个目录,但只按**白名单根目录 + 纯文件名**取:safe() 已经把 / 和 .. 剥掉,
+ * 拼不出上跳路径;再逐个 resolve 后校验确实落在白名单根里,不给它变成任意文件读取。
+ */
+kaipian.get('/projects/:id/file/:name', async (req, res) => {
+  const dir = projDir(req.params.id);
+  const name = safe(req.params.name);
+  let stockDir = null;
+  try { ({ cacheDir: stockDir } = await import('../src/sources/stock.mjs')); stockDir = stockDir(); } catch { /* 没装/没缓存 */ }
+  const roots = [dir, path.join(dir, 'assets'), path.join(dir, 'work'), ...(stockDir ? [stockDir] : [])];
+  for (const root0 of roots) {
+    const f = path.resolve(root0, name);
+    // dotfiles:'allow' 不能省:素材缓存在 `~/.openshorts/cache/stock`,路径里有 `.openshorts`
+    // 这个点开头的目录段,而 sendFile 默认 dotfiles:'ignore' 会把整条路径当 dotfile 直接 404——
+    // 文件明明在、路由也跑到了,就是取不出来(真机上查了半天才定位到这里)。
+    if (f.startsWith(path.resolve(root0) + path.sep) && fs.existsSync(f)) return res.sendFile(f, { dotfiles: 'allow' });
+  }
+  return res.status(404).end();
 });
 kaipian.get('/ao-status', (_req, res) => {
   let keys = {}; try { keys = JSON.parse(fs.readFileSync(path.join(aoHome(), '.local', 'web-keys.json'), 'utf-8')); } catch { /* none */ }

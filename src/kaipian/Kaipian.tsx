@@ -5,7 +5,7 @@ import {getLang, setLang, makeT, type Lang} from './i18n';
 type Src = {ok: boolean; reason: string; tier?: string};
 type Sources = {stock: Src; image: Src; local: Src; cloud: Src; layered: Src; tools: {ffmpeg: boolean; whisper: boolean; magick: boolean}};
 type Voice = {id: string; label: string};
-type Shot = {id: string; text: string; visualIntent: string; query: string; emphasis: string[]; durationSec: number | null; status: string; visual: {source: string | null; file: string | null; author?: string | null; license?: string}};
+type Shot = {id: string; text: string; visualIntent: string; query: string; emphasis: string[]; durationSec: number | null; status: string; visual: {source: string | null; file: string | null; kind?: string; author?: string | null; license?: string}};
 type DramaShot = {id: string; kind: 'video' | 'image'; order: number; durationSec: number | null; visual: {source: string; provider: string | null; model: string | null; file: string}; verification: {pass: boolean; failed: string[]; reworked: boolean} | null; status: string; stepName: string};
 type Project = {id: string; title: string; topic: string; line?: string; lang?: string; tier?: string; inputs?: Record<string, string>; shots: Shot[]; scriptWarnings?: string[]; voice: {voice: string; rate: number}; captions: {preset: string}; defaults: {visualSource: string; localDirs: string[]}; publish: {titles: string[]; tags: string[]; note: string; aiLabelText: string}; final?: {file: string; srt: string; cover: string | null; publish: string; durationSec: number; notes: string[]; quality?: {pass: boolean; warnings: number; items: Array<{id: string; status: string; msg: string}>}} | null; provenance: Array<{shot: string; source: string; author?: string | null; license?: string; page?: string | null}>};
 
@@ -118,7 +118,7 @@ export const Kaipian = () => {
   };
   const createProject = async () => {
     setError(''); setBusy(t('AI 正在写脚本（20–60 秒）…'));
-    try { const p = await api<Project>('/api/kaipian/new', {method: 'POST', body: JSON.stringify({topic, duration, tone, voice, captions, captionStyle: capStyle, source, localDir, lang})}); setProject(p); setStep(3); await refresh(); }
+    try { const p = await api<Project>('/api/kaipian/new', {method: 'POST', body: JSON.stringify({topic, duration, tone, voice, captions, captionStyle: capStyle, source, localDir, lang})}); setProject(p); setStep(p.final ? 4 : 3); await refresh(); }
     catch (e: any) { setError(e.message); } finally { setBusy(''); }
   };
   const saveShots = async () => { if (!project) return; const p = await api<Project>(`/api/kaipian/projects/${encodeURIComponent(project.id)}`, {method: 'PUT', body: JSON.stringify({shots: project.shots.map((s) => ({id: s.id, text: s.text, query: s.query, visualIntent: s.visualIntent})), voice: {voice}, captions: {preset: captions, style: capStyle}})}); setProject(p); };
@@ -215,7 +215,7 @@ export const Kaipian = () => {
     es.addEventListener('error', (e: any) => { try { setError(JSON.parse(e.data).m); } catch { setError(t('批量中断')); } es.close(); setBusy(''); });
   };
   const makePack = async () => { if (!project) return; setBusy(t('打发布包…')); try { setPack(await api(`/api/kaipian/projects/${encodeURIComponent(project.id)}/publish-pack`, {method: 'POST', body: JSON.stringify({platform, lang})})); } catch (e: any) { setError(e.message); } finally { setBusy(''); } };
-  const openProject = async (id: string) => { const p = await api<Project>(`/api/kaipian/projects/${encodeURIComponent(id)}`); setProject(p); setStep(p.final ? 4 : 3); };
+  const openProject = async (id: string) => { const p = await api<Project>(`/api/kaipian/projects/${encodeURIComponent(id)}`); setProject(p); setStep(3); };
   const copy = (t: string) => navigator.clipboard?.writeText(t);
 
   /**
@@ -478,11 +478,25 @@ export const Kaipian = () => {
       {/* CLI 一直会打脚本警告（长度偏差 / 文案里夹英文），Web 端以前一条都不显示——
           自动重写一次仍没救回来的问题，用户得在这里看到，别等成片短了 30% 才发现 */}
       {(project.scriptWarnings ?? []).map((w, i) => <div key={i} className="kp-warn">⚠️ {w}</div>)}
+      {/* 这一屏叫"预览与调整",原来却一张画面都没有——每镜配的是哪张图看不见,
+          "调整"就无从谈起。出过片的镜头显示它**实际用的那张**;还没出片的显示
+          一块占位,写明"出片时按这个检索词找"。 */}
       <ol className="kp-shots">{project.shots.map((s, i) => <li key={s.id}>
         <div className="kp-shot-head"><b>{i + 1}. {s.id === 'hook' ? t('钩子') : s.id === 'outro' ? t('收尾') : (lang === 'en' ? `Part ${i}` : `第 ${i} 段`)}</b>{s.durationSec ? <em>{s.durationSec.toFixed(1)}s</em> : null}{s.visual?.source ? <em>{s.visual.source}{s.visual.author ? ` · ${s.visual.author}` : ''}</em> : null}</div>
-        <textarea value={s.text} rows={2} onChange={(e) => setProject({...project, shots: project.shots.map((x) => x.id === s.id ? {...x, text: e.target.value} : x)})}/>
-        <div className="kp-row"><label>{t('画面意图')}<input value={s.visualIntent} onChange={(e) => setProject({...project, shots: project.shots.map((x) => x.id === s.id ? {...x, visualIntent: e.target.value} : x)})}/></label><label>{t('检索词（英文）')}<input value={s.query} onChange={(e) => setProject({...project, shots: project.shots.map((x) => x.id === s.id ? {...x, query: e.target.value} : x)})}/></label></div>
-        {project.final && <div className="kp-shot-actions"><button disabled={!!busy} onClick={() => runProject([s.id])} title={t('丢掉这一镜已选的素材重新找；文案没改的话配音直接复用，不重配音')}>{t('只重出这一镜')}</button></div>}
+        <div className="kp-shot-body">
+          <div className="kp-shot-thumb">
+            {s.visual?.file
+              ? (s.visual.kind === 'image'
+                ? <img src={fileUrl(project, s.visual.file)} alt=""/>
+                : <video muted playsInline preload="metadata" src={`${fileUrl(project, s.visual.file)}#t=0.5`}/>)
+              : <span className="kp-shot-noimg">{t('出片时按检索词找')}</span>}
+          </div>
+          <div className="kp-shot-fields">
+            <textarea value={s.text} rows={2} onChange={(e) => setProject({...project, shots: project.shots.map((x) => x.id === s.id ? {...x, text: e.target.value} : x)})}/>
+            <div className="kp-row"><label>{t('画面意图')}<input value={s.visualIntent} onChange={(e) => setProject({...project, shots: project.shots.map((x) => x.id === s.id ? {...x, visualIntent: e.target.value} : x)})}/></label><label>{t('检索词（英文）')}<input value={s.query} onChange={(e) => setProject({...project, shots: project.shots.map((x) => x.id === s.id ? {...x, query: e.target.value} : x)})}/></label></div>
+            {project.final && <div className="kp-shot-actions"><button disabled={!!busy} onClick={() => runProject([s.id])} title={t('丢掉这一镜已选的素材重新找；文案没改的话配音直接复用，不重配音')}>{t('只重出这一镜')}</button></div>}
+          </div>
+        </div>
       </li>)}</ol>
       {log.length > 0 && <pre className="kp-log">{log.join('\n')}</pre>}
       <div className="kp-actions">
