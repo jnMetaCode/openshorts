@@ -62,6 +62,24 @@ Requires Node.js 20+ and FFmpeg (an npm package is coming; until then use the so
 | Attribution | Per-shot source / author / license / URL, auto-appended to publish copy; AI-generated frames labeled |
 | Knowing cost upfront | Quotes by provider / tier / seconds before running; the free path's `estimate` reports *time*, since money is always zero |
 
+## What it looks like
+
+Four steps to a video: **Input → Sources & cost → Preview & adjust → Render & publish**. A single row at the
+top answers "what can this machine do right now"; model configuration lives behind **⚙ Settings**
+(the script model and the visual-check model — both are tested with a real request before they are saved).
+
+<table>
+<tr>
+<td width="50%" valign="top"><a href="docs/assets/ui/en-input.png"><img src="docs/assets/ui/en-input.png" alt="Input"></a><br>
+<b>① Input</b><br><sub>Give it a topic, paste a whole script, or drop in an article link and let it fetch the text. Target length and tone are optional.</sub></td>
+<td width="50%" valign="top"><a href="docs/assets/ui/en-final.png"><img src="docs/assets/ui/en-final.png" alt="Render & publish"></a><br>
+<b>④ Render &amp; publish</b><br><sub>Video, SRT and cover in one go; click a title to copy it; <b>every clip's author and licence is listed</b> (CC BY-SA requires the credit). The quality check states facts only — resolution, length drift, loudness, whether subtitles were burned in, the AI label, how many shots were generated locally and how many were vetted by the visual check. Then it builds a publish pack per platform — <b>it never auto-posts</b>.</sub></td>
+</tr>
+</table>
+
+> The interface has an English toggle (**EN** in the top bar, or open with `?lang=en`). Open an English
+> project while the interface is Chinese and it offers to switch for you.
+
 ## Real output
 
 | Video | Pipeline | Length | Case study |

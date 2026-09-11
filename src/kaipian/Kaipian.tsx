@@ -215,7 +215,7 @@ export const Kaipian = () => {
     es.addEventListener('error', (e: any) => { try { setError(JSON.parse(e.data).m); } catch { setError(t('批量中断')); } es.close(); setBusy(''); });
   };
   const makePack = async () => { if (!project) return; setBusy(t('打发布包…')); try { setPack(await api(`/api/kaipian/projects/${encodeURIComponent(project.id)}/publish-pack`, {method: 'POST', body: JSON.stringify({platform, lang})})); } catch (e: any) { setError(e.message); } finally { setBusy(''); } };
-  const openProject = async (id: string) => { const p = await api<Project>(`/api/kaipian/projects/${encodeURIComponent(id)}`); setProject(p); setStep(3); };
+  const openProject = async (id: string) => { const p = await api<Project>(`/api/kaipian/projects/${encodeURIComponent(id)}`); setProject(p); setStep(p.final ? 4 : 3); };
   const copy = (t: string) => navigator.clipboard?.writeText(t);
 
   /**
@@ -540,7 +540,7 @@ export const Kaipian = () => {
           <p><b>{project.final.durationSec.toFixed(1)} {t('秒')}</b> · 1080×1920 · <a href={fileUrl(project, project.final.file)} download>{t('下载 mp4')}</a> · <a href={fileUrl(project, project.final.srt)} download>SRT</a>{project.final.cover && <> · <a href={fileUrl(project, project.final.cover)} download>{t('封面')}</a></>}</p>
           <h4>{t('标题（点复制）')}</h4><ul className="kp-copy">{project.publish.titles.map((t) => <li key={t} onClick={() => copy(t)}>{t}</li>)}</ul>
           <h4>{t('话题')}</h4><p className="kp-tags" onClick={() => copy(project.publish.tags.map((t) => `#${t}`).join(' '))}>{project.publish.tags.map((t) => `#${t}`).join(' ')}</p>
-          <h4>{t('发布说明')}</h4><p>{project.publish.note}<br/><small>AI 标识：{project.publish.aiLabelText}</small></p>
+          <h4>{t('发布说明')}</h4><p>{project.publish.note}<br/><small>{t('AI 标识：')}{project.publish.aiLabelText}</small></p>
           <div className="kp-two">
             {project.provenance.length > 0 && <div><h4>{t('素材署名')}</h4><ul className="kp-prov">{project.provenance.map((p) => <li key={p.shot}>{p.shot}: {p.source}{p.author ? ` · ${p.author}` : ''}{p.license ? `（${p.license}）` : ''}</li>)}</ul></div>}
             {project.final.quality && <div><h4>{t('质检')} {project.final.quality.pass ? t('✅ 通过') : t('⛔ 有问题')}{project.final.quality.warnings ? ` · ${project.final.quality.warnings}${t(' 条提醒')}` : ''}</h4><ul className="kp-prov">{project.final.quality.items.map((q) => <li key={q.id}>{q.status === 'pass' ? '✅' : q.status === 'warn' ? '⚠️' : '⛔'} {q.msg}</li>)}</ul></div>}
