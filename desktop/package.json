@@ -1,7 +1,7 @@
 {
   "name": "openshorts-desktop",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "开片 OpenShorts — desktop app (Electron)",
   "main": "main.cjs",
   "scripts": {
@@ -11,8 +11,8 @@
     "dist:win": "electron-builder --win --config electron-builder.config.cjs"
   },
   "devDependencies": {
-    "electron": "^33.2.1",
-    "electron-builder": "^25.1.8"
+    "electron": "^44.3.0",
+    "electron-builder": "^26.15.3"
   },
   "build": {
     "appId": "com.jnmetacode.openshorts",
@@ -26,17 +26,60 @@
     ],
     "npmRebuild": false,
     "extraResources": [
-      { "from": "../bin", "to": "app/bin" },
-      { "from": "../server", "to": "app/server" },
-      { "from": "../shared", "to": "app/shared" },
-      { "from": "../scripts", "to": "app/scripts" },
-      { "from": "../src", "to": "app/src" },
-      { "from": "../dist", "to": "app/dist", "filter": ["**/*", "!audio/**", "!uploads/**", "!assets/generated/**"] },
-      { "from": "../public/assets", "to": "app/public/assets", "filter": ["**/*", "!generated/**"] },
-      { "from": "../templates", "to": "app/templates" },
-      { "from": "../adapters", "to": "app/adapters" },
-      { "from": "../projects", "to": "app/projects" },
-      { "from": "../package.json", "to": "app/package.json" },
+      {
+        "from": "../bin",
+        "to": "app/bin"
+      },
+      {
+        "from": "../server",
+        "to": "app/server"
+      },
+      {
+        "from": "../shared",
+        "to": "app/shared"
+      },
+      {
+        "from": "../scripts",
+        "to": "app/scripts"
+      },
+      {
+        "from": "../src",
+        "to": "app/src"
+      },
+      {
+        "from": "../dist",
+        "to": "app/dist",
+        "filter": [
+          "**/*",
+          "!audio/**",
+          "!uploads/**",
+          "!assets/generated/**"
+        ]
+      },
+      {
+        "from": "../public/assets",
+        "to": "app/public/assets",
+        "filter": [
+          "**/*",
+          "!generated/**"
+        ]
+      },
+      {
+        "from": "../templates",
+        "to": "app/templates"
+      },
+      {
+        "from": "../adapters",
+        "to": "app/adapters"
+      },
+      {
+        "from": "../projects",
+        "to": "app/projects"
+      },
+      {
+        "from": "../package.json",
+        "to": "app/package.json"
+      },
       {
         "from": "../node_modules",
         "to": "app/node_modules",
@@ -57,17 +100,27 @@
       "category": "public.app-category.video",
       "icon": "build/icon.png",
       "target": [
-        { "target": "dmg", "arch": ["x64", "arm64"] }
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
       ],
       "identity": null
     },
     "win": {
       "icon": "build/icon.png",
-      "target": ["nsis"]
+      "target": [
+        "nsis"
+      ]
     },
     "linux": {
       "icon": "build/icon.png",
-      "target": ["AppImage"]
+      "target": [
+        "AppImage"
+      ]
     },
     "nsis": {
       "oneClick": false,

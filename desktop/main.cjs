@@ -111,6 +111,8 @@ function startBackend() {
     fs.mkdirSync(dir, { recursive: true });
     logPath = path.join(dir, "engine.log");
     try { logStream && logStream.end(); } catch { /* noop */ }
+    // 追加写没有上限：每次启动检查一下，超过 5 MB 就滚成 engine.log.1（只留一份旧的）
+    try { if (fs.statSync(logPath).size > 5 * 1024 * 1024) fs.renameSync(logPath, `${logPath}.1`); } catch { /* 没有旧日志 */ }
     logStream = fs.createWriteStream(logPath, { flags: "a" });
     logStream.write(`\n===== boot ${new Date().toISOString()} port=${port} =====\n`);
   } catch {
@@ -378,6 +380,7 @@ if (!gotLock) {
       const what = [
         info.drama ? "AI 短剧出片" : "",
         info.koubo && info.koubo.length ? `口播出片 ${info.koubo.length} 条` : "",
+        info.scripting ? `写脚本 ${info.scripting} 条` : "",
         info.v1 && info.v1.length ? `图层动画渲染 ${info.v1.length} 个` : "",
       ].filter(Boolean).join("、");
       const { response } = await dialog.showMessageBox(mainWindow && !mainWindow.isDestroyed() ? mainWindow : undefined, {
