@@ -1,0 +1,119 @@
+name: Announce release
+
+# 发版即广播：Release 发布（或手动填一段话）→ 同一段文案发到已配置的渠道。
+# 每个渠道只在对应 Secrets 存在时才跑，一个都没配就什么都不发（不会红）。
+# Secrets 挂在 job 级 env：步骤自己的 env 在它的 if 里读不到（Actions 的求值顺序），写在步骤上条件永远为空。
+#   Bluesky : BSKY_IDENTIFIER（handle）+ BSKY_APP_PASSWORD（设置 → App passwords）
+#   Telegram: TG_BOT_TOKEN + TG_CHAT_ID（频道用 @channelname 或 -100… id）
+#   Mastodon: MASTODON_INSTANCE（如 https://mastodon.social）+ MASTODON_TOKEN（write:statuses）
+#   X/Twitter: X_API_KEY / X_API_SECRET / X_ACCESS_TOKEN / X_ACCESS_SECRET（Free 档可发帖）
+# 文案：Release 名 + 说明前 3 行 + 链接；手动触发时用 inputs.text。
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      text:
+        description: "要广播的文案（留空则用最近一次 Release）"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  announce:
+    runs-on: ubuntu-latest
+    env:
+      BSKY_IDENTIFIER: ${{ secrets.BSKY_IDENTIFIER }}
+      BSKY_APP_PASSWORD: ${{ secrets.BSKY_APP_PASSWORD }}
+      TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+      TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+      MASTODON_INSTANCE: ${{ secrets.MASTODON_INSTANCE }}
+      MASTODON_TOKEN: ${{ secrets.MASTODON_TOKEN }}
+      X_API_KEY: ${{ secrets.X_API_KEY }}
+      X_API_SECRET: ${{ secrets.X_API_SECRET }}
+      X_ACCESS_TOKEN: ${{ secrets.X_ACCESS_TOKEN }}
+      X_ACCESS_SECRET: ${{ secrets.X_ACCESS_SECRET }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Compose message
+        id: msg
+        shell: bash
+        env:
+          MANUAL: ${{ inputs.text }}
+          REL_NAME: ${{ github.event.release.name }}
+          REL_TAG: ${{ github.event.release.tag_name }}
+          REL_URL: ${{ github.event.release.html_url }}
+          REL_BODY: ${{ github.event.release.body }}
+        run: |
+          if [ -n "$MANUAL" ]; then
+            text="$MANUAL"
+          else
+            # 说明只取前 3 行非空文本，去掉 markdown 标记；社交平台不是 changelog
+            summary=$(printf '%s\n' "$REL_BODY" | sed -E 's/^[#*> -]+//; s/\*\*//g; s/`//g' | grep -vE '^\s*$' | head -3 | cut -c1-140)
+            text="开片 OpenShorts ${REL_NAME:-$REL_TAG} 发布了 🎬
+          $summary
+
+          $REL_URL
+          官网 https://os.aiolaola.com"
+          fi
+          {
+            echo "text<<__EOF__"
+            printf '%s\n' "$text"
+            echo "__EOF__"
+          } >> "$GITHUB_OUTPUT"
+          echo "----- message -----"; printf '%s\n' "$text"
+
+      - name: Bluesky
+        if: ${{ env.BSKY_IDENTIFIER != '' && env.BSKY_APP_PASSWORD != '' }}
+        env:
+          TEXT: ${{ steps.msg.outputs.text }}
+        run: |
+          node - <<'JS'
+          const id = process.env.BSKY_IDENTIFIER, pw = process.env.BSKY_APP_PASSWORD, text = process.env.TEXT.slice(0, 300);
+          const s = await (await fetch('https://bsky.social/xrpc/com.atproto.server.createSession', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ identifier: id, password: pw }) })).json();
+          if (!s.accessJwt) throw new Error('bluesky login failed: ' + JSON.stringify(s).slice(0, 200));
+          // 链接要用 facet 标出来才可点
+          const facets = []; const enc = new TextEncoder();
+          for (const m of text.matchAll(/https?:\/\/\S+/g)) { const start = enc.encode(text.slice(0, m.index)).length; facets.push({ index: { byteStart: start, byteEnd: start + enc.encode(m[0]).length }, features: [{ $type: 'app.bsky.richtext.facet#link', uri: m[0] }] }); }
+          const r = await fetch('https://bsky.social/xrpc/com.atproto.repo.createRecord', { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${s.accessJwt}` }, body: JSON.stringify({ repo: s.did, collection: 'app.bsky.feed.post', record: { $type: 'app.bsky.feed.post', text, facets, createdAt: new Date().toISOString() } }) });
+          if (!r.ok) throw new Error('bluesky post failed: ' + await r.text());
+          console.log('bluesky ok', (await r.json()).uri);
+          JS
+
+      - name: Telegram
+        if: ${{ env.TG_BOT_TOKEN != '' && env.TG_CHAT_ID != '' }}
+        env:
+          TEXT: ${{ steps.msg.outputs.text }}
+        run: |
+          curl -sf -X POST "https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT_ID}" --data-urlencode "text=${TEXT}" --data-urlencode "disable_web_page_preview=false" >/dev/null && echo "telegram ok"
+
+      - name: Mastodon
+        if: ${{ env.MASTODON_INSTANCE != '' && env.MASTODON_TOKEN != '' }}
+        env:
+          TEXT: ${{ steps.msg.outputs.text }}
+        run: |
+          curl -sf -X POST "${MASTODON_INSTANCE%/}/api/v1/statuses" -H "Authorization: Bearer ${MASTODON_TOKEN}" \
+            --data-urlencode "status=${TEXT}" >/dev/null && echo "mastodon ok"
+
+      - name: X / Twitter
+        if: ${{ env.X_API_KEY != '' && env.X_ACCESS_TOKEN != '' }}
+        env:
+          TEXT: ${{ steps.msg.outputs.text }}
+        run: |
+          npm i --no-save --silent oauth-1.0a
+          node - <<'JS'
+          const OAuth = require('oauth-1.0a'); const crypto = require('node:crypto');
+          const oauth = OAuth({ consumer: { key: process.env.X_API_KEY, secret: process.env.X_API_SECRET }, signature_method: 'HMAC-SHA1', hash_function: (b, k) => crypto.createHmac('sha1', k).update(b).digest('base64') });
+          const url = 'https://api.twitter.com/2/tweets'; const token = { key: process.env.X_ACCESS_TOKEN, secret: process.env.X_ACCESS_SECRET };
+          const h = oauth.toHeader(oauth.authorize({ url, method: 'POST' }, token));
+          const r = await fetch(url, { method: 'POST', headers: { ...h, 'content-type': 'application/json' }, body: JSON.stringify({ text: process.env.TEXT.slice(0, 280) }) });
+          if (!r.ok) throw new Error('x post failed: ' + await r.text());
+          console.log('x ok', JSON.stringify(await r.json()));
+          JS

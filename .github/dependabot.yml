@@ -1,0 +1,23 @@
+# 依赖更新提醒：每月一次、按组合并成一个 PR，不要每个包一条。
+# remotion 三个包 + react 两个包各自必须同版本升，分组正是为了这个。
+# 不想要了直接删这个文件即可。
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule: { interval: monthly }
+    open-pull-requests-limit: 3
+    groups:
+      remotion: { patterns: ["remotion", "@remotion/*"] }
+      react: { patterns: ["react", "react-dom", "@types/react", "@types/react-dom"] }
+      build-tools: { patterns: ["vite", "@vitejs/*", "typescript", "concurrently"] }
+      runtime: { patterns: ["express", "cors", "multer", "zod", "msedge-tts", "agency-orchestrator"] }
+  - package-ecosystem: npm
+    directory: /desktop
+    schedule: { interval: monthly }
+    open-pull-requests-limit: 2
+    groups:
+      electron: { patterns: ["electron", "electron-builder"] }
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: monthly }
