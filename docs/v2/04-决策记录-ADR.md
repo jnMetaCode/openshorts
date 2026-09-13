@@ -58,3 +58,8 @@
 ## ADR-014 · 模型许可证要在产品里可见（2026-08-30）
 - MiniMax-H3 是 Community License（非 MIT/Apache，有适用地域与使用限制）；素材库 license 各异。
 - 决定：本地模型下载前展示许可证摘要并要求确认一次；provenance 记录每个资产的 license；README 的成片表标注来源与许可。
+
+## ADR-015 · `install-ffmpeg` 钉版本 + 内置官方 sha256，不追 latest（2026-09-11）
+- 之前追 `eugeneware/ffmpeg-static` 的 `releases/latest` 且不校验。两个问题：同一条命令两天装出两个版本，出了问题无法复现；代理 / 镜像 / 中断给一个坏二进制也照装，要到"ffmpeg 跑不起来"才炸。而本地模型下载早就按 HF 的 sha256 校验，最常装的 ffmpeg 反而裸奔。
+- 决定：钉 `b6.1.1`（2025-11-14，本机与 CI 验过 libass / drawtext / ebur128），内置 10 个平台资产的官方 sha256（GitHub Release 资产的 `digest` 字段），边下边算，对不上删 `.part` 抛错。升级走 `node scripts/pin-ffmpeg.mjs [tag]` 打表贴入 `src/media/ffmpeg.mjs`，贴完真装一次 + doctor。`OPENSHORTS_FFMPEG_TAG` 是逃生口，用了就明说"本次不校验"。
+- 不选"追 latest + 上游校验文件"：上游没有 SHA256SUMS 文件，只有 API 的 digest，那条路等于每次装都要先信一次 API 响应。
