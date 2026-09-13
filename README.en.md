@@ -1,5 +1,7 @@
 # OpenShorts · 开片
 
+<p align="center"><a href="README.md">中文</a> · <b>English</b> · <a href="https://os.aiolaola.com/en/">Website</a></p>
+
 **Copy in, video out.** A local-first, open-source short-video production line: give it a topic and it writes the script, finds the footage, voices it, burns in subtitles, and hands you a finished video plus publish copy — **the first video costs $0 by default**, and it tells you cost and wait time *before* running.
 
 <table align="center">
@@ -30,14 +32,21 @@
 </table>
 
 <p align="center"><sub>All four were actually produced by OpenShorts. Click a clip for its case study — the model's own words, footage credits, the quality check, and which shots fell short.</sub></p>
-<p align="center"><b><a href="https://jnmetacode.github.io/openshorts/en/">🌐 Website · watch real output</a></b> · <a href="https://github.com/jnMetaCode/openshorts/releases">Download release</a> · <a href="README.md">中文文档</a></p>
+<p align="center"><b><a href="https://os.aiolaola.com/en/">🌐 Website · watch real output</a></b> · <a href="https://github.com/jnMetaCode/openshorts/releases">Download release</a> · <a href="README.md">中文文档</a></p>
 
-![License](https://img.shields.io/badge/license-MIT-green) ![Node](https://img.shields.io/badge/node-%E2%89%A520-brightgreen) ![Tests](https://img.shields.io/badge/tests-230%20passing-brightgreen) ![CI](https://img.shields.io/badge/CI-ubuntu%20%7C%20macOS%20%7C%20windows-brightgreen) ![Format](https://img.shields.io/badge/format-9%3A16%20%7C%2016%3A9-blue)
+![License](https://img.shields.io/badge/license-MIT-green) ![Node](https://img.shields.io/badge/node-%E2%89%A520-brightgreen) ![Tests](https://img.shields.io/badge/tests-269%20passing-brightgreen) ![CI](https://img.shields.io/badge/CI-ubuntu%20%7C%20macOS%20%7C%20windows-brightgreen) ![Format](https://img.shields.io/badge/format-9%3A16%20%7C%2016%3A9-blue)
 
 ```bash
 git clone https://github.com/jnMetaCode/openshorts.git
 cd openshorts && npm install
 npm run openshorts      # opens the GUI at http://127.0.0.1:4174
+```
+
+**Don't want to install anything by hand? Paste this into your AI agent (Claude Code / Codex / Cursor…) — it installs, health-checks, writes the script, renders, and hands back the file paths:**
+
+```text
+Use this skill: https://raw.githubusercontent.com/jnMetaCode/openshorts/main/docs/skill/SKILL.md
+Make me a 60-second explainer video about "why the sky is blue".
 ```
 
 Requires Node.js 20+ and FFmpeg (an npm package is coming; until then use the source checkout or a [release bundle](https://github.com/jnMetaCode/openshorts/releases)). **Run `openshorts doctor` right after installing** — it tells you what this machine can produce today and exactly what is missing.
@@ -104,10 +113,11 @@ openshorts run    ~/OpenShorts/<project>/project.json --only s2  # redo shot 2 o
 openshorts install-image             # local text-to-image (FLUX.1-schnell) for when stock has nothing
 openshorts estimate <project.json>   # cost (always $0 on the free path) and expected wait
 openshorts export  <project.json> --platform douyin   # publish pack: mp4 + cover + SRT + copy; never auto-posts
+openshorts rm      <project.json> --yes              # delete a project (whole folder, irreversible; without --yes it only previews)
 openshorts drama --plan -i story="…" -i video_provider=local-sdcpp -i video_model=minimax-h3-q2
 ```
 
-Script writing needs one text-model key (DeepSeek / Kimi / GLM / … — configured once, shared with the engine's `~/.ao`). Visuals and voice-over are free on the default path. No shared keys ship with the product.
+Script writing needs one text-model key (DeepSeek / Kimi / GLM / … — configured once, shared with the engine's `~/.ao`). Visuals and voice-over are free on the default path (Edge TTS; set `tts.fallback = { provider, model, voice }` in `~/.openshorts/config.json` to fall back to an AO speech provider if Edge ever breaks). No shared keys ship with the product.
 
 ## Desktop app (Electron, no Node install needed)
 
@@ -115,7 +125,7 @@ Script writing needs one text-model key (DeepSeek / Kimi / GLM / … — configu
 cd desktop && npm install && npm run dist:mac   # or dist:win; output in desktop/release/
 ```
 
-The packaged app ships its own Node runtime: double-click and the local engine starts
+The packaged app ships its own Node runtime (Electron 44 / Node 24; **macOS 13+**, 64-bit Windows / Linux): double-click and the local engine starts
 (port 4174, auto-incrementing if taken). v1 editor data lives in the OS app-data directory
 (`OPENSHORTS_V1_DATA`); your videos stay in `~/OpenShorts` as always.
 
@@ -144,6 +154,6 @@ Part of the「AI不止语」open-source ecosystem — independent tools that com
 
 - v2 product/architecture/decision docs: [`docs/v2/`](docs/v2/00-README.md) (Chinese)
 - Orchestration engine: [agency-orchestrator](https://github.com/jnMetaCode/agency-orchestrator) (v0.19.2+, on npm)
-- v1 layered paper-cut animation editor lives on at `/editor` — see the [Chinese README](README.md) for its workflow
+- v1 layered paper-cut animation editor lives on at `/editor` — its workflow, render scripts and project schema are in [`docs/v1.md`](docs/v1.md) (Chinese)
 
 MIT © contributors. Every generated video carries an AI-content label; footage attribution is written into the publish copy.

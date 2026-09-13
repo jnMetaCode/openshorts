@@ -18,6 +18,6 @@
 **先读顺序**：PRD 第 1–3 节 → 架构第 1–2 节 → 开发计划 M0。其余按需。
 
 相关仓库与资料：
-- AO 引擎：`/Users/yx/work/wenzhang/agency-orchestrator`（短剧流水线、看图验收、花费预览、视频供应商表都在那边）
-- 本地 H3 实验环境：`/Users/yx/work/ai-tools/h3-local`（sd-cli Metal 版 + GGUF 模型，实测数据见 ADR-004）
-- 对标项目：[MoneyPrinterTurbo](https://github.com/harry0703/MoneyPrinterTurbo)（119k★，素材库 + TTS 路线）
+- AO 引擎：[agency-orchestrator](https://github.com/jnMetaCode/agency-orchestrator)（短剧流水线、看图验收、花费预览、视频供应商表都在那边；npm `agency-orchestrator@^0.19.2`）
+- 本地 H3 实验：sd-cli（stable-diffusion.cpp）Metal 版 + GGUF 模型，`openshorts doctor` 会报本机能跑哪一档；实测数据见 ADR-004
+- 对标项目：[MoneyPrinterTurbo](https://github.com/harry0703/MoneyPrinterTurbo)（122k★ · 2026-09，素材库 + TTS 路线）

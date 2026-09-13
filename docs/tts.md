@@ -1,5 +1,8 @@
 # TTS 方案
 
+> **v1 时期的文档**：这里说的是 v1 故事片（`npm run story`）的旁白方案，依赖 `pipx install edge-tts`。
+> v2「开片」的配音走 npm 包 `msedge-tts`（词级时间戳），不需要装 Python 工具；音色列表在界面第 2 步试听，或 `npm run voices`。
+
 ## 默认方案：Edge TTS
 
 OpenShorts 的故事案例复用 `youtube-doodle/make-doodle.js` 已验证的工作方式：逐镜调用 `edge-tts`、缓存结果、用 ffprobe 验证真实时长，再重建镜头节奏。

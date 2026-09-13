@@ -2,6 +2,88 @@
 
 ## [Unreleased]
 
+- **Edge TTS 挂了可回落到 AO 语音供应商（可选）**：Edge 是免费路径唯一的配音来源、微软说改就改。现在
+  `~/.openshorts/config.json` 里配 `tts.fallback = { provider, model, voice }`（AO 里有 `/audio/speech` 端点的供应商，
+  key 沿用 AO 存的那把），Edge 失败就改走它继续出片；没有词级时间戳时字幕按字数估时轴。**没配时行为一字未变**，
+  只是报错里多了一句怎么配；doctor 也报配没配。
+- 推送前自审逮到的两处（审查代理被限额打断，剩下的线索自己查完）：
+  - **批量取消停不下来**：signal abort 之后循环照走，后面每版各自记成"失败：Cancelled"，最后还按 done 报一份结果；
+    现在一 abort 就停整批并抛 Cancelled，不写结果清单。
+  - **短剧正在重出时能删项目**：删项目只查口播的项目锁，短剧的锁是全局 `drama`——删完 AO 一跑完，`finishDramaRun`
+    又把目录建回来。drama 任务现在记 `projectId`，DELETE 一并拦。
+  - 顺手：同一毫秒两次点"生成脚本"任务 key 会撞车（hub.start 抛 500）→ key 加序号。
+- **英文片里残留的中文署名**（英文界面真机截图逮到）：9-08 之前出的英文片，本机出图的署名写的是
+  "Apache-2.0（FLUX.1-schnell 本地生成）"，分段复用时这条旧署名原样留在英文发布包里。出片收尾按项目语言把已知的
+  两种写法对调；回归测试 + 变异检查。
+- 「删除项目」按钮也放到第 4 屏（做完的项目落在第 4 屏，第 3 屏那颗按不到）。
+- **项目终于能删了**：以前界面 / CLI 都没有，只能手动 `rm -rf`。界面第 3 屏「删除项目」（confirm 后删整个目录，回第 1 屏）；
+  CLI `openshorts rm <project.json> --yes`（不带 `--yes` 只预告条目数不动手）；`DELETE /projects/:id`。
+  三道闸：正在出片的 409；清洗后落到输出根目录的 id 一律 404（`rmSync recursive` 删错根就是所有项目一起没，
+  测试里真放了个 `..` 去撞）；CLI 对输出根目录拒删。
+- 加 `.github/dependabot.yml`：每月一次、按组合并（remotion / react / 构建工具 / 运行时 / electron / actions），
+  最多 3 个 PR；不想要直接删文件。
+- **写脚本这一步也不再沉默**（headless Chrome 新用户走查逮到）：以前是一个普通 POST，供应商限流时界面挂着
+  "AI 正在写脚本（20–60 秒）"三分多钟没有任何反馈，而服务端终端里明明在打"429 重试 (3/5)"。现在界面走任务模式
+  （`POST /new` 带 `async` → 202 + 任务 key，进度从 `GET /jobs/:key/events` 流出）：generateKoubo 的自动重写提示、
+  引擎打在 stdout 上的限流 / 停滞 / 续写行（AO 库调用没有 onLog 钩子，这里 tee 了 stdout 只截这几类行）、
+  每 30 秒一行"已等待 N 秒"，都在第 2 屏的日志框里。不带 `async` 的同步调用照旧。
+- **`doctor` 真发一次 Edge TTS**：它是免费路径唯一的配音来源，微软改一次接口整条就挂（同类项目 2024–2025 都栽过），
+  以前体检对它一无所知，用户要跑到第 3 步才撞上。现在合成一个"你好"（10 秒超时），不通就是 ⛔"现在出不了片"并指路。
+- 干净环境冷验证（9-12，`npm pack` → 空项目安装 → 从装出来的那份跑）：doctor / help / 起服务 / 新接口均正常，包 579 KB / 165 文件。
+- **Windows 上界面每镜画面 / 成片 / 封面全 404**（读代码逮到，Win 包至今没人真装过）：服务端给的是绝对路径，
+  Windows 上是反斜杠，界面按 `/` 切文件名永远切不到，整条路径被当文件名去请求。改按 `[\\/]` 切。
+- **本机出图全进程串行**：两条出片（或批量）同时落到本机出图会各起一份 sd-cli，FLUX 一份 6–10 GB，
+  32 GB 的机器直接被系统杀（9-12 真机就是这么被杀的）。现在排队不拒绝。
+- **project.json / config.json 原子写**（`src/core/fs-atomic.mjs`：写临时文件再 rename）：以前 Ctrl+C、
+  桌面版退出、磁盘满卡在写一半就留半截 JSON，下次整个项目读不出来。
+- 任务中心只留最近 50 个跑完的任务（桌面版长期开着不再把每个项目的日志都攒在内存里）；桌面版 engine.log
+  超过 5 MB 滚一份 `.1`（以前只增不减）。
+- 修 `announce.yml`：Secrets 写在步骤自己的 env 里，步骤的 `if` 读不到（Actions 求值顺序），四个渠道
+  永远不会发；提到 job 级 env。
+- **五段式提示词进短剧线（与 ai-shortfilm-prompts 打通）**：AO 短剧流水线新增「氛围锁定块」一步——
+  全片只写一次机身镜头 / 色彩影调 / 光源 / 颗粒风格，三镜提示词与定妆图**逐字粘贴**它（以前三镜并行各写各的，
+  只靠验收员事后挑"不一致"，返工一轮就是三条提示词重来）；镜头提示词按类型取默认运镜与节拍
+  （8 个类型的表进了 AO 的 shortfilm-prompt 技能，来源是上游的 genre-camera-sop 与各题材范例）。
+  开片这边：每镜的五段式提示词和氛围锁定块回填进项目，第 4 屏能看、能复制去别的模型抽卡；
+  题材下拉补齐科幻 / 古风武侠 / 纪实 Vlog（以前只列了工作流 8 个选项里的 5 个）。
+  `OPENSHORTS_AO_DIR` 可指向本地 AO 检出验证工作流改动，不用先发 npm。**要等 AO 发新版才对 npm 用户生效。**
+- **桌面端升到 Electron 44.3 / electron-builder 26.15**（desktop 0.1.1）：0.1.0 打的是 Electron 33，
+  它早已出了 Electron 的维护窗口（只维护最近三个大版本），发出去的包里是一个不再收安全补丁的 Chromium。
+  现在是 Chromium 152 / Node 24.20。代价：**不再支持 macOS 12 及以下**（Electron 44 的上游决定）、
+  不出 32 位包（本来也没出）。后端在 Node 24 下全套测试通过；mac arm64 包本机真打真装真起。
+- **"出片用时"不再把机器休眠算进去**：真机报过 39477 s，其实那台 Mac 中途睡了 10.8 小时、真实出片约 10 分钟。
+  不赌时钟语义（单调钟在 macOS 上算不算休眠取决于 libuv 版本），改为看事件循环有没有断片
+  （`src/core/stopwatch.mjs`：tick 之间隔了远超一秒就是睡过），扣掉并单独报"另有 X 小时机器在休眠，未计入"。
+  CLI `run` / `batch` 与本机出图的耗时都换了。
+- **`install-ffmpeg` 钉死版本并校验**：以前追 eugeneware/ffmpeg-static 的 `releases/latest` 且不校验——
+  同一条命令两天能装出两个版本，代理 / 镜像给个坏文件也照装，要到"ffmpeg 跑不起来"才炸；
+  而本地模型下载早就按 HF 的 sha256 校验了，最常装的 ffmpeg 反而裸奔。现在钉 `b6.1.1` 并内置
+  10 个平台资产的官方 sha256（GitHub Release 资产的 digest），边下边算，对不上就删掉 .part 抛错。
+  升级用 `node scripts/pin-ffmpeg.mjs [tag]` 打出新表贴过去；`OPENSHORTS_FFMPEG_TAG` 是逃生口（明说不校验）。
+- **出片不再随页面一起死**：以前一条 run 的生命周期就是那条 SSE 连接——刷新页面、合盖、Wi-Fi 抖一下，
+  跑了 20 分钟的出片当场作废，短剧线还在云端按秒计费。现在任务在服务端自己跑（`server/lib/job-hub.mjs`），
+  连接只是"看"：断了活照跑，浏览器自动重连按 `Last-Event-ID` 只补错过的日志，页面重开 / 换回项目时
+  自动接上正在跑的活（新接口 `GET /projects/:id/events` `/status`、`GET /drama/events` `/status`、
+  `POST /drama/cancel`）。取消只认显式的 cancel；批量出片也能取消了（以前没接 signal）。
+  界面上"连接断开，正在重连…"是暂时的，只有服务端明确报错或重连被拒才算终止。
+  端点测试用假出片把这条契约钉住：观众断开活照跑、第二个标签 409、带 Last-Event-ID 只补错过的、/events 从头补到 done、
+  cancel 只认显式 POST（变异检查：改回"断线即取消"立刻红）。`server/kaipian.mjs` 函数覆盖 20% → 36%。
+  CLI 也补了离线测试（estimate 两条线的措辞、run/batch 拒短剧项目、坏文件、version），`bin/openshorts.mjs` 行覆盖 43% → 60%。
+- **退出不再留下孤儿进程**（真机坐实的病）：服务端以前没有任何 SIGTERM/SIGINT 处理，桌面版
+  `stopBackend()`、`docker stop`、终端 Ctrl+C 都是 Node 默认的"立刻死"——正在跑的 ffmpeg 变成 ppid=1 的孤儿
+  继续跑到底；短剧线 AO 下面还挂着 sd-cli / ffmpeg 孙进程，只杀 AO 它们照样活着。而退出对话框写的是
+  "退出会杀掉本地引擎"。现在：收到信号先 abort 所有口播出片（ffmpeg / sd-cli 都认 signal）、整组杀 AO
+  （`server/lib/proc.mjs`：POSIX 上 detached 进程组 + `kill(-pid)`，Windows `taskkill /T`）、取消 v1 渲染，
+  再关端口退出。真机：SIGTERM 后 1.5 秒 ffmpeg 已不在，SSE 客户端收到 `Cancelled`。
+  测试：杀树连孙进程一起走（附一条"普通 kill 会留孤儿"的对照）；真 spawn 服务端发 SIGTERM，
+  3 秒内退出码 0 且有收尾日志（变异检查：去掉 handler 即红）。
+- **文档对账**：PRD 功能清单 18 条以前一个都没勾，而开发计划显示 M0–M3 全部完成——新读者会以为什么都没做；
+  现在按开发计划逐条勾过（14 做完、2 部分、2 未做，未做的是一键发布与翻译配音模板）。
+  README 41 KB 里 v2 只占前 166 行、后面 588 行全是 v1——v1 整段搬到 `docs/v1.md`（链接已改相对路径），
+  主 README 只留一段指路。v1 时期的 `docs/product-design.md` / `docs/tts.md` 顶部标明"这是 v1 的"；
+  `docs/deployment.md` 补 v2 的三个数据卷与"只需要带 libass 的 ffmpeg"。
+  `AGENTS.md` 新增「v2 工程要点」：真跑逐帧看、失败原因穿透、不跨轮次展开旧对象、语言唯一出处、变异检查——
+  全是这两周踩出来的规矩，以前只在交接文件里。
 - **英文成片线（M3 里"英文界面与模板"欠的那半）**：界面早就双语，但**片子本身**只会说中文。
   新增 `templates/koubo-explainer.en.yaml`（英文提示词 + 英文角色库 `agency-agents`，
   中文那份里每条真机踩出来的规则逐条译过去），并把四处写死的中文假设改成按语言分岔：

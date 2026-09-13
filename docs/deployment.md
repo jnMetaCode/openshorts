@@ -8,7 +8,7 @@ npm run build
 npm start
 ```
 
-服务默认仅监听 `127.0.0.1:4174`。FFmpeg、ImageMagick 和 Chrome/Chromium 必须在 PATH 中，或者通过 `CHROME_PATH` 指定浏览器。
+服务默认仅监听 `127.0.0.1:4174`。v2 开片只需要 **带 libass 的 ffmpeg**（`openshorts doctor` 查、`openshorts install-ffmpeg` 装到 `~/.openshorts/bin`）；ImageMagick 和 Chrome/Chromium 只有 v1 图层编辑器（Remotion 渲染）才用，可通过 `CHROME_PATH` 指定浏览器。
 
 ## Docker Compose
 
@@ -18,7 +18,12 @@ docker compose up --build -d
 docker compose logs -f openshorts
 ```
 
-项目、输出、任务数据和上传素材分别挂载到 `projects`、`out`、`data` 和 `public/uploads`。升级容器前应备份这些目录。
+两套数据各自挂载（见 `docker-compose.yml`）：
+
+- **v2 开片**：成片 `/home/node/OpenShorts`、配置与素材库 key `/home/node/.openshorts`、文本模型 key `/home/node/.ao`——三个命名卷（`openshorts-output` / `openshorts-config` / `openshorts-ao`）。不挂载的话容器重建时成片和存好的 key 全部丢失。
+- **v1 图层编辑器**：`projects`、`out`、`data`、`public/uploads` 绑定到仓库目录。
+
+升级容器前备份这些目录 / 卷。镜像里预建了三个 v2 目录并交给 `node` 用户——命名卷首次挂载按镜像里的属主初始化，否则 `USER node` 下存 key、出片全部 EACCES。
 
 ## ASR 与生成服务
 
