@@ -28,11 +28,18 @@ export const isAllowedOrigin = (origin, allowlist) => {
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
-/** 拦截跨站的写请求。读请求交给 CORS 头处理即可。 */
+/**
+ * 拦截跨站的写请求。读请求交给 CORS 头处理即可。
+ *
+ * 没带 Origin 以前一律放行（curl / 脚本），但浏览器也会发不带 Origin 的请求——这时它一定带
+ * Sec-Fetch-Site。9-14 全面测试时真撞上：只带 `Sec-Fetch-Site: cross-site` 的 DELETE 通过了，
+ * 项目被删。所以没有 Origin 时再看一眼 Sec-Fetch-Site；带了白名单里的 Origin 仍照常放行
+ * （开发时 4173 → 4174 这类合法的跨端口访问是 same-site，不能误伤）。
+ */
 export const createOriginGuard = (allowlist) => (req, res, next) => {
   if (SAFE_METHODS.has(req.method)) return next();
   const origin = req.get('origin');
-  if (isAllowedOrigin(origin, allowlist)) return next();
+  if (origin ? isAllowedOrigin(origin, allowlist) : !isBrowserCrossSite(req)) return next();
   return res.status(403).json({
     error: `拒绝来自 ${origin} 的跨站写请求。若确实需要从该地址访问，请设置 OPENSHORTS_ALLOWED_ORIGINS。`,
     allowed: allowlist,

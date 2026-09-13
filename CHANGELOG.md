@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+- **安全：不带 Origin 的跨站写请求以前会放行**（推送前全面测试时在真服务上撞上）：写请求防护只看 Origin，
+  没有 Origin 一律当 curl 放行；只带 `Sec-Fetch-Site: cross-site` 的 DELETE 直接删掉了项目。
+  真浏览器发 DELETE/POST 一定带 Origin，实际可利用性低，但写接口的防护应当两个头都认——
+  SSE 那条防护早就同时看 Sec-Fetch-Site，写请求这条漏了。现在没有 Origin 时再看 Sec-Fetch-Site；
+  带了白名单内 Origin 的照常放行（开发时 4173 → 4174 是 same-site，不误伤）；curl 两个头都不带，不受影响。
 - **Edge TTS 挂了可回落到 AO 语音供应商（可选）**：Edge 是免费路径唯一的配音来源、微软说改就改。现在
   `~/.openshorts/config.json` 里配 `tts.fallback = { provider, model, voice }`（AO 里有 `/audio/speech` 端点的供应商，
   key 沿用 AO 存的那把），Edge 失败就改走它继续出片；没有词级时间戳时字幕按字数估时轴。**没配时行为一字未变**，

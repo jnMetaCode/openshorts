@@ -63,6 +63,24 @@ test('所有会改状态的方法都受保护', () => {
   }
 });
 
+test('写请求没带 Origin 但浏览器标明跨站：也要拦（9-14 真撞上：只带 Sec-Fetch-Site 的 DELETE 删掉了项目）', () => {
+  const guard = createOriginGuard(defaultAllowedOrigins(4174));
+  const req = (method, headers) => ({method, get: (h) => headers[h.toLowerCase()]});
+  for (const site of ['cross-site', 'same-site']) {
+    const {passed, res} = run(guard, req('DELETE', {'sec-fetch-site': site}));
+    assert.equal(passed, false, `Sec-Fetch-Site: ${site} 且无 Origin 的 DELETE 不应通过`);
+    assert.equal(res.statusCode, 403);
+  }
+  // 不能误伤：curl / 脚本（两个头都没有）、地址栏或同源（none / same-origin）
+  assert.equal(run(guard, req('DELETE', {})).passed, true, 'curl 与脚本不带任何 Sec-Fetch-*');
+  assert.equal(run(guard, req('POST', {'sec-fetch-site': 'same-origin'})).passed, true);
+  assert.equal(run(guard, req('POST', {'sec-fetch-site': 'none'})).passed, true);
+  // 带了白名单里的 Origin：按 Origin 判，开发端口的跨端口访问（same-site）照常通过
+  assert.equal(run(guard, req('POST', {origin: 'http://localhost:4173', 'sec-fetch-site': 'same-site'})).passed, true);
+  // 带了不在白名单里的 Origin：照旧拦
+  assert.equal(run(guard, req('DELETE', {origin: 'https://evil.example', 'sec-fetch-site': 'cross-site'})).passed, false);
+});
+
 test('显式配置 * 可以退回旧的全开行为', () => {
   assert.equal(run(createOriginGuard(['*']), request({origin: 'http://evil.example'})).passed, true);
 });
