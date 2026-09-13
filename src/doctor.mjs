@@ -40,6 +40,17 @@ export async function doctor() {
   else add('ok', '未设代理（直连）');
   const mem = Math.round(os.totalmem() / 1024 ** 3); add('ok', `内存 ${mem} GB · ${os.cpus().length} 核 · ${process.platform}/${process.arch}`);
   const cfg = readConfig(); try { fs.mkdirSync(cfg.outputDir, { recursive: true }); fs.accessSync(cfg.outputDir, fs.constants.W_OK); add('ok', `输出目录可写：${cfg.outputDir}`); } catch { add('fail', `输出目录不可写：${cfg.outputDir}（在 ~/.openshorts/config.json 改 outputDir）`); }
+  // Edge TTS 是免费路径唯一的配音来源，微软改一次接口它就整条挂（同类项目 2024–2025 都栽过）。
+  // 体检里真发一次最短的合成：通不了就是"现在出不了片"，不能等用户跑到第 3 步才撞上。10 秒超时。
+  try {
+    const { synthesize, DEFAULT_VOICES } = await import('./voice/edge-tts.mjs');
+    const voice = cfg.voice?.voice ?? DEFAULT_VOICES[0]?.id ?? 'zh-CN-XiaoxiaoNeural';
+    const r = await Promise.race([synthesize('你好', { voice }), new Promise((_, rej) => setTimeout(() => rej(new Error('10 秒没响应')), 10_000))]);
+    add(r?.buffer?.length ? 'ok' : 'fail', r?.buffer?.length ? `Edge TTS 可用（免费配音，${voice}）` : 'Edge TTS 返回空音频：免费路径的配音会失败');
+  } catch (e) {
+    add('fail', `Edge TTS 不通（${String(e.message).split('\n')[0].slice(0, 80)}）：免费路径的配音会失败——多半是网络/代理或微软端点变动，稍后重试；急用可在模板里改用 AO 的 tts 供应商`);
+  }
+  { const fb = cfg.tts?.fallback; add('ok', fb?.provider && fb?.model && fb?.voice ? `回落配音已配：${fb.provider}/${fb.model}/${fb.voice}（Edge TTS 挂了自动改走）` : '回落配音未配（Edge TTS 挂了就出不了片；可在 config.tts.fallback 配 AO 里有语音端点的供应商 { provider, model, voice }）'); }
   add(has('whisper-cli') ? 'ok' : 'warn', has('whisper-cli') ? 'whisper.cpp 就绪（无词级时间戳时可对齐字幕）' : '未装 whisper.cpp（可选；Edge TTS 自带词级时间戳时不需要）');
   try { const { cacheStats } = await import('./sources/stock.mjs'); const cs = cacheStats();
     if (cs.files) add('ok', `素材缓存 ${cs.files} 个文件 · ${(cs.bytes / 1048576).toFixed(0)} MB（${cs.dir}，出片时自动清理 30 天未用的，上限 2 GB）`); } catch { /* 无缓存 */ }

@@ -6,14 +6,15 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { synthesize } from '../voice/edge-tts.mjs';
+import { makeSynthesizer } from '../voice/synth.mjs';
 import { findCandidates, materialize, materializeFirst, pruneCache } from '../sources/stock.mjs';
+import { writeJsonAtomic } from '../core/fs-atomic.mjs';
 import { buildCues, estimateWords, toSRT, toASS, alignPunctuation } from '../captions/build.mjs';
 import { renderSegment, concatSegments, finalize, probeDuration, hasFilter } from '../compose/koubo.mjs';
 import { checkKoubo } from '../quality/check.mjs';
 import { rankCandidates } from '../sources/rank.mjs';
 import crypto from 'node:crypto';
-import { aoSavedKeys } from '../config.mjs';
+import { aoSavedKeys, readConfig } from '../config.mjs';
 import { ffmpegPath } from '../media/ffmpeg.mjs';
 import { normLang, tt } from '../project/lang.mjs';
 const run = promisify(execFile);
@@ -94,11 +95,13 @@ async function visionJudge(vision, log, T = (zh) => zh) {
   } catch (e) { log(T(`素材排序不可用：${e.message.split('\n')[0]}`, `Visual ranking unavailable: ${e.message.split('\n')[0]}`)); return null; }
 }
 
-export async function runKoubo(project, { outDir, log = () => {}, fetchImpl = fetch, config, vision, signal, only = null, synthesizeImpl = synthesize, localImage = 'auto' } = {}) {
+export async function runKoubo(project, { outDir, log = () => {}, fetchImpl = fetch, config, vision, signal, only = null, synthesizeImpl = null, localImage = 'auto' } = {}) {
   // 出片语言：2026-09 之前的项目没有这个字段，缺省按中文（那时只有中文一条线）。
   // 出片日志与 notes 都要用它——这些话带着镜头 id 和秒数，界面的字典翻不了，
   // 只能在生成的这一刻就定语言（英文用户以前一路看中文进度）。
   const lang = normLang(project.lang); const T = tt(lang);
+  // 配音：Edge TTS 优先；用户配了 tts.fallback 时 Edge 挂了改走 AO 语音端点（src/voice/synth.mjs）。测试从 synthesizeImpl 注入假的
+  const synth = synthesizeImpl ?? makeSynthesizer({ cfg: config ?? readConfig(), log, lang });
   const wantVision = vision ?? project.vision ?? config?.vision;
   const judge = await visionJudge(wantVision, log, T);
   const dir = outDir ?? path.join(process.env.HOME || '.', 'OpenShorts', project.id);
@@ -110,7 +113,7 @@ export async function runKoubo(project, { outDir, log = () => {}, fetchImpl = fe
   // 落盘失败不拖垮出片，但要说一声（一次就够）：磁盘满/只读时每镜都在静默丢进度，
   // 用户中断后才发现全要重来
   let saveWarned = false;
-  const save = () => { try { fs.writeFileSync(projectFile, JSON.stringify(project, null, 2)); } catch (e) { if (!saveWarned) { saveWarned = true; log(T(`⚠️ 项目进度写盘失败（${String(e.message).split('\n')[0]}）——出片继续，但中断后已完成的镜头会重来`, `⚠️ Could not save progress (${String(e.message).split('\n')[0]}) — rendering continues, but finished shots will be redone if it is interrupted`)); } } };
+  const save = () => { try { writeJsonAtomic(projectFile, project); } catch (e) { if (!saveWarned) { saveWarned = true; log(T(`⚠️ 项目进度写盘失败（${String(e.message).split('\n')[0]}）——出片继续，但中断后已完成的镜头会重来`, `⚠️ Could not save progress (${String(e.message).split('\n')[0]}) — rendering continues, but finished shots will be redone if it is interrupted`)); } } };
 
   // 本地出图：素材库都没命中时，与其退纯色底，不如本机现画一张（不花钱、不联网、Apache-2.0 模型）。
   // 只在真的装了模型时才启用——没装就什么都不做，行为跟以前一样。
@@ -139,7 +142,7 @@ export async function runKoubo(project, { outDir, log = () => {}, fetchImpl = fe
     log(T(`↻ 只重出 ${[...forced].join('、')}，其余镜头复用上次的分段`, `↻ Redoing only ${[...forced].join(', ')}; other shots reuse the previous segments`));
   }
 
-  await prefetchAudio(project, { work, log, synthesizeImpl, signal });
+  await prefetchAudio(project, { work, log, synthesizeImpl: synth, signal });
 
   for (const shot of project.shots) {
     abortIfCancelled();
@@ -162,7 +165,7 @@ export async function runKoubo(project, { outDir, log = () => {}, fetchImpl = fe
         : T(`↺ ${shot.id} 复用配音 ${durationSec.toFixed(1)}s`, `↺ ${shot.id} reusing voice-over ${durationSec.toFixed(1)}s`));
     } else {
       // Edge TTS 走的是微软非官方端点，抖一下就整条片废掉——重试两次再放弃（PRD 风险表里就写着它会抽）
-      const tts = await retry(() => synthesizeImpl(shot.text, { voice: project.voice.voice, rate: project.voice.rate, outFile: audio }),
+      const tts = await retry(() => synth(shot.text, { voice: project.voice.voice, rate: project.voice.rate, outFile: audio }),
         { times: 3, onRetry: (e, n) => log(T(`⟳ ${shot.id} 配音第 ${n} 次重试（${e.message.split('\n')[0].slice(0, 60)}）`, `⟳ ${shot.id} voice-over retry ${n} (${e.message.split('\n')[0].slice(0, 60)})`)) })
         .catch((e) => { save(); throw new Error(T(`镜头 ${shot.id} 配音失败（已重试 3 次）：${e.message}`, `Shot ${shot.id} voice-over failed after 3 retries: ${e.message}`)); });
       durationSec = await audioDuration(audio, tts, lang);
@@ -362,6 +365,10 @@ export async function runKoubo(project, { outDir, log = () => {}, fetchImpl = fe
     }
     const before = project.provenance.length;
     project.provenance = project.provenance.filter((x) => (!x.id ? true : x.source === 'local-flux' ? localShots.has(x.shot) : usedIds.has(x.id)));
+    // 署名文案跟片子语言走：9-08 之前出的英文片，本机出图的署名是中文（"FLUX.1-schnell 本地生成"），
+    // 分段复用时这条旧署名会原样留在英文发布包里（真机截图逮到）。已知的两种写法按当前语言对调。
+    const LOCAL_LICENSE = { zh: 'Apache-2.0（FLUX.1-schnell 本地生成）', en: 'Apache-2.0 (generated locally with FLUX.1-schnell)' };
+    for (const x of project.provenance) if (x.source === 'local-flux' && Object.values(LOCAL_LICENSE).includes(x.license)) x.license = LOCAL_LICENSE[lang === 'en' ? 'en' : 'zh'];
     const dropped = before - project.provenance.length;
     if (dropped) notes.push(T(`清掉 ${dropped} 条已不在片中的素材署名（早先重出留下的）`, `Dropped ${dropped} footage credits for material no longer in the film (left over from earlier re-renders)`));
   }

@@ -149,3 +149,8 @@ body:has(.kp){overflow:auto}
 .kp-shot-fields .kp-row label{font-size:11px}
 .kp-shot-fields .kp-row input{font-size:12px;color:#c9b8a5}
 @media (max-width:820px){.kp-shot-body{grid-template-columns:1fr}.kp-shot-thumb{width:64px}}
+
+/* 短剧：氛围锁定块 / 每镜提示词（折叠，能复制） */
+.kp-prompt{margin:.4rem 0;font-size:.85em}.kp-prompt summary{cursor:pointer;color:var(--ink2,#555)}.kp-prompt pre{white-space:pre-wrap;word-break:break-word;background:var(--code,#f4f1ea);padding:.5rem .6rem;border-radius:6px;max-height:16rem;overflow:auto;margin:.3rem 0}.kp-prompt button{font-size:.85em}
+
+.kp-danger{font-size:.8em;color:#b91c1c;border-color:#b91c1c66;background:transparent}.kp-danger:hover{background:#b91c1c14}

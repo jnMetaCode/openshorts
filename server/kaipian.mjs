@@ -13,6 +13,14 @@ import { uniqueProjectId } from '../src/project/koubo.mjs';
 import { langSpec, normLang, localizeInputs, tt } from '../src/project/lang.mjs';
 import { generateKoubo } from '../src/pipeline/koubo-script.mjs';
 import { runKoubo } from '../src/pipeline/koubo-run.mjs';
+import { planVariants, runBatch } from '../src/pipeline/batch.mjs';
+// 测试缝：出片/批量的实现从这里取，端点测试换成假的就能不联网验 409 锁 / 断线重连 / cancel（生产就是本尊）
+export const _pipeline = { runKoubo, runBatch, generateKoubo };
+let newSeq = 0;
+import { spawnTree, killTree } from './lib/proc.mjs';
+import { readStepOutput } from './lib/ao-run-dir.mjs';
+import { writeJsonAtomic } from '../src/core/fs-atomic.mjs';
+import { JobHub } from './lib/job-hub.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const kaipian = express.Router();
@@ -89,16 +97,39 @@ kaipian.post('/new', async (req, res, next) => {
     // 而 cfg.tts.voice 是全局默认（用户为中文片选的），语言不匹配时按语言回落
     const voice = b.voice || (String(cfg.tts?.voice ?? '').toLowerCase().startsWith(lang === 'en' ? 'en-' : 'zh-') ? cfg.tts.voice : spec.voice);
     // 与 CLI 同一份编排：脚本长度不达标或 JSON 写坏会自动重写一次（generateKoubo）
-    const g = await generateKoubo({ wf: path.join(root, 'templates', spec.template), inputs, lang,
+    const T = tt(lang);
+    const gen = (log) => _pipeline.generateKoubo({ wf: path.join(root, 'templates', spec.template), inputs, lang, log,
       buildDefaults: { voice, captionPreset: b.captions || 'douyin', captionStyle: b.captionStyle && typeof b.captionStyle === 'object' ? b.captionStyle : {}, visualSource: b.source || 'stock', localDirs: b.localDir ? [path.resolve(String(b.localDir))] : [], bgm: b.bgm ? path.resolve(String(b.bgm)) : null },
       aoOpts: { quiet: true, outputDir: path.join(cfg.outputDir, '.ao-runs'), ...over } });
-    if (!g.ok && g.kind === 'run') return res.status(502).json({ error: tt(lang)('脚本生成失败：', 'Script generation failed: ') + g.res.steps.filter((s) => s.status === 'failed').map((s) => `${s.id}: ${s.error}`).join(tt(lang)('；', '; ')) });
-    if (!g.ok) return res.status(502).json({ error: tt(lang)(`脚本写出来了但解析不了（已自动重写一次仍失败）：${String(g.error.message).split('\n')[0]}。再试一次，或在设置里换个文本模型。`, `The model wrote a script but it could not be parsed (one automatic rewrite already failed): ${String(g.error.message).split('\n')[0]}. Try again, or pick a different text model in settings.`) });
-    const project = g.project;
-    project.id = uniqueProjectId(cfg.outputDir, safe(project.id));   // 同话题再跑一次不该覆盖上一条片子
-    fs.mkdirSync(projDir(project.id), { recursive: true });
-    fs.writeFileSync(path.join(projDir(project.id), 'project.json'), JSON.stringify(project, null, 2));
-    res.json(project);
+    const finalize = (g) => {
+      if (!g.ok && g.kind === 'run') throw Object.assign(new Error(T('脚本生成失败：', 'Script generation failed: ') + g.res.steps.filter((s) => s.status === 'failed').map((s) => `${s.id}: ${s.error}`).join(T('；', '; '))), { status: 502 });
+      if (!g.ok) throw Object.assign(new Error(T(`脚本写出来了但解析不了（已自动重写一次仍失败）：${String(g.error.message).split('\n')[0]}。再试一次，或在设置里换个文本模型。`, `The model wrote a script but it could not be parsed (one automatic rewrite also failed): ${String(g.error.message).split('\n')[0]}. Try again, or pick another text model in settings.`)), { status: 502 });
+      const project = g.project;
+      project.id = uniqueProjectId(cfg.outputDir, safe(project.id));   // 同话题再跑一次不该覆盖上一条片子
+      fs.mkdirSync(projDir(project.id), { recursive: true });
+      writeJsonAtomic(path.join(projDir(project.id), 'project.json'), project);
+      return project;
+    };
+    // 界面走任务模式：写脚本 20–60 秒是顺利时的数字，供应商限流时能拖到几分钟——以前界面只有一行"正在写"，
+    // 服务端日志里的"429 重试 (3/5)"用户看不见。现在立刻回一个任务 key，进度从 /jobs/:key/events 流出来。
+    if (b.async) {
+      const key = `new:${Date.now().toString(36)}${(newSeq++ % 1296).toString(36)}`;   // 同一毫秒两次点击不能撞同一个 key（撞了 hub.start 会抛）
+      const job = hub.start(key, { meta: { kind: 'new', topic: inputs.topic.slice(0, 40) } });
+      const log = (m) => hub.emit(job, 'log', { m });
+      const t0 = Date.now();
+      const beat = setInterval(() => log(T(`已等待 ${Math.round((Date.now() - t0) / 1000)} 秒：模型还在写（供应商限流时会自动退避重试，最长几分钟）`, `${Math.round((Date.now() - t0) / 1000)} s so far: the model is still writing (rate limits are retried with backoff, up to a few minutes)`)), 30_000);
+      const untap = tapEngineOutput(log);
+      (async () => {
+        try { const project = finalize(await gen(log)); hub.finish(job, 'done', { project }); }
+        catch (e) { hub.finish(job, 'error', { m: e.message }); }
+        finally { clearInterval(beat); untap(); }
+      })();
+      return res.status(202).json({ job: key });
+    }
+    const g0 = await gen(() => {});
+    let project;
+    try { project = finalize(g0); } catch (e) { return res.status(e.status ?? 500).json({ error: e.message }); }
+    res.json(project); return;
   } catch (e) { next(e); }
 });
 kaipian.get('/projects', (_req, res) => {
@@ -116,33 +147,82 @@ kaipian.put('/projects/:id', (req, res) => {
   if (b.voice) cur.voice = { ...cur.voice, ...b.voice };
   if (b.captions) cur.captions = { ...cur.captions, ...b.captions, style: { ...(cur.captions?.style ?? {}), ...(b.captions.style ?? {}) } };
   if (b.defaults) cur.defaults = { ...cur.defaults, ...b.defaults };
-  fs.writeFileSync(f, JSON.stringify(cur, null, 2)); res.json(cur);
+  writeJsonAtomic(f, cur); res.json(cur);
 });
 // 同一个项目同时只允许跑一次：两个标签页各点一次「出片」会同时写同一个 work 目录和 project.json，
-// 产物互相覆盖且症状难查。关掉页面就取消——不然 ffmpeg 会在后台一直跑到底，用户还以为已经停了。
-const running = new Map();   // projectId -> AbortController
+// 产物互相覆盖且症状难查。
+// 任务不挂在 SSE 连接上（lib/job-hub.mjs）：以前 req 'close' 就 abort，刷新页面 / 合盖 / Wi-Fi 抖一下
+// 等于把跑了 20 分钟的出片作废。现在连接断了活照跑，重连按 Last-Event-ID 接着看，取消只认 POST /cancel。
+const hub = new JobHub();
+export const _hub = hub;   // 测试缝：模拟"短剧正在重出这个项目"这类状态
+/**
+ * 把引擎打在 stdout 上的进度行（"⚠️ script 失败 (429)…6s 后重试"、"⏱️ 90s 内未返回"、"🔄 自动续写"）接到任务日志里。
+ * AO 的库函数 run() 没有 onLog 钩子，这些行只在服务端终端能看见——用户那边就是一片沉默。
+ * 只截带这几个标记的行，其它输出原样放行；没有任务在听时什么都不做。
+ */
+const engineTaps = new Set();
+const ENGINE_LINE = /^\s*(⚠️|⏱️|🔄|❌)\s*\S/;
+// stdout 和 stderr 都要挂：AO 连接器的重试/停滞行走的是 console.warn/error（stderr）——只挂 stdout 时真机上一行也接不到
+for (const stream of [process.stdout, process.stderr]) {
+  const orig = stream.write.bind(stream);
+  stream.write = (chunk, ...rest) => {
+    if (engineTaps.size) for (const line of String(chunk).split(/\r?\n/)) { const t = line.trim(); if (ENGINE_LINE.test(t)) for (const tap of engineTaps) tap(t.slice(0, 200)); }
+    return orig(chunk, ...rest);
+  };
+}
+const tapEngineOutput = (log) => { engineTaps.add(log); return () => engineTaps.delete(log); };
+// 通用任务接口：写脚本这类不绑项目的任务用 key 看进度（页面刷新后凭 key 也能接上）
+const jobKey = (k) => String(k).replace(/[^\w:.-]/g, '');
+kaipian.get('/jobs/:key/events', (req, res) => {
+  const job = hub.get(jobKey(req.params.key));
+  if (!job) return res.status(404).json({ error: tt(reqLang(req))('没有这个任务', 'No such job') });
+  hub.attach(job, req, res);
+});
+kaipian.get('/jobs/:key/status', (req, res) => res.json(hub.status(jobKey(req.params.key))));
+const kKey = (id) => `koubo:${id}`;
 kaipian.get('/projects/:id/run', async (req, res) => {
   const id = safe(req.params.id);
   const f = path.join(projDir(id), 'project.json'); if (!fs.existsSync(f)) return res.status(404).json({ error: tt(reqLang(req))('项目不存在', 'No such project') });
-  if (running.has(id)) return res.status(409).json({ error: tt(projLang(id, req))('这个项目正在出片，等它跑完或先取消', 'This project is already rendering — wait for it to finish, or cancel it first') });
-  res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' });
-  const send = (ev, data) => res.write(`event: ${ev}\ndata: ${JSON.stringify(data)}\n\n`);
-  const ac = new AbortController(); running.set(id, ac);
-  req.on('close', () => ac.abort());
-  try {
-    const project = JSON.parse(fs.readFileSync(f, 'utf-8'));
-    const only = req.query.only ? String(req.query.only).split(',').map((x) => x.trim()).filter(Boolean) : null;
-    const p = await runKoubo(project, { outDir: path.dirname(f), log: (m) => send('log', { m }), vision: readConfig().vision, signal: ac.signal, only,
-      localImage: req.query.localImage === '0' ? false : 'auto' });
-    send('done', { final: p.final, provenance: p.provenance });
-  } catch (e) { send('error', { m: e.message }); }
-  finally { running.delete(id); }
-  res.end();
+  if (hub.isRunning(kKey(id))) {
+    // 浏览器 EventSource 断线自动重连会带 Last-Event-ID：那是"接着看"，不是"再跑一条"
+    if (req.headers['last-event-id']) return hub.attach(hub.get(kKey(id)), req, res);
+    return res.status(409).json({ error: tt(projLang(id, req))('这个项目正在出片，等它跑完或先取消', 'This project is already rendering — wait for it to finish, or cancel it first') });
+  }
+  const project = JSON.parse(fs.readFileSync(f, 'utf-8'));
+  const only = req.query.only ? String(req.query.only).split(',').map((x) => x.trim()).filter(Boolean) : null;
+  const ac = new AbortController();
+  const job = hub.start(kKey(id), { cancel: () => ac.abort(), meta: { kind: 'run', only } });
+  (async () => {
+    try {
+      const p = await _pipeline.runKoubo(project, { outDir: path.dirname(f), log: (m) => hub.emit(job, 'log', { m }), vision: readConfig().vision, signal: ac.signal, only,
+        localImage: req.query.localImage === '0' ? false : 'auto' });
+      hub.finish(job, 'done', { final: p.final, provenance: p.provenance });
+    } catch (e) { hub.finish(job, 'error', { m: e.message }); }
+  })();
+  hub.attach(job, req, res);
+});
+// 接着看：页面重开 / 换回这个项目时，正在跑的（或刚跑完的）出片从头补发日志
+kaipian.get('/projects/:id/events', (req, res) => {
+  const id = safe(req.params.id); const job = hub.get(kKey(id));
+  if (!job) return res.status(404).json({ error: tt(projLang(id, req))('这个项目没有在跑，也没有上一次的记录', 'This project is not running and has no previous run to show') });
+  hub.attach(job, req, res);
+});
+kaipian.get('/projects/:id/status', (req, res) => res.json(hub.status(kKey(safe(req.params.id)))));
+// 删项目：以前界面 / CLI 都没有，用户只能手动 rm 目录。正在出片的不许删（work 目录还在被写）；
+// 目录名清洗后为空（"." "…" 之类）会算到输出目录本身，必须拦——rmSync recursive 删错根就是所有项目一起没
+kaipian.delete('/projects/:id', (req, res) => {
+  const id = safe(req.params.id); const dir = projDir(id);
+  if (!id || path.resolve(dir) === path.resolve(readConfig().outputDir) || !fs.existsSync(path.join(dir, 'project.json'))) return res.status(404).json({ error: tt(reqLang(req))('项目不存在', 'No such project') });
+  // 口播出片按项目锁；短剧重出的锁是全局 'drama'，得看它记的 projectId——不拦的话 AO 跑完 finishDramaRun 会把刚删的目录再建回来
+  if (hub.isRunning(kKey(id)) || (hub.isRunning('drama') && hub.get('drama').meta?.projectId === id)) return res.status(409).json({ error: tt(projLang(id, req))('这个项目正在出片，先取消再删', 'This project is rendering — cancel it before deleting') });
+  fs.rmSync(dir, { recursive: true, force: true });
+  hub.jobs.delete(kKey(id));
+  res.json({ ok: true, id });
 });
 kaipian.post('/projects/:id/cancel', (req, res) => {
-  const ac = running.get(safe(req.params.id));
-  if (!ac) return res.status(404).json({ error: tt(projLang(safe(req.params.id), req))('这个项目没有在跑', 'This project is not running') });
-  ac.abort(); res.json({ ok: true });
+  const id = safe(req.params.id);
+  if (!hub.cancel(kKey(id))) return res.status(404).json({ error: tt(projLang(id, req))('这个项目没有在跑', 'This project is not running') });
+  res.json({ ok: true });
 });
 
 
@@ -156,7 +236,7 @@ function writeAoKey(provider, apiKey) {
   const keys = readAoKeys();
   keys[provider] = { ...(keys[provider] ?? {}), apiKey };
   fs.mkdirSync(path.dirname(KEYS_FILE()), { recursive: true });
-  fs.writeFileSync(KEYS_FILE(), JSON.stringify(keys, null, 2));
+  writeJsonAtomic(KEYS_FILE(), keys);
   try { fs.chmodSync(KEYS_FILE(), 0o600); } catch { /* Windows 上没有 chmod 语义 */ }
   return keys;
 }
@@ -274,7 +354,8 @@ kaipian.get('/ao-status', (_req, res) => {
 import { spawn } from 'node:child_process';
 import { aoResultToProject } from '../src/core/ao-result.mjs';
 import { listDramaRuns, pickFreshRunDir } from './lib/ao-run-dir.mjs';
-function aoCli() { const main = fileURLToPath(import.meta.resolve('agency-orchestrator')); const dir = path.resolve(path.dirname(main), '..'); return { dir, cli: path.join(dir, 'dist', 'cli.js'), wf: path.join(dir, 'workflows', '短剧流水线.yaml') }; }
+// OPENSHORTS_AO_DIR：指向本地 AO 检出（改工作流 / 技能时不用先发 npm 再验）；不设就用 node_modules 里那份
+function aoCli() { const dir = process.env.OPENSHORTS_AO_DIR ? path.resolve(process.env.OPENSHORTS_AO_DIR) : path.resolve(path.dirname(fileURLToPath(import.meta.resolve('agency-orchestrator'))), '..'); return { dir, cli: path.join(dir, 'dist', 'cli.js'), wf: path.join(dir, 'workflows', '短剧流水线.yaml') }; }
 const TIERS = {
   local: { video_provider: 'local-sdcpp', video_model: 'minimax-h3-q2', video_resolution: '640x384', video_ratio: '16:9', video_duration: '2', label: '本地草稿档（不花钱，每镜约 3–4 分钟，2-bit 画质）' },
   cloud: { label: '云端成片档（按秒计费，运行前看花费）' },
@@ -341,35 +422,49 @@ kaipian.post('/drama/preflight', async (req, res) => {
   res.json({ inputs, lines, ok: status === 0, raw: status !== 0 ? out.slice(-400) : undefined });
 });
 // 短剧按秒真花钱，且两个 AO 进程会写同一个 project.json / assets/——全局同时只允许一条在跑。
-// （口播线的锁按项目分（上面的 running Map）；短剧的产物目录在跑完前不知道 id，只能全局单飞。）
+// （口播线的锁按项目分（hub 里 koubo:<id>）；短剧的产物目录在跑完前不知道 id，只能全局单飞，key 固定 'drama'。）
 let dramaChild = null;
 
 /** 手上还有没有在跑的活。桌面版退出前要问一句——关窗就把跑了 25 分钟的本地短剧、
  *  或正在按秒计费的云端任务无声杀掉，是最不能接受的那种"静默丢东西"。 */
 export function kaipianBusy() {
-  return { koubo: [...running.keys()], drama: !!dramaChild };
+  // scripting：正在写脚本的任务数（new:*）——退出会把它杀掉，虽然不花钱，也该告诉用户
+  return { koubo: hub.runningKeys().filter((k) => k.startsWith('koubo:')).map((k) => k.slice(6)), drama: hub.isRunning('drama'), scripting: hub.runningKeys().filter((k) => k.startsWith('new:')).length };
+}
+/**
+ * 服务要退出了：把手上的活全停掉。口播线走各自的 AbortController（ffmpeg / sd-cli 都认 signal），
+ * 短剧线整组杀 AO。不做这一步的话进程退了、ffmpeg 还在后台跑完整条——桌面版退出对话框写的
+ * "退出会杀掉本地引擎"就是空话（真机坐实过：SIGTERM 后 ffmpeg ppid 变 1）。
+ */
+export function kaipianShutdown() {
+  const koubo = hub.runningKeys().filter((k) => k.startsWith('koubo:')).map((k) => k.slice(6));
+  const drama = hub.isRunning('drama');
+  for (const k of hub.runningKeys()) hub.cancel(k);   // 口播 abort（ffmpeg / sd-cli 认 signal）；短剧整组杀 AO
+  dramaChild = null;
+  return { koubo, drama };
 }
 /**
  * 以子进程跑 AO 并把输出转 SSE。run 和 redo 以前各复制一份这段逻辑，
  * 运行目录判定、并发锁、断连即杀改哪边都只修了一半——统一到这里。
  */
-function streamAoRun({ req, res, args, runsDir, onDone }) {
-  res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' });
-  const send = (ev, data) => res.write(`event: ${ev}\ndata: ${JSON.stringify(data)}\n\n`);
+function streamAoRun({ req, res, args, runsDir, onDone, meta = {} }) {
   const before = new Set(listDramaRuns(runsDir));   // spawn 前快照，跑完取"新出现的那个"当运行目录
-  const child = spawn(process.execPath, args, { env: { ...process.env, AO_NO_MODEL_HINT: '1', AO_NO_RESUME_HINT: '1', FORCE_COLOR: '0' } });
+  // spawnTree：AO 下面还有 sd-cli / ffmpeg 孙进程，取消或服务退出时要整组杀（见 lib/proc.mjs）
+  const child = spawnTree(process.execPath, args, { env: { ...process.env, AO_NO_MODEL_HINT: '1', AO_NO_RESUME_HINT: '1', FORCE_COLOR: '0' } });
   dramaChild = child;
+  // 任务挂在 hub 上而不是这条连接上：短剧一跑 25 分钟还按秒计费，页面刷新不能把它杀了。取消只认 POST /drama/cancel
+  const job = hub.start('drama', { cancel: () => killTree(child), meta });
   let buf = ''; let runDir = ''; const tail = [];   // 最近的原始行：失败时要拿它说清原因
   const onLine = (line) => {
     const clean = line.replace(/\x1b\[[0-9;]*m/g, '').replace(/\r/g, '').trim(); if (!clean) return;
     tail.push(clean); if (tail.length > 12) tail.shift();
     const m = clean.match(/详细输出:\s*(.+)$/); if (m) runDir = m[1].trim();
-    if (/^(──|🎬|🎨|🎞|⚠️|⟳|✅|❌|完成|失败|部分失败|🖥|💰|·|🎙|✎)/.test(clean) || /验收|重出|素材|镜头|恢复自|跳过已完成/.test(clean)) send('log', { m: clean.slice(0, 300) });
+    if (/^(──|🎬|🎨|🎞|⚠️|⟳|✅|❌|完成|失败|部分失败|🖥|💰|·|🎙|✎)/.test(clean) || /验收|重出|素材|镜头|恢复自|跳过已完成/.test(clean)) hub.emit(job, 'log', { m: clean.slice(0, 300) });
   };
   for (const st of [child.stdout, child.stderr]) st.on('data', (d) => { buf += d.toString(); const parts = buf.split('\n'); buf = parts.pop(); parts.forEach(onLine); });
-  // spawn 本身失败（EMFILE/EAGAIN 等）只发 'error' 不发 'close'：不接的话 SSE 永远吊着、
-  // dramaChild 永远占着，之后每次出短剧都 409，直到重启服务
-  child.on('error', (e) => { dramaChild = null; send('error', { m: `引擎进程起不来：${e.message}` }); res.end(); });
+  // spawn 本身失败（EMFILE/EAGAIN 等）只发 'error' 不发 'close'：不接的话任务永远"在跑"，
+  // 之后每次出短剧都 409，直到重启服务
+  child.on('error', (e) => { dramaChild = null; hub.finish(job, 'error', { m: `引擎进程起不来：${e.message}` }); });
   child.on('close', (code) => {
     dramaChild = null;
     if (buf) onLine(buf);
@@ -378,22 +473,31 @@ function streamAoRun({ req, res, args, runsDir, onDone }) {
     // 以前用户只看得到"退出码 1"
     if (code !== 0) {
       const why = tail.filter((l) => /错误|Error|缺少|失败|❌/.test(l)).slice(-2).join('；') || tail.slice(-2).join('；');
-      send('error', { m: `引擎退出码 ${code}，项目未改动${why ? `：${why.slice(0, 400)}` : ''}` });
-      return res.end();
+      return hub.finish(job, 'error', { m: `引擎退出码 ${code}，项目未改动${why ? `：${why.slice(0, 400)}` : ''}` });
     }
     if (!runDir) runDir = pickFreshRunDir(before, runsDir);
-    try { const id = onDone(runDir); send('done', { id, code }); }
-    catch (e) { send('error', { m: `${e.message}（退出码 ${code}）` }); }
-    res.end();
+    try { const id = onDone(runDir); hub.finish(job, 'done', { id, code }); }
+    catch (e) { hub.finish(job, 'error', { m: `${e.message}（退出码 ${code}）` }); }
   });
-  req.on('close', () => { try { child.kill('SIGTERM'); } catch { /* noop */ } });
+  hub.attach(job, req, res);
 }
+// 短剧全局只有一条：接着看 / 状态 / 取消
+kaipian.get('/drama/events', (req, res) => {
+  const job = hub.get('drama');
+  if (!job) return res.status(404).json({ error: tt(reqLang(req))('没有在跑的短剧，也没有上一次的记录', 'No mini-drama is running and there is no previous run to show') });
+  hub.attach(job, req, res);
+});
+kaipian.get('/drama/status', (_req, res) => res.json(hub.status('drama')));
+kaipian.post('/drama/cancel', (req, res) => {
+  if (!hub.cancel('drama')) return res.status(404).json({ error: tt(reqLang(req))('没有在跑的短剧', 'No mini-drama is running') });
+  res.json({ ok: true });
+});
 kaipian.get('/drama/run', (req, res) => {
   const q = req.query; const inputs = dramaInputs(q);
   if (!inputs.story) return res.status(400).json({ error: tt(reqLang(req))('请输入故事', 'Enter a story') });
   // 工作流里 image_model 是必填无默认（定妆图用）：这里不拦的话 AO 会在 spawn 后立刻退出码 1
   if (!inputs.image_model) return res.status(400).json({ error: tt(reqLang(req))('请选择定妆图的图片模型（image_model）——界面在「画面来源」里选，API 传 image_provider / image_model', 'Pick an image model for the character sheet (image_model) — in the UI it is under "Visual sources"; over the API pass image_provider / image_model') });
-  if (dramaChild) return res.status(409).json({ error: tt(reqLang(req))('已有一条短剧在跑（按秒计费，不允许并行）——等它跑完，或关掉那个页面取消', 'A mini-drama is already running (billed per second, no parallel runs) — wait for it, or close that page to cancel') });
+  if (hub.isRunning('drama')) { if (req.headers['last-event-id']) return hub.attach(hub.get('drama'), req, res); return res.status(409).json({ error: tt(reqLang(req))('已有一条短剧在跑（按秒计费，不允许并行）——等它跑完，或先取消', 'A mini-drama is already running (billed per second, no parallel runs) — wait for it, or cancel it first') }); }
   const { cli, wf } = aoCli(); const cfg = readConfig();
   const runsDir = path.join(cfg.outputDir, '.ao-runs'); fs.mkdirSync(runsDir, { recursive: true });
   const args = [cli, 'run', wf, '--output', runsDir, ...inputArgs(inputs)];
@@ -402,7 +506,7 @@ kaipian.get('/drama/run', (req, res) => {
   const vp = flagVal(q.verify_provider); if (vp) args.push('--verify-provider', vp, '--verify-model', flagVal(q.verify_model) ?? '');
   // 文本供应商要记进项目：redo 不带它的话会回落到工作流默认的 deepseek——
   // 用户用 agnes 跑通的项目，一点"重出这镜"就报"deepseek 没配 key"（真机撞过）
-  streamAoRun({ req, res, args, runsDir, onDone: (runDir) => finishDramaRun({ runDir, inputs, tier: q.tier || 'cloud', llm: pv ? { provider: pv, model: md || '' } : null }) });
+  streamAoRun({ req, res, args, runsDir, meta: { kind: 'run' }, onDone: (runDir) => finishDramaRun({ runDir, inputs, tier: q.tier || 'cloud', llm: pv ? { provider: pv, model: md || '' } : null }) });
 });
 
 /** AO 运行目录 → 项目（新建或覆盖同 id）：回填 shots/验收、按输入标来源、拷贝 assets、记住 aoRun 供 resume。 */
@@ -417,7 +521,11 @@ function finishDramaRun({ runDir, inputs, tier, existingId, shotSources, llm = n
   const project = aoResultToProject(meta, tpl, { id, assetsBase: 'assets' });
   project.line = 'drama'; project.title = inputs.story.slice(0, 30); project.topic = inputs.story; project.inputs = inputs; project.tier = tier; project.shotSources = shotSources ?? {};
   if (llm) project.llm = llm;
+  // 每镜的提示词与全片的氛围锁定块回填进项目：界面能看、能复制去别的模型抽卡——
+  // 这是 ai-shortfilm-prompts 五段式进短剧线的可见面；老运行目录没有这些文件就是 null
+  const atmosphere = readStepOutput(runDir, 'atmosphere_lock'); if (atmosphere) project.atmosphere = atmosphere;
   for (const s of project.shots) {
+    const prompt = readStepOutput(runDir, `${s.id}_prompt`); if (prompt) s.visual.prompt = prompt;
     const ov = shotSources?.[s.id];
     const vp = ov?.video_provider ?? inputs.video_provider, vm = ov?.video_model ?? inputs.video_model;
     s.visual.provider = s.kind === 'video' ? vp : inputs.image_provider || null; s.visual.model = s.kind === 'video' ? vm : inputs.image_model || null;
@@ -431,7 +539,7 @@ function finishDramaRun({ runDir, inputs, tier, existingId, shotSources, llm = n
   project.shots.forEach((s) => { s.visual.file = path.join(dir, s.visual.file); });
   // 保留上次的镜头级来源记录（未重出的镜头沿用）
   if (existingId) { try { const prev = JSON.parse(fs.readFileSync(path.join(dir, 'project.json'), 'utf-8')); project.redoHistory = [...(prev.redoHistory ?? []), { at: new Date().toISOString(), aoRun: runDir }]; } catch { /* first */ } }
-  fs.writeFileSync(path.join(dir, 'project.json'), JSON.stringify(project, null, 2));
+  writeJsonAtomic(path.join(dir, 'project.json'), project);
   return id;
 }
 
@@ -442,7 +550,7 @@ kaipian.get('/projects/:id/drama/redo', (req, res) => {
   const prev = JSON.parse(fs.readFileSync(f, 'utf-8')); const q = req.query;
   const shot = String(q.shot || ''); if (!/^(shot[123]|character)$/.test(shot)) return res.status(400).json({ error: tt(reqLang(req))('只能重出 character / shot1 / shot2 / shot3', 'Only character / shot1 / shot2 / shot3 can be redone') });
   if (!prev.final?.aoRun || !fs.existsSync(prev.final.aoRun)) return res.status(409).json({ error: tt(reqLang(req))('找不到上次的 AO 运行目录，无法续跑（可能被清理了）', 'Cannot find the previous engine run directory, so there is nothing to resume from (it may have been cleaned up)') });
-  if (dramaChild) return res.status(409).json({ error: tt(reqLang(req))('已有一条短剧在跑（按秒计费，不允许并行）——等它跑完，或关掉那个页面取消', 'A mini-drama is already running (billed per second, no parallel runs) — wait for it, or close that page to cancel') });
+  if (hub.isRunning('drama')) { if (req.headers['last-event-id']) return hub.attach(hub.get('drama'), req, res); return res.status(409).json({ error: tt(reqLang(req))('已有一条短剧在跑（按秒计费，不允许并行）——等它跑完，或先取消', 'A mini-drama is already running (billed per second, no parallel runs) — wait for it, or cancel it first') }); }
   const { cli, wf } = aoCli(); const cfg = readConfig(); const runsDir = path.join(cfg.outputDir, '.ao-runs');
   // 换来源：本镜的 tier 覆盖只影响这次 -i；记进 shotSources 让标注正确
   const inputs = { ...prev.inputs };
@@ -457,7 +565,7 @@ kaipian.get('/projects/:id/drama/redo', (req, res) => {
   const md = flagVal(q.model) ?? prev.llm?.model; if (md) args.push('--model', md);
   const fb = feedbackVal(q.feedback); if (fb) args.push('--feedback', fb);
   const vp = flagVal(q.verify_provider); if (vp) args.push('--verify-provider', vp, '--verify-model', flagVal(q.verify_model) ?? '');
-  streamAoRun({ req, res, args, runsDir, onDone: (runDir) => finishDramaRun({ runDir, inputs: prev.inputs, tier: prev.tier, existingId: prev.id, shotSources: { ...(prev.shotSources ?? {}), ...shotSources }, llm: pv ? { provider: pv, model: md || '' } : prev.llm ?? null }) });
+  streamAoRun({ req, res, args, runsDir, meta: { kind: 'redo', projectId: prev.id, shot }, onDone: (runDir) => finishDramaRun({ runDir, inputs: prev.inputs, tier: prev.tier, existingId: prev.id, shotSources: { ...(prev.shotSources ?? {}), ...shotSources }, llm: pv ? { provider: pv, model: md || '' } : prev.llm ?? null }) });
 });
 
 // ───────────── 本地生成：状态 / 安装 sd-cli / 下载模型（SSE 进度；下载前必须确认许可证） ─────────────
@@ -498,19 +606,25 @@ import { fetchArticle } from '../src/input/url-text.mjs';
 kaipian.post('/fetch-url', async (req, res, next) => { try { res.json(await fetchArticle(String(req.body?.url ?? '').trim(), { lang: reqLang(req) })); } catch (e) { res.status(400).json({ error: e.message }); } });
 
 // 批量（口播线）：SSE，逐版进度；产物在 <项目>/variants/<id>/
-import { planVariants, runBatch } from '../src/pipeline/batch.mjs';
 kaipian.get('/projects/:id/batch', async (req, res) => {
-  const f = path.join(projDir(req.params.id), 'project.json'); if (!fs.existsSync(f)) return res.status(404).json({ error: tt(reqLang(req))('项目不存在', 'No such project') });
+  const id = safe(req.params.id);
+  const f = path.join(projDir(id), 'project.json'); if (!fs.existsSync(f)) return res.status(404).json({ error: tt(reqLang(req))('项目不存在', 'No such project') });
   const project = JSON.parse(fs.readFileSync(f, 'utf-8')); const T = tt(normLang(project.lang)); if (project.line !== 'koubo') return res.status(400).json({ error: T('批量目前只支持口播线', 'Batch versions are only supported on the talking-head line') });
+  if (hub.isRunning(kKey(id))) {
+    if (req.headers['last-event-id']) return hub.attach(hub.get(kKey(id)), req, res);
+    return res.status(409).json({ error: T('这个项目正在出片，等它跑完或先取消', 'This project is already rendering — wait for it to finish, or cancel it first') });
+  }
   const split = (x) => (x ? String(x).split(',').map((t) => t.trim()).filter(Boolean) : []);
   const variants = planVariants({ voices: split(req.query.voices), captions: split(req.query.captions), rates: split(req.query.rates).map(Number) }, project);
   if (variants.length > 12) return res.status(400).json({ error: T('一次最多 12 版', 'At most 12 versions at a time') });
-  res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' });
-  const send = (ev, data) => res.write(`event: ${ev}\ndata: ${JSON.stringify(data)}\n\n`);
-  send('plan', { variants });
-  try { const results = await runBatch(project, variants, { baseDir: path.dirname(f), log: (m) => send('log', { m }), onVariant: (r) => send('variant', r), vision: readConfig().vision }); send('done', { results }); }
-  catch (e) { send('error', { m: e.message }); }
-  res.end();
+  const ac = new AbortController();
+  const job = hub.start(kKey(id), { cancel: () => ac.abort(), meta: { kind: 'batch', variants: variants.length } });
+  hub.emit(job, 'plan', { variants });
+  (async () => {
+    try { const results = await _pipeline.runBatch(project, variants, { baseDir: path.dirname(f), log: (m) => hub.emit(job, 'log', { m }), onVariant: (r) => hub.emit(job, 'variant', r), vision: readConfig().vision, signal: ac.signal }); hub.finish(job, 'done', { results }); }
+    catch (e) { hub.finish(job, 'error', { m: e.message }); }
+  })();
+  hub.attach(job, req, res);
 });
 
 // 发布包：/projects/:id/publish-pack?platform=douyin → 目录 + zip（不自动发布）

@@ -20,7 +20,7 @@ import {attachGenerationTrace, retimeProjectFromNarration, retimeScene, reviewAs
 import {runAsr, transcriptToCaptions} from './lib/asr.mjs';
 import {corsOptions, createOriginGuard, createActionGuard, resolveAllowedOrigins} from './lib/origin-guard.mjs';
 import {renderWaveform} from '../scripts/lib/audio.mjs';
-import {kaipian, kaipianBusy} from './kaipian.mjs';
+import {kaipian, kaipianBusy, kaipianShutdown} from './kaipian.mjs';
 import { installProxy } from '../src/net/proxy.mjs';
 await installProxy();   // Node 的 fetch 不认 HTTPS_PROXY，不装的话代理后的机器所有联网功能都会 ECONNRESET
 import {applyAoKeysToEnv} from '../src/config.mjs';
@@ -92,7 +92,7 @@ app.get('/api/health', (_req, res) => res.json({ok: true, product: 'OpenShorts',
 app.get('/api/busy', (_req, res) => {
   const k = kaipianBusy();
   const v1 = jobQueue.list().filter((j) => j.status === 'running' || j.status === 'queued').map((j) => j.id);
-  res.json({busy: k.koubo.length > 0 || k.drama || v1.length > 0, koubo: k.koubo, drama: k.drama, v1});
+  res.json({busy: k.koubo.length > 0 || k.drama || (k.scripting ?? 0) > 0 || v1.length > 0, koubo: k.koubo, drama: k.drama, scripting: k.scripting ?? 0, v1});
 });
 app.get('/api/project', async (_req, res, next) => {
   try { res.json(await projectStore.get(activeProjectId)); } catch (error) { next(error); }
@@ -377,3 +377,20 @@ const port = Number(process.env.PORT ?? 4174); const host = process.env.HOST ?? 
 const httpServer = app.listen(port, host, () => console.log(`OpenShorts API: http://${host}:${port}`));
 httpServer.on('error',(error)=>{console.error(`OpenShorts 无法监听 ${host}:${port}：${error instanceof Error ? error.message : error}`);process.exitCode=1;});
 void processQueue();
+
+// 收到 SIGTERM / SIGINT（桌面版 stopBackend、docker stop、终端 Ctrl+C）不能直接死：
+// Node 默认行为是立刻退出且不杀子进程，正在跑的 ffmpeg / sd-cli / AO 会变成孤儿继续跑到底
+// （真机坐实：SIGTERM 后 ffmpeg ppid=1）。先把活停掉、再关端口、最后退出。
+let shuttingDown = false;
+const shutdown = (sig) => {
+  if (shuttingDown) return; shuttingDown = true;
+  const k = kaipianShutdown();
+  let v1 = 0; for (const cancel of activeCancels.values()) { try { cancel(); v1++; } catch { /* 已结束 */ } }
+  const stopped = [k.koubo.length ? `口播 ${k.koubo.length} 条` : '', k.drama ? '短剧 1 条' : '', v1 ? `图层渲染 ${v1} 个` : ''].filter(Boolean).join('、');
+  console.log(`OpenShorts 收到 ${sig}，${stopped ? `已停止：${stopped}，` : ''}正在退出`);
+  httpServer.close();
+  // SSE 长连接会让 close() 等不到头；子进程的信号已经发出去了，给 1 秒收尾就走
+  setTimeout(() => process.exit(0), 1000).unref();
+};
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));

@@ -186,7 +186,12 @@ export async function installSdImage({ model = 'flux-schnell-q4', onLog = () => 
  * 576×1024 只要 68 秒，而这张图是给字幕当背景的，放到 1080×1920 里差别看不出来。
  * 一条片通常只有一两镜落到本地出图，省下的是分钟级的等待。
  */
-export async function generateImage(prompt, { out, width = 576, height = 1024, model, steps = 4, seed = -1, signal, onLog = () => {}, timeoutMs = 15 * 60_000 } = {}) {
+/** 全进程一次只跑一个 sd-cli：两条出片同时落到本机出图会各起一份模型（6–10 GB），32 GB 的机器直接被系统杀（9-12 真机）。
+ *  排队而不是拒绝——第二条等前一条画完再画，日志里能看到"排队中"。 */
+let imageQueue = Promise.resolve();
+export const serialized = (fn) => (...args) => { const run = imageQueue.then(() => fn(...args)); imageQueue = run.catch(() => {}); return run; };
+export const generateImage = serialized(generateImageNow);
+async function generateImageNow(prompt, { out, width = 576, height = 1024, model, steps = 4, seed = -1, signal, onLog = () => {}, timeoutMs = 15 * 60_000 } = {}) {
   const status = await sdImageStatus();
   if (!status.cliFound) throw new Error(`没装 sd-cli（本地出图/出片都要它）：${status.cli}`);
   const tier = pickImageModel(status, model);
@@ -198,7 +203,7 @@ export async function generateImage(prompt, { out, width = 576, height = 1024, m
   const args = ['-M', 'img_gen', '--diffusion-model', p(cat.diffusion), '--t5xxl', p(cat.t5), '--clip_l', p('clip_l.safetensors'), '--vae', p('ae.safetensors'),
     '-p', prompt, '-W', String(width), '-H', String(height), '--steps', String(steps), '--cfg-scale', '1.0', '--sampling-method', 'euler', '--seed', String(seed), '-o', out];
   onLog(`本地出图 ${width}×${height} · ${tier.label} · ${steps} 步`);
-  const t0 = Date.now();
+  const { startStopwatch } = await import('../core/stopwatch.mjs'); const sw = startStopwatch();
   // 用 spawn 不用 execFile：sd-cli 一跑几分钟、进度一行行往 stderr 打，execFile 会把它全缓存下来，
   // 超过 maxBuffer 就直接把子进程杀掉——那是个只在"图出得慢"时才发作的坑。这里只留最后几行做报错用。
   await new Promise((resolve, reject) => {
@@ -217,6 +222,7 @@ export async function generateImage(prompt, { out, width = 576, height = 1024, m
     });
   });
   if (!fs.existsSync(out) || !fs.statSync(out).size) throw new Error('本地出图跑完了但没产出文件');
-  onLog(`出图完成 ${(Date.now() - t0) / 1000 | 0}s → ${path.basename(out)}`);
-  return { file: out, model: tier.id, prompt, seed, width, height, seconds: (Date.now() - t0) / 1000 };
+  const el = sw.stop();   // 一张图一两分钟，合盖再打开不该报成几小时
+  onLog(`出图完成 ${el.activeMs / 1000 | 0}s → ${path.basename(out)}`);
+  return { file: out, model: tier.id, prompt, seed, width, height, seconds: el.activeMs / 1000 };
 }

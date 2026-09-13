@@ -6,11 +6,11 @@ type Src = {ok: boolean; reason: string; tier?: string};
 type Sources = {stock: Src; image: Src; local: Src; cloud: Src; layered: Src; tools: {ffmpeg: boolean; whisper: boolean; magick: boolean}};
 type Voice = {id: string; label: string};
 type Shot = {id: string; text: string; visualIntent: string; query: string; emphasis: string[]; durationSec: number | null; status: string; visual: {source: string | null; file: string | null; kind?: string; author?: string | null; license?: string}};
-type DramaShot = {id: string; kind: 'video' | 'image'; order: number; durationSec: number | null; visual: {source: string; provider: string | null; model: string | null; file: string}; verification: {pass: boolean; failed: string[]; reworked: boolean} | null; status: string; stepName: string};
+type DramaShot = {id: string; kind: 'video' | 'image'; order: number; durationSec: number | null; visual: {source: string; provider: string | null; model: string | null; file: string; prompt?: string}; verification: {pass: boolean; failed: string[]; reworked: boolean} | null; status: string; stepName: string};
 type Project = {id: string; title: string; topic: string; line?: string; lang?: string; tier?: string; inputs?: Record<string, string>; shots: Shot[]; scriptWarnings?: string[]; voice: {voice: string; rate: number}; captions: {preset: string}; defaults: {visualSource: string; localDirs: string[]}; publish: {titles: string[]; tags: string[]; note: string; aiLabelText: string}; final?: {file: string; srt: string; cover: string | null; publish: string; durationSec: number; notes: string[]; quality?: {pass: boolean; warnings: number; items: Array<{id: string; status: string; msg: string}>}} | null; provenance: Array<{shot: string; source: string; author?: string | null; license?: string; page?: string | null}>};
 
 const api = async <T,>(url: string, init?: RequestInit): Promise<T> => { const r = await fetch(url, {headers: {'Content-Type': 'application/json'}, ...init}); const j = await r.json(); if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`); return j; };
-const fileUrl = (p: Project, abs: string) => `/api/kaipian/projects/${encodeURIComponent(p.id)}/file/${encodeURIComponent(abs.split('/').pop() || '')}`;
+const fileUrl = (p: Project, abs: string) => `/api/kaipian/projects/${encodeURIComponent(p.id)}/file/${encodeURIComponent(abs.split(/[\\/]/).pop() || '')}`;   // 服务端给绝对路径，Windows 上是反斜杠——只按 '/' 切会把整条路径当文件名，画面全 404
 /**
  * 按优先级挑一个当前语言清单里**真存在**的音色：配置里存的默认 → 用户这次选的 → 清单第一个。
  * 不做这层过滤的话，界面切到英文后会拿中文音色去念英文；只看配置的话，
@@ -71,6 +71,7 @@ export const Kaipian = () => {
   const [projects, setProjects] = useState<Array<{id: string; title: string; final: boolean; updatedAt: string}>>([]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const runningEs = useRef<EventSource | null>(null);
+  const dramaEs = useRef<EventSource | null>(null);
 
   const refresh = async () => {
     const [s, v, a, c, ps] = await Promise.all([api<Sources>(`/api/kaipian/sources?lang=${lang}`), api<Voice[]>(`/api/kaipian/voices?lang=${lang}`), api<any>('/api/kaipian/ao-status'), api<any>('/api/kaipian/config'), api<any>('/api/kaipian/projects')]);
@@ -92,6 +93,7 @@ export const Kaipian = () => {
     // ?project=<id> 深链：直接打开某个项目（做完的落在第 4 步，没做完的落在第 3 步）
     const id = new URLSearchParams(location.search).get('project');
     if (id) openProject(id).catch((e) => setError(String(e.message)));
+    else resumeJobs().catch(() => {});   // 没带项目也要看一眼短剧是不是还在跑（它跑完才知道项目 id）
   }, []);
 
   const grabUrl = async () => { setBusy(t('抓取文章…')); setError(''); try { const a = await api<{title: string; text: string; chars: number}>('/api/kaipian/fetch-url', {method: 'POST', body: JSON.stringify({url: articleUrl, lang})}); setTopic(`${a.title ? a.title + '\n\n' : ''}${a.text}`); } catch (e: any) { setError(e.message); } finally { setBusy(''); } };
@@ -116,27 +118,76 @@ export const Kaipian = () => {
     } catch (e) { setKeyTest(`保存或验证失败：${e instanceof Error ? e.message : String(e)}——key 还留在输入框里，再点一次保存即可`); }
     await refresh();
   };
+  // 写脚本走任务模式：POST 立刻回任务 key，进度（含引擎的限流重试行）从 /jobs/:key/events 流出来。
+  // 以前是一个普通 POST：供应商限流时界面挂着"20–60 秒"三分钟没有任何反馈（新用户走查逮到的）。
   const createProject = async () => {
-    setError(''); setBusy(t('AI 正在写脚本（20–60 秒）…'));
-    try { const p = await api<Project>('/api/kaipian/new', {method: 'POST', body: JSON.stringify({topic, duration, tone, voice, captions, captionStyle: capStyle, source, localDir, lang})}); setProject(p); setStep(p.final ? 4 : 3); await refresh(); }
-    catch (e: any) { setError(e.message); } finally { setBusy(''); }
+    setError(''); setLog([]); setBusy(t('AI 正在写脚本（20–60 秒）…'));
+    try {
+      const {job} = await api<{job: string}>('/api/kaipian/new', {method: 'POST', body: JSON.stringify({...{topic, duration, tone, voice, captions, captionStyle: capStyle, source, localDir, lang}, async: true})});
+      runningEs.current = watch(`/api/kaipian/jobs/${encodeURIComponent(job)}/events`, {
+        log: (m) => setLog((l) => [...l, m]),
+        done: async ({project: p}: {project: Project}) => { runningEs.current = null; setProject(p); setStep(p.final ? 4 : 3); setBusy(''); await refresh(); },
+        fail: (m) => { setError(m); runningEs.current = null; setBusy(''); },
+      });
+    } catch (e: any) { setError(e.message); setBusy(''); }
   };
   const saveShots = async () => { if (!project) return; const p = await api<Project>(`/api/kaipian/projects/${encodeURIComponent(project.id)}`, {method: 'PUT', body: JSON.stringify({shots: project.shots.map((s) => ({id: s.id, text: s.text, query: s.query, visualIntent: s.visualIntent})), voice: {voice}, captions: {preset: captions, style: capStyle}})}); setProject(p); };
   // only 传镜头 id 就是「只重出这几镜」：其余镜头的配音与分段按指纹复用，不重配音也不重花时间
+  /**
+   * SSE 只是"看"，任务在服务端自己跑（server/lib/job-hub.mjs）。以前连接一断服务端就中止 ffmpeg——
+   * 刷新页面、合盖、Wi-Fi 抖一下，20 分钟的出片就作废。现在断线交给浏览器自动重连（带 Last-Event-ID
+   * 接着看），只有服务端明确发了 error 事件（带 data）、或重连被拒（409/404/服务没了）才算终止。
+   */
+  const watch = (url: string, on: {log?: (m: string) => void; done: (d: any) => void; fail: (m: string) => void; extra?: Record<string, (d: any) => void>}) => {
+    const es = new EventSource(url);
+    es.addEventListener('log', (e: any) => on.log?.(JSON.parse(e.data).m));
+    for (const [ev, fn] of Object.entries(on.extra ?? {})) es.addEventListener(ev, (e: any) => fn(JSON.parse(e.data)));
+    es.addEventListener('done', (e: any) => { es.close(); on.done(e.data ? JSON.parse(e.data) : {}); });
+    es.addEventListener('error', (e: any) => {
+      if (e.data !== undefined) { es.close(); on.fail(JSON.parse(e.data).m); return; }      // 服务端的 error 事件：真的失败/取消了
+      if (es.readyState === EventSource.CLOSED) { on.fail(t('连接被拒或服务已停止')); return; }   // 重连被拒：不再重试
+      on.log?.(t('连接断开，正在重连…'));                                                      // 网络抖动：浏览器会自动重连并接着看
+    });
+    return es;
+  };
+  const koubJobHandlers = (pid: string) => ({
+    log: (m: string) => setLog((l) => [...l, m]),
+    done: async () => { runningEs.current = null; const p = await api<Project>(`/api/kaipian/projects/${encodeURIComponent(pid)}`); setProject(p); setBusy(''); setStep(4); await refresh(); },
+    fail: (m: string) => { setError(m); runningEs.current = null; setBusy(''); },
+  });
+  const batchHandlers = () => ({
+    log: (m: string) => setLog((l) => [...l, m]),
+    extra: {variant: (r: any) => setBatchResults((x) => [...x, r])},
+    done: () => { runningEs.current = null; setBusy(''); },
+    fail: (m: string) => { setError(m); runningEs.current = null; setBusy(''); },
+  });
+  const dramaHandlers = () => ({
+    log: (m: string) => setLog((l) => [...l, m]),
+    done: async ({id}: {id: string}) => { dramaEs.current = null; const p = await api<Project>(`/api/kaipian/projects/${encodeURIComponent(id)}`); setProject(p); setBusy(''); setStep(4); await refresh(); },
+    fail: (m: string) => { setError(m); dramaEs.current = null; setBusy(''); },
+  });
+  // 页面刷新 / 重开 / 换项目：服务端还在跑的活接着看，别让用户以为它没了（或再点一次出片撞 409）
+  const resumeJobs = async (pid?: string) => {
+    try { const d = await api<{status: string}>('/api/kaipian/drama/status'); if (d.status === 'running' && !dramaEs.current) { setLog([]); setBusy(t('接上正在跑的短剧…')); setStep(3); dramaEs.current = watch('/api/kaipian/drama/events', dramaHandlers()); return; } } catch { /* 服务端没有这个接口就当没在跑 */ }
+    if (!pid || runningEs.current) return;
+    try {
+      const s = await api<{status: string; meta?: {kind?: string}}>(`/api/kaipian/projects/${encodeURIComponent(pid)}/status`);
+      if (s.status !== 'running') return;
+      const batch = s.meta?.kind === 'batch';
+      setLog([]); setError(''); setBusy(batch ? t('接上正在跑的批量出片…') : t('接上正在跑的出片…')); if (!batch) setStep(3);
+      runningEs.current = watch(`/api/kaipian/projects/${encodeURIComponent(pid)}/events`, batch ? batchHandlers() : koubJobHandlers(pid));
+    } catch { /* 同上 */ }
+  };
   const runProject = async (only?: string[]) => {
     if (!project) return; await saveShots(); setLog([]); setBusy(only ? `${t('重出')} ${only.join(lang === 'en' ? ', ' : '、')}…` : t('出片中…')); setError('');
     // lang 要带上：服务端的报错按项目语言给，但项目还没建时（或读不到）就靠这个参数
     const q = `?lang=${lang}${only?.length ? `&only=${encodeURIComponent(only.join(','))}` : ''}`;
-    const es = new EventSource(`/api/kaipian/projects/${encodeURIComponent(project.id)}/run${q}`);
-    runningEs.current = es;
-    es.addEventListener('log', (e: any) => setLog((l) => [...l, JSON.parse(e.data).m]));
-    es.addEventListener('done', async () => { es.close(); runningEs.current = null; const p = await api<Project>(`/api/kaipian/projects/${encodeURIComponent(project.id)}`); setProject(p); setBusy(''); setStep(4); await refresh(); });
-    es.addEventListener('error', (e: any) => { try { setError(JSON.parse(e.data).m); } catch { setError(t('出片中断')); } es.close(); runningEs.current = null; setBusy(''); });
+    runningEs.current = watch(`/api/kaipian/projects/${encodeURIComponent(project.id)}/run${q}`, koubJobHandlers(project.id));
   };
   const cancelRun = async () => {
-    if (!project) return;
-    runningEs.current?.close(); runningEs.current = null;   // 关掉 SSE，服务端据此中止 ffmpeg
-    try { await api(`/api/kaipian/projects/${encodeURIComponent(project.id)}/cancel?lang=${lang}`, {method: 'POST'}); } catch { /* 已经停了 */ }
+    // 取消只认这条显式请求：关掉页面 / 断线都不会停（那是刷新不丢进度的前提）
+    if (dramaEs.current) { try { await api(`/api/kaipian/drama/cancel?lang=${lang}`, {method: 'POST'}); } catch { /* 已经停了 */ } dramaEs.current.close(); dramaEs.current = null; }
+    if (project && runningEs.current) { try { await api(`/api/kaipian/projects/${encodeURIComponent(project.id)}/cancel?lang=${lang}`, {method: 'POST'}); } catch { /* 已经停了 */ } runningEs.current.close(); runningEs.current = null; }
     setBusy(''); setLog((l) => [...l, t('已取消（进度已存盘，再点出片会接着来）')]);
   };
   const dramaBody = () => ({story, genre, style, tier, video_ratio: ratio, ...(tier === 'cloud' ? cloud : {image_provider: cloud.image_provider, image_model: cloud.image_model})});
@@ -145,18 +196,12 @@ export const Kaipian = () => {
     setLog([]); setBusy(tier === 'local' ? t('本地出片中（每镜约 3–4 分钟，共 3 镜 + 定妆图）…') : t('云端出片中（通常 3–8 分钟）…')); setError(''); setStep(3);
     const qs = new URLSearchParams(Object.entries(dramaBody()).filter(([, v]) => v !== '' && v != null).map(([k, v]) => [k, String(v)]));
     qs.set('lang', lang);
-    const es = new EventSource(`/api/kaipian/drama/run?${qs}`);
-    es.addEventListener('log', (e: any) => setLog((l) => [...l, JSON.parse(e.data).m]));
-    es.addEventListener('done', async (e: any) => { es.close(); const {id} = JSON.parse(e.data); const p = await api<Project>(`/api/kaipian/projects/${encodeURIComponent(id)}`); setProject(p); setBusy(''); setStep(4); await refresh(); });
-    es.addEventListener('error', (e: any) => { try { setError(JSON.parse(e.data).m); } catch { setError(t('出片中断')); } es.close(); setBusy(''); });
+    dramaEs.current = watch(`/api/kaipian/drama/run?${qs}`, dramaHandlers());
   };
   const dramaRedo = (shot: string, feedback: string, tierSel: 'same' | 'local' | 'cloud') => {
     if (!project) return; setLog([]); setError(''); setBusy(`${t('重出')} ${shot}…`); setRedo(null);
     const qs = new URLSearchParams({shot, feedback, ...(tierSel !== 'same' ? {tier: tierSel} : {}), ...(tierSel === 'cloud' ? {video_provider: cloud.video_provider, video_model: cloud.video_model, video_resolution: cloud.video_resolution, video_duration: cloud.video_duration} : {})});
-    const es = new EventSource(`/api/kaipian/projects/${encodeURIComponent(project.id)}/drama/redo?${qs}`);
-    es.addEventListener('log', (e: any) => setLog((l) => [...l, JSON.parse(e.data).m]));
-    es.addEventListener('done', async () => { es.close(); const p = await api<Project>(`/api/kaipian/projects/${encodeURIComponent(project.id)}`); setProject(p); setBusy(''); });
-    es.addEventListener('error', (e: any) => { try { setError(JSON.parse(e.data).m); } catch { setError(t('重出中断')); } es.close(); setBusy(''); });
+    dramaEs.current = watch(`/api/kaipian/projects/${encodeURIComponent(project.id)}/drama/redo?${qs}`, dramaHandlers());
   };
   const installLocal = (what: 'sdcli' | 'model' | 'all', model = 'minimax-h3-q2') => {
     setDl({log: []}); setError('');
@@ -208,14 +253,16 @@ export const Kaipian = () => {
   };
   const runBatch = () => {
     if (!project) return; setBatchResults([]); setLog([]); setBusy(t('批量出片中…')); setError('');
-    const es = new EventSource(`/api/kaipian/projects/${encodeURIComponent(project.id)}/batch?lang=${lang}&voices=${encodeURIComponent(batchVoices.join(','))}&captions=${encodeURIComponent(batchCaptions.join(','))}`);
-    es.addEventListener('log', (e: any) => setLog((l) => [...l, JSON.parse(e.data).m]));
-    es.addEventListener('variant', (e: any) => setBatchResults((r) => [...r, JSON.parse(e.data)]));
-    es.addEventListener('done', () => { es.close(); setBusy(''); });
-    es.addEventListener('error', (e: any) => { try { setError(JSON.parse(e.data).m); } catch { setError(t('批量中断')); } es.close(); setBusy(''); });
+    runningEs.current = watch(`/api/kaipian/projects/${encodeURIComponent(project.id)}/batch?lang=${lang}&voices=${encodeURIComponent(batchVoices.join(','))}&captions=${encodeURIComponent(batchCaptions.join(','))}`, batchHandlers());
   };
   const makePack = async () => { if (!project) return; setBusy(t('打发布包…')); try { setPack(await api(`/api/kaipian/projects/${encodeURIComponent(project.id)}/publish-pack`, {method: 'POST', body: JSON.stringify({platform, lang})})); } catch (e: any) { setError(e.message); } finally { setBusy(''); } };
-  const openProject = async (id: string) => { const p = await api<Project>(`/api/kaipian/projects/${encodeURIComponent(id)}`); setProject(p); setStep(p.final ? 4 : 3); };
+  const deleteProject = async () => {
+    if (!project || busy) return;
+    if (!confirm(t('确定删除这个项目？成片、素材记录和发布包都会删掉，不可恢复。') + `\n\n${project.title || project.id}`)) return;
+    try { await api(`/api/kaipian/projects/${encodeURIComponent(project.id)}?lang=${lang}`, {method: 'DELETE'}); setProject(null); setLog([]); setStep(1); await refresh(); }
+    catch (e: any) { setError(e.message); }
+  };
+  const openProject = async (id: string) => { const p = await api<Project>(`/api/kaipian/projects/${encodeURIComponent(id)}`); setProject(p); setStep(p.final ? 4 : 3); await resumeJobs(id); };
   const copy = (t: string) => navigator.clipboard?.writeText(t);
 
   /**
@@ -327,6 +374,7 @@ export const Kaipian = () => {
     <Steps/>
     {error && <div className="kp-error" onClick={() => setError('')}>{error} ×</div>}
     {busy && <div className="kp-busy">{busy}</div>}
+    {busy && step === 2 && log.length > 0 && <pre className="kp-log" style={{maxHeight: 160}}>{log.join('\n')}</pre>}
     {!showCfg && <StatusStrip/>}
 
     {step === 1 && <section className="kp-card">
@@ -358,7 +406,7 @@ export const Kaipian = () => {
       </> : <>
         <label>{t('一段故事（一两句话即可，AI 编剧会拆成 3 镜）')}<textarea value={story} onChange={(e) => setStory(e.target.value)} rows={5} placeholder={t('例如：深夜便利店，值夜班的女孩把最后一份关东煮留给每天来但从不说话的流浪老人；今晚老人没来……')}/></label>
         <div className="kp-row">
-          <label>{t('题材')}<select value={genre} onChange={(e) => setGenre(e.target.value)}>{['剧情短剧', '产品广告片', '治愈日常', '悬疑惊悚', '搞笑段子'].map((d) => <option key={d} value={d}>{t(d)}</option>)}</select></label>
+          <label>{t('题材')}<select value={genre} onChange={(e) => setGenre(e.target.value)}>{['剧情短剧', '产品广告片', '治愈日常', '悬疑惊悚', '搞笑段子', '科幻', '古风武侠', '纪实 Vlog'].map((d) => <option key={d} value={d}>{t(d)}</option>)}</select></label>
           <label>{t('视觉风格')}<input value={style} onChange={(e) => setStyle(e.target.value)} placeholder={t('美式复古好莱坞 / 霓虹赛博电影 / 日系清新…')}/></label>
           <label>{t('画幅')}<select value={ratio} onChange={(e) => setRatio(e.target.value)}><option value="16:9">{t('横版 16:9')}</option><option value="9:16">{t('竖版 9:16')}</option></select></label>
         </div>
@@ -474,7 +522,7 @@ export const Kaipian = () => {
     </section>}
 
     {step === 3 && project && <section className="kp-card">
-      <h3>{project.title || project.topic}<small> · {project.shots.length}{t(' 个镜头 · 文案与检索词可改，画面在出片时按检索词找')}</small></h3>
+      <h3>{project.title || project.topic}<small> · {project.shots.length}{t(' 个镜头 · 文案与检索词可改，画面在出片时按检索词找')}</small><button className="kp-danger" style={{float: 'right'}} disabled={!!busy} onClick={deleteProject} title={t('删掉整个项目目录，不可恢复')}>{t('删除项目')}</button></h3>
       {/* CLI 一直会打脚本警告（长度偏差 / 文案里夹英文），Web 端以前一条都不显示——
           自动重写一次仍没救回来的问题，用户得在这里看到，别等成片短了 30% 才发现 */}
       {(project.scriptWarnings ?? []).map((w, i) => <div key={i} className="kp-warn">⚠️ {w}</div>)}
@@ -508,14 +556,16 @@ export const Kaipian = () => {
     </section>}
 
     {step === 4 && project?.line === 'drama' && <section className="kp-card kp-final">
-      <h3>{project.title}<small> · {project.tier === 'local' ? t('本地草稿档') : t('云端成片档')} · {project.inputs?.video_provider} / {project.inputs?.video_model}</small></h3>
+      <h3>{project.title}<small> · {project.tier === 'local' ? t('本地草稿档') : t('云端成片档')} · {project.inputs?.video_provider} / {project.inputs?.video_model}</small><button className="kp-danger" style={{float: 'right'}} disabled={!!busy} onClick={deleteProject} title={t('删掉整个项目目录，不可恢复')}>{t('删除项目')}</button></h3>
       {project.final?.file && <video controls className={`kp-drama-film ${project.inputs?.video_ratio === '9:16' ? 'portrait' : ''}`} src={fileUrl(project, project.final.file)} poster={project.shots[0]?.visual?.file ? fileUrl(project, project.shots[0].visual.file) : undefined}/>}
+      {(project as any).atmosphere && <details className="kp-prompt"><summary>{t('氛围锁定块（三镜逐字共用）')}</summary><pre>{(project as any).atmosphere}</pre><button onClick={() => copy((project as any).atmosphere)}>{t('复制')}</button></details>}
       <div className="kp-drama-shots">{(project.shots as unknown as DramaShot[]).map((s) => <div key={s.id} className="kp-drama-shot">
         {s.kind === 'image' ? <img src={fileUrl(project, s.visual.file)} alt={s.stepName}/> : <video controls muted src={fileUrl(project, s.visual.file)}/>}
         <b>{s.stepName}</b>
         {s.verification ? <em className={s.verification.pass ? 'ok' : 'warn'}>{s.verification.pass ? `✅ ${t('验收通过')}` : `⚠️ ${t('验收')} ${s.verification.failed.length} ${t('条未过')}`}{s.verification.reworked ? t('（已重出 1 次）') : ''}</em> : <em>{t('未验收')}</em>}
         {s.verification && !s.verification.pass && <ul className="kp-prov">{s.verification.failed.map((f, i) => <li key={i}>{f}</li>)}</ul>}
         <small>{s.visual.source === 'local' ? t('本地 · 不花钱') : `${s.visual.provider ?? ''} ${s.visual.model ?? ''}`}{s.durationSec ? ` · ${s.durationSec}s` : ''}</small>
+        {s.visual.prompt && <details className="kp-prompt"><summary>{t('这一镜的提示词（五段式，可拿去别的模型抽卡）')}</summary><pre>{s.visual.prompt}</pre><button onClick={() => copy(s.visual.prompt!)}>{t('复制')}</button></details>}
         <div className="kp-shot-actions">
           {s.verification && !s.verification.pass && <button disabled={!!busy} onClick={() => dramaRedo(s.id, s.verification!.failed.join('\n'), 'same')}>{t('按验收意见重出')}</button>}
           <button disabled={!!busy} onClick={() => setRedo(redo?.shot === s.id ? null : {shot: s.id, feedback: '', tier: 'same'})}>{t('提意见 / 换来源')}</button>
@@ -533,6 +583,7 @@ export const Kaipian = () => {
     </section>}
 
     {step === 4 && project?.line !== 'drama' && project?.final && <section className="kp-card kp-final">
+      <div style={{textAlign: 'right'}}><button className="kp-danger" style={{float: 'right'}} disabled={!!busy} onClick={deleteProject} title={t('删掉整个项目目录，不可恢复')}>{t('删除项目')}</button></div>
       <div className="kp-final-grid">
         <video controls src={fileUrl(project, project.final.file)} poster={project.final.cover ? fileUrl(project, project.final.cover) : undefined}/>
         <div>

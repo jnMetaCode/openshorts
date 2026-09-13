@@ -47,10 +47,10 @@ const cliLang = (() => {
 const T = (zh, en) => (cliLang === 'en' ? en ?? zh : zh);
 
 function aoBin() {
-  // AO 的 exports 只声明了 ESM 的 `import` 条件（CJS require.resolve 会报 NOT_EXPORTED），
+  // OPENSHORTS_AO_DIR 指向本地 AO 检出（改工作流时不用先发 npm 再验）。
+  // 否则：AO 的 exports 只声明了 ESM 的 `import` 条件（CJS require.resolve 会报 NOT_EXPORTED），
   // 用 import.meta.resolve 拿 dist/index.js，再反推包目录
-  const main = fileURLToPath(import.meta.resolve('agency-orchestrator'));
-  const dir = path.resolve(path.dirname(main), '..');
+  const dir = process.env.OPENSHORTS_AO_DIR ? path.resolve(process.env.OPENSHORTS_AO_DIR) : path.resolve(path.dirname(fileURLToPath(import.meta.resolve('agency-orchestrator'))), '..');
   return { dir, cli: path.join(dir, 'dist', 'cli.js'), pkg: path.join(dir, 'package.json') };
 }
 function runAO(args, opts = {}) {
@@ -170,7 +170,8 @@ switch (cmd) {
     const project = readProject(pf);
     if (project.line !== 'koubo') { console.error(T('run 只支持口播线项目（AI 短剧请用 openshorts drama）', '`run` only handles talking-head projects (for AI mini-drama use `openshorts drama`)')); process.exit(1); }
     const { runKoubo } = await import('../src/pipeline/koubo-run.mjs');
-    const t0 = Date.now();
+    const { startStopwatch, elapsedText } = await import('../src/core/stopwatch.mjs');
+    const sw = startStopwatch();
     const o = parseOpts(rest.slice(1));
     const { readConfig: rc } = await import('../src/config.mjs'); const c = rc();
     const vision = o['vision-provider'] ? { provider: o['vision-provider'], model: o['vision-model'] || '' } : c.vision;
@@ -181,9 +182,10 @@ switch (cmd) {
       p = await runKoubo(project, { outDir: path.dirname(path.resolve(pf)), log: (m) => console.log('  ' + m), vision, only,
         localImage: o['no-local-image'] ? false : (o['local-image-model'] || 'auto') });
     } catch (e) { console.error(T(`\n⛔ 出片失败：${e.message}`, `\n⛔ Rendering failed: ${e.message}`)); process.exit(1); }
-    // 耗时用的是墙上时间:跨机器休眠会报出离谱数字(真机上报过 39477s,其实那台机睡了 10.8 小时)
-    console.log(T(`\n✓ 成片：${p.final.file}（${p.final.durationSec.toFixed(1)}s，${((Date.now() - t0) / 1000).toFixed(0)}s 出片）\n  字幕：${p.final.srt}\n  封面：${p.final.cover ?? '无'}\n  发布文案：${p.final.publish}`,
-      `\n✓ Video: ${p.final.file} (${p.final.durationSec.toFixed(1)}s, rendered in ${((Date.now() - t0) / 1000).toFixed(0)}s wall-clock)\n  Captions: ${p.final.srt}\n  Cover: ${p.final.cover ?? 'none'}\n  Publish copy: ${p.final.publish}`));
+    // 耗时扣掉机器休眠（真机报过 39477 s，其实睡了 10.8 小时），见 src/core/stopwatch.mjs
+    const el = sw.stop();
+    console.log(T(`\n✓ 成片：${p.final.file}（${p.final.durationSec.toFixed(1)}s，出片用时 ${elapsedText(el)}）\n  字幕：${p.final.srt}\n  封面：${p.final.cover ?? '无'}\n  发布文案：${p.final.publish}`,
+      `\n✓ Video: ${p.final.file} (${p.final.durationSec.toFixed(1)}s, rendered in ${elapsedText(el, 'en')})\n  Captions: ${p.final.srt}\n  Cover: ${p.final.cover ?? 'none'}\n  Publish copy: ${p.final.publish}`));
     for (const n of p.final.notes) console.log(`  ⚠️ ${n}`);
     // 质检结论必须落到屏幕和退出码上。以前只在日志里写"有问题，N 条提醒"，
     // 具体条目只有网页端显示——CLI/CI 里出一条"观众看不到字幕"的片子，这里还是 ✓ + exit 0。
@@ -204,12 +206,12 @@ switch (cmd) {
     const { planVariants, runBatch } = await import('../src/pipeline/batch.mjs');
     const variants = planVariants({ voices: split(o.voices), captions: split(o.captions), rates: split(o.rates).map(Number) }, project);
     console.log(T(`共 ${variants.length} 版：${variants.map((v) => v.id).join('、')}`, `${variants.length} version(s): ${variants.map((v) => v.id).join(', ')}`));
-    const t0 = Date.now();
+    const { startStopwatch: sw2, elapsedText: et2 } = await import('../src/core/stopwatch.mjs'); const swb = sw2();
     const { readConfig: rcb } = await import('../src/config.mjs');
     const results = await runBatch(project, variants, { baseDir: path.dirname(path.resolve(pf)), log: (m) => console.log('  ' + m), vision: rcb().vision });
-    const okN = results.filter((r) => r.ok).length;
-    console.log(T(`\n${okN ? '✓' : '⛔'} ${okN}/${results.length} 版完成，${((Date.now() - t0) / 1000).toFixed(0)}s`,
-      `\n${okN ? '✓' : '⛔'} ${okN}/${results.length} version(s) done in ${((Date.now() - t0) / 1000).toFixed(0)}s`));
+    const okN = results.filter((r) => r.ok).length; const elb = swb.stop();
+    console.log(T(`\n${okN ? '✓' : '⛔'} ${okN}/${results.length} 版完成，用时 ${et2(elb)}`,
+      `\n${okN ? '✓' : '⛔'} ${okN}/${results.length} version(s) done in ${et2(elb, 'en')}`));
     for (const r of results) console.log(`  ${r.ok ? '✅' : '⛔'} ${r.id}${r.ok ? `  ${r.file}${T(`（${r.durationSec?.toFixed(1)}s${r.quality ? `，质检${r.quality.pass ? '通过' : '有问题'}` : ''}）`, ` (${r.durationSec?.toFixed(1)}s${r.quality ? `, quality check ${r.quality.pass ? 'passed' : 'found issues'}` : ''})`)}` : `  ${r.error}`}`);
     if (okN < results.length) process.exitCode = 1;   // 以前"✓ 0/3 版完成"也 exit 0，脚本里全灭都当成功
     break;
@@ -269,6 +271,20 @@ switch (cmd) {
     console.log(T(`看图把关：${visionOn ? `已开 ${c2.vision.provider}/${c2.vision.model} —— 不贴合的素材会被拦下，转本机出图` : '没开 —— 画面只按检索词字面匹配，可能配错（侧栏或 config.vision 里配）'}`,
       `Visual check: ${visionOn ? `on, ${c2.vision.provider}/${c2.vision.model} — footage that does not fit is rejected and painted locally instead` : 'off — visuals are picked by literal keyword match and can be plain wrong (configure it in the sidebar or config.vision)'}`));
     console.log('');
+    break;
+  }
+  case 'rm': {
+    // 删项目：以前只能手动 rm -rf。删的是 project.json 所在的整个目录，所以必须 --yes 才动手，
+    // 且拒绝删输出根目录（有人把 ~/OpenShorts/project.json 传进来的话）
+    const pf = rest[0]; if (!pf) { console.error(T('用法：openshorts rm <project.json> --yes', 'Usage: openshorts rm <project.json> --yes')); process.exit(1); }
+    const project = readProject(pf);
+    const dir = path.dirname(path.resolve(pf));
+    const { readConfig: rc3 } = await import('../src/config.mjs');
+    if (path.resolve(dir) === path.resolve(rc3().outputDir)) { console.error(T('⛔ 这是输出根目录，不删', '⛔ That is the output root directory; refusing')); process.exit(1); }
+    const files = fs.readdirSync(dir).length;
+    if (!parseOpts(rest.slice(1)).yes) { console.error(T(`将删除整个项目目录（${files} 个条目，不可恢复）：${dir}\n  确认就加 --yes`, `This would remove the whole project directory (${files} entries, irreversible): ${dir}\n  Add --yes to confirm`)); process.exit(1); }
+    fs.rmSync(dir, { recursive: true, force: true });
+    console.log(T(`✓ 已删除 ${project.title || project.id}：${dir}`, `✓ Deleted ${project.title || project.id}: ${dir}`));
     break;
   }
   case 'install-ffmpeg': {
@@ -337,7 +353,7 @@ switch (cmd) {
 }
 
 function printHelp(out) {
-  out(cliLang === 'en' ? `Usage: openshorts [open|sources|new|run|batch|export|estimate|drama|install-ffmpeg|install-image|doctor|version]
+  out(cliLang === 'en' ? `Usage: openshorts [open|sources|new|run|batch|export|estimate|rm|drama|install-ffmpeg|install-image|doctor|version]
   open      start the local server and open the browser (default)
   sources   what this machine can use for visuals (stock / AI images / local gen / cloud video)
   drama     AI mini-drama: runs the engine's drama workflow (args pass through to \`ao run\`;
@@ -360,8 +376,9 @@ function printHelp(out) {
   export    publish pack: openshorts export <project.json> --platform douyin|shipinhao|bilibili|shorts
             (mp4 + cover + SRT + copy; never auto-posts)
   batch     versions: openshorts batch <project.json> --voices a,b [--captions douyin,clean] [--rates 1,1.1]
+  rm        delete a project (the whole folder, irreversible): openshorts rm <project.json> --yes
 
-  This CLI speaks your system locale. Force it with OPENSHORTS_LANG=zh|en.` : `用法：openshorts [open|sources|new|run|batch|export|estimate|drama|install-ffmpeg|install-image|doctor|version]
+  This CLI speaks your system locale. Force it with OPENSHORTS_LANG=zh|en.` : `用法：openshorts [open|sources|new|run|batch|export|estimate|rm|drama|install-ffmpeg|install-image|doctor|version]
   open      起本地服务并打开浏览器（默认）
   sources   看这台机器能用哪些画面来源（素材库 / AI 配图 / 本地生成 / 云端出片）
   drama     AI 短剧：跑 AO 短剧流水线（参数透传给 ao run；--validate / --plan 只检查不出片，-i 输入照常带上）
@@ -379,6 +396,7 @@ function printHelp(out) {
   estimate  看这个项目要不要花钱、大概等多久（口播线钱恒为 0，真正的成本是时间）
   export    发布包：openshorts export <project.json> --platform douyin|shipinhao|bilibili|shorts（mp4+封面+SRT+文案，不自动发布）
   batch     批量：openshorts batch <project.json> --voices a,b [--captions douyin,clean] [--rates 1,1.1]
+  rm        删项目（整个目录，不可恢复）：openshorts rm <project.json> --yes
 
   终端语言跟随系统 locale，可用 OPENSHORTS_LANG=zh|en 强制指定。`);
 }

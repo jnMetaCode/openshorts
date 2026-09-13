@@ -169,3 +169,19 @@ test('切段补位：视频用不同时间点，署名不重复记；图片不�
   assert.equal(r.provenance.filter((x) => x.id === 'test:1').length, 0, '用的是已在 visual 里记过的那条');
   fs.rmSync(d, { recursive: true, force: true });
 });
+
+test('英文片里残留的中文本机出图署名，出片收尾时按项目语言换成英文（分段复用时旧署名会原样留下）', { skip: !hasFfmpeg && '无 ffmpeg' }, async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'os-credit-'));
+  const img = path.join(dir, 'gen.png');
+  spawnSync('ffmpeg', ['-v', 'error', '-y', '-f', 'lavfi', '-i', 'color=c=gray:s=180x320:d=1', '-frames:v', '1', img]);
+  const p = mkProject(dir, [['hook', 'Why do cats love boxes'], ['s1', 'Boxes are warm and safe']]);
+  p.lang = 'en'; p.voice.voice = 'en-US-AvaNeural';
+  p.shots[1].visual = { source: 'local-image', provider: 'local-flux', kind: 'image', file: img, model: 'flux-schnell-q4', cost: { kind: 'free' } };
+  p.provenance = [{ shot: 's1', source: 'local-flux', id: 'flux-schnell-q4', kind: 'image', license: 'Apache-2.0（FLUX.1-schnell 本地生成）', author: null }];
+  const counter = { calls: [] };
+  const out = await runKoubo(p, { outDir: dir, synthesizeImpl: makeTts(counter), localImage: false });
+  const credit = out.provenance.find((x) => x.source === 'local-flux');
+  assert.ok(credit, '本机出图那条署名要保留（这一镜仍是本机出图）');
+  assert.equal(credit.license, 'Apache-2.0 (generated locally with FLUX.1-schnell)');
+  assert.doesNotMatch(fs.readFileSync(out.final.publish, 'utf-8'), /本地生成/, '发布文案里不能再有中文署名');
+});

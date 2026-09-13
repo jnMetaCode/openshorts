@@ -3,6 +3,7 @@
  * API key / 供应商沿用 AO 的 ~/.ao（用户配一次两边都能用，ADR-008）。
  */
 import fs from 'node:fs';
+import { writeFileAtomic } from './core/fs-atomic.mjs';
 import os from 'node:os';
 import path from 'node:path';
 
@@ -18,7 +19,7 @@ export function readConfig() {
 export function writeConfig(patch) {
   const next = { ...readConfig(), ...patch };
   fs.mkdirSync(OPENSHORTS_HOME, { recursive: true });
-  fs.writeFileSync(CONFIG_FILE, JSON.stringify(next, null, 2) + '\n');
+  writeFileAtomic(CONFIG_FILE, JSON.stringify(next, null, 2) + '\n');   // 原子写：存 key 时被杀在半路不能留半截 config
   return next;
 }
 /** AO 的数据目录（key 存这里）：与 AO 的 web/data-dir 规则一致，优先 AO_DATA_DIR / AO_HOME，默认 ~/.ao */

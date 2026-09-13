@@ -32,3 +32,18 @@ test('只认 spawn 之后新出现的目录；没有新目录就返回 null 而�
 test('输出目录还不存在时不炸，当成空清单', () => {
   assert.deepEqual(listDramaRuns(path.join(os.tmpdir(), 'os-not-exist-' + Date.now())), []);
 });
+
+test('readStepOutput：剥掉 AO 的引用块头与分隔线，只回正文；缺文件回 null', async () => {
+  const { readStepOutput } = await import('../server/lib/ao-run-dir.mjs');
+  const run = fs.mkdtempSync(path.join(os.tmpdir(), 'os-steps-'));
+  fs.mkdirSync(path.join(run, 'steps'));
+  fs.writeFileSync(path.join(run, 'steps', '3-shot1_prompt.md'), '> 🎬 **镜头 1 提示词** | 步骤 3/18\n> ✅ 验收标准: 1. 逐字粘贴\n> 2. 不描述长相\n> \n\n---\n\n【核心主题】A | B\n【氛围与画质】Sony Venice + K-35\n');
+  fs.writeFileSync(path.join(run, 'steps', '2-atmosphere_lock.md'), '> 🎚 **氛围锁定块** | 步骤 2/18\n\n---\n机身+镜头：Sony Venice + Canon K-35 35mm f/2.8\n色彩与影调：漂白工艺\n');
+  assert.equal(readStepOutput(run, 'shot1_prompt'), '【核心主题】A | B\n【氛围与画质】Sony Venice + K-35');
+  assert.match(readStepOutput(run, 'atmosphere_lock'), /^机身\+镜头：Sony Venice/);
+  assert.equal(readStepOutput(run, 'shot2_prompt'), null, '被跳过的步骤没有文件');
+  assert.equal(readStepOutput(path.join(run, 'nope'), 'x'), null, '老版本运行目录没有 steps/');
+  // id 里的特殊字符不能当正则：shot1_prompt 不该匹配到 shot1_prompt2 之类
+  fs.writeFileSync(path.join(run, 'steps', '9-shot1_prompt_extra.md'), '---\nno');
+  assert.equal(readStepOutput(run, 'shot1_prompt'), '【核心主题】A | B\n【氛围与画质】Sony Venice + K-35');
+});

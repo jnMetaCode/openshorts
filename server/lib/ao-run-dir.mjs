@@ -17,3 +17,24 @@ export const pickFreshRunDir = (before, runsDir) => {
   const fresh = listDramaRuns(runsDir).filter((d) => !before.has(d));
   return fresh.length === 1 ? fresh[0] : null;
 };
+
+/**
+ * 读一个步骤的文本产出。AO 把每步产出写成 `steps/<序号>-<id>.md`，开头几行是
+ * `> emoji **名字** | 步骤 n/m` 与 `> ✅ 验收标准: …` 的引用块，再一条 `---`，之后才是正文。
+ * 这里只要正文：镜头提示词回填进项目，用户能看见、能复制到别的模型去抽卡。
+ * 找不到（步骤被跳过 / 老版本运行目录）返回 null，不抛。
+ */
+export const readStepOutput = (runDir, id) => {
+  const dir = path.join(runDir, 'steps');
+  let files; try { files = fs.readdirSync(dir); } catch { return null; }
+  const f = files.find((x) => new RegExp(`^\\d+-${id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\.md$`).test(x));
+  if (!f) return null;
+  const raw = fs.readFileSync(path.join(dir, f), 'utf-8');
+  const lines = raw.split('\n');
+  let i = 0;
+  while (i < lines.length && /^\s*>/.test(lines[i])) i++;          // 引用块头
+  while (i < lines.length && /^\s*$/.test(lines[i])) i++;
+  if (i < lines.length && /^---\s*$/.test(lines[i])) i++;           // 分隔线
+  const body = lines.slice(i).join('\n').trim();
+  return body || null;
+};

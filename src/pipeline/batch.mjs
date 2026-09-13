@@ -19,17 +19,19 @@ export function planVariants({ voices = [], captions = [], rates = [] }, base) {
   return out;
 }
 
-export async function runBatch(project, variants, { baseDir, log = () => {}, onVariant = () => {}, fetchImpl, config, vision } = {}) {
+export async function runBatch(project, variants, { baseDir, log = () => {}, onVariant = () => {}, fetchImpl, config, vision, signal, runImpl = runKoubo } = {}) {
   const results = [];
   for (const [i, v] of variants.entries()) {
+    // 取消要停整批：以前 abort 之后循环照走，后面每版各自"失败：Cancelled"，最后还按 done 报一份结果
+    if (signal?.aborted) throw new Error('Cancelled');
     const dir = path.join(baseDir, 'variants', v.id); fs.mkdirSync(dir, { recursive: true });
     // 深拷贝项目，只改音色/字幕/语速；清掉上次的音频与产物路径，画面选择保留（同一检索词、同一候选）
     const p = JSON.parse(JSON.stringify(project));
     p.id = `${project.id}-${v.id}`; p.voice = { ...p.voice, voice: v.voice, rate: v.rate }; p.captions = { ...p.captions, preset: v.captions };
     p.final = null; for (const s of p.shots) { s.audio = null; s.durationSec = null; s.status = 'planned'; }
     log(`▶ 版本 ${i + 1}/${variants.length}：${v.id}`);
-    try { const r = await runKoubo(p, { outDir: dir, log: (m) => log(`   ${m}`), fetchImpl, config, vision }); results.push({ id: v.id, ok: true, file: r.final.file, durationSec: r.final.durationSec, quality: r.final.quality }); }
-    catch (e) { results.push({ id: v.id, ok: false, error: e.message }); log(`   ⛔ ${e.message}`); }
+    try { const r = await runImpl(p, { outDir: dir, log: (m) => log(`   ${m}`), fetchImpl, config, vision, signal }); results.push({ id: v.id, ok: true, file: r.final.file, durationSec: r.final.durationSec, quality: r.final.quality }); }
+    catch (e) { if (signal?.aborted) throw new Error('Cancelled'); results.push({ id: v.id, ok: false, error: e.message }); log(`   ⛔ ${e.message}`); }
     onVariant(results[results.length - 1]);
   }
   fs.writeFileSync(path.join(baseDir, 'variants', 'index.json'), JSON.stringify({ at: new Date().toISOString(), variants: results }, null, 2));
