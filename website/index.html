@@ -6,14 +6,42 @@
 <title>开片 OpenShorts — 一句话，出一条能发的短视频</title>
 <meta name="description" content="本地优先的 AI 短视频生成器：话题或链接进去，带字幕、封面、发布文案的成片出来。免费路径 0 元 0 key；AI 短剧支持本机出片草稿档。MIT 开源。">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
-<link rel="alternate" hreflang="zh-CN" href="https://jnmetacode.github.io/openshorts/">
-<link rel="alternate" hreflang="en" href="https://jnmetacode.github.io/openshorts/en/">
+<link rel="alternate" hreflang="zh-CN" href="https://os.aiolaola.com/">
+<link rel="alternate" hreflang="en" href="https://os.aiolaola.com/en/">
 <meta property="og:title" content="开片 OpenShorts">
 <meta property="og:description" content="一句话，出一条能发的短视频。本地优先 · 免费路径 0 元 0 key · MIT 开源。">
 <meta property="og:type" content="website">
-<meta property="og:url" content="https://jnmetacode.github.io/openshorts/">
-<meta property="og:image" content="https://jnmetacode.github.io/openshorts/assets/og.jpg">
+<meta property="og:url" content="https://os.aiolaola.com/">
+<meta property="og:image" content="https://os.aiolaola.com/assets/og.jpg">
 <meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://os.aiolaola.com/">
+<script type="application/ld+json">
+{
+ "@context": "https://schema.org",
+ "@type": "SoftwareApplication",
+ "name": "OpenShorts · 开片",
+ "alternateName": "OpenShorts",
+ "applicationCategory": "MultimediaApplication",
+ "operatingSystem": "macOS, Windows, Linux",
+ "url": "https://os.aiolaola.com/",
+ "image": "https://os.aiolaola.com/assets/og.jpg",
+ "description": "开源、本地优先的短视频生产线：话题进，成片出。免费路径 0 元 0 key；AI 短剧支持本机出片草稿档。",
+ "license": "https://opensource.org/licenses/MIT",
+ "offers": {
+  "@type": "Offer",
+  "price": "0",
+  "priceCurrency": "USD"
+ },
+ "codeRepository": "https://github.com/jnMetaCode/openshorts",
+ "downloadUrl": "https://github.com/jnMetaCode/openshorts/releases",
+ "inLanguage": "zh-CN",
+ "author": {
+  "@type": "Organization",
+  "name": "AI不止语 · jnMetaCode",
+  "url": "https://github.com/jnMetaCode"
+ }
+}
+</script>
 <style>
   :root{
     --ink:#1a1d21; --ink2:#4a5158; --line:#e6e3dc; --bg:#faf8f4; --card:#ffffff;
@@ -267,6 +295,9 @@ npx openshorts export ~/OpenShorts/为什么天空是蓝色的/project.json
 
 <span class="c"># 字幕烧不进画面？装一份带 libass 的 ffmpeg</span>
 npx openshorts install-ffmpeg</pre>
+      <pre><span class="c"># 或者把这段话发给你的 AI（Claude Code / Codex / Cursor…），它会自己装好并出片</span>
+使用这个 Skill：https://raw.githubusercontent.com/jnMetaCode/openshorts/main/docs/skill/SKILL.md
+帮我做一条关于"为什么天空是蓝色的"的科普短视频。</pre>
       <p class="note">写脚本需要一个文本模型（DeepSeek / Kimi / GLM / Agnes……配一次 key 两边通用）；
       画面与配音在免费路径下全程 0 元。AI 短剧线与本机出图详见
       <a href="https://github.com/jnMetaCode/openshorts#readme" target="_blank" rel="noreferrer">README</a>。</p>

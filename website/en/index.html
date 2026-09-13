@@ -6,14 +6,42 @@
 <title>OpenShorts — One sentence in, a publishable short video out</title>
 <meta name="description" content="Local-first AI short-video pipeline: give it a topic or a link, get a finished vertical video with burned-in subtitles, cover and publish copy. Free path costs ¥0 and 0 paid keys. MIT licensed.">
 <link rel="icon" type="image/svg+xml" href="../favicon.svg">
-<link rel="alternate" hreflang="zh-CN" href="https://jnmetacode.github.io/openshorts/">
-<link rel="alternate" hreflang="en" href="https://jnmetacode.github.io/openshorts/en/">
+<link rel="alternate" hreflang="zh-CN" href="https://os.aiolaola.com/">
+<link rel="alternate" hreflang="en" href="https://os.aiolaola.com/en/">
 <meta property="og:title" content="OpenShorts">
 <meta property="og:description" content="One sentence in, a publishable short video out. Local-first · free path costs $0 and 0 keys · MIT.">
 <meta property="og:type" content="website">
-<meta property="og:url" content="https://jnmetacode.github.io/openshorts/en/">
-<meta property="og:image" content="https://jnmetacode.github.io/openshorts/assets/og.jpg">
+<meta property="og:url" content="https://os.aiolaola.com/en/">
+<meta property="og:image" content="https://os.aiolaola.com/assets/og.jpg">
 <meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://os.aiolaola.com/en/">
+<script type="application/ld+json">
+{
+ "@context": "https://schema.org",
+ "@type": "SoftwareApplication",
+ "name": "OpenShorts · 开片",
+ "alternateName": "OpenShorts",
+ "applicationCategory": "MultimediaApplication",
+ "operatingSystem": "macOS, Windows, Linux",
+ "url": "https://os.aiolaola.com/en/",
+ "image": "https://os.aiolaola.com/assets/og.jpg",
+ "description": "Open-source, local-first short-video production line: topic in, publish-ready video out. Free path costs $0; AI mini-drama with on-device draft tier.",
+ "license": "https://opensource.org/licenses/MIT",
+ "offers": {
+  "@type": "Offer",
+  "price": "0",
+  "priceCurrency": "USD"
+ },
+ "codeRepository": "https://github.com/jnMetaCode/openshorts",
+ "downloadUrl": "https://github.com/jnMetaCode/openshorts/releases",
+ "inLanguage": "en",
+ "author": {
+  "@type": "Organization",
+  "name": "AI不止语 · jnMetaCode",
+  "url": "https://github.com/jnMetaCode"
+ }
+}
+</script>
 <style>
   :root{
     --ink:#1a1d21; --ink2:#4a5158; --line:#e6e3dc; --bg:#faf8f4; --card:#ffffff;
@@ -268,6 +296,9 @@ npx openshorts export ~/OpenShorts/&lt;project&gt;/project.json
 
 <span class="c"># Subtitles won't burn in? Install ffmpeg with libass:</span>
 npx openshorts install-ffmpeg</pre>
+      <pre><span class="c"># Or hand this to your AI agent (Claude Code / Codex / Cursor…); it installs and renders end-to-end</span>
+Use this skill: https://raw.githubusercontent.com/jnMetaCode/openshorts/main/docs/skill/SKILL.md
+Make me a 60-second explainer video about "why the sky is blue".</pre>
       <p class="note">Script writing needs one text-model key (DeepSeek / Kimi / GLM / …— configure once, shared with the engine).
       Visuals and voice-over are free on the default path. See the
       <a href="https://github.com/jnMetaCode/openshorts/blob/main/README.en.md" target="_blank" rel="noreferrer">README</a> for the drama pipeline and local image generation.</p>

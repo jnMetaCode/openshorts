@@ -1,0 +1,8 @@
+{
+  // 官网（website/ 纯静态）部署到 Cloudflare Workers 静态资源：`npx wrangler deploy`
+  // 自定义域 os.aiolaola.com 在这里声明，部署时自动建 DNS + 证书；GitHub Pages 仍作镜像
+  "name": "openshorts",
+  "compatibility_date": "2026-09-10",
+  "assets": { "directory": "./website", "html_handling": "auto-trailing-slash", "not_found_handling": "404-page" },
+  "routes": [{ "pattern": "os.aiolaola.com", "custom_domain": true }]
+}

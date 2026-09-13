@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://os.aiolaola.com/sitemap.xml

@@ -1,0 +1,18 @@
+# OpenShorts · 开片
+
+> Open-source, local-first short-video production line: give it a topic, an article link or a script and it writes the script, finds or paints the footage, synthesizes the voice-over, burns captions and renders a 1080×1920 mp4 with cover, SRT and publish copy. The default path costs nothing (free Edge TTS, CC footage, on-device ffmpeg). Cost and wait time are shown before you run. Two content lines: talking-head shorts and AI mini-dramas; three visual sources: stock footage, on-device generation (stable-diffusion.cpp), cloud video APIs.
+
+- Website (zh): https://os.aiolaola.com/
+- Website (en): https://os.aiolaola.com/en/
+- Source & README: https://github.com/jnMetaCode/openshorts
+- English README: https://github.com/jnMetaCode/openshorts/blob/main/README.en.md
+- Skill for AI agents (install + render end-to-end): https://raw.githubusercontent.com/jnMetaCode/openshorts/main/docs/skill/SKILL.md
+- Releases (source bundle, desktop installers for macOS / Windows / Linux): https://github.com/jnMetaCode/openshorts/releases
+- Engine it builds on: https://github.com/jnMetaCode/agency-orchestrator
+
+## Key facts
+- License: MIT. Node.js 20+. No Python. Runs on macOS, Linux, Windows; desktop app available.
+- Install: `git clone https://github.com/jnMetaCode/openshorts.git && cd openshorts && npm install && npm run openshorts` (npm package `openshorts` coming; then `npx openshorts`).
+- CLI: `openshorts doctor | install-ffmpeg | new | run | estimate | export | batch | drama | install-image`.
+- Every video carries an AI-content label; footage attribution is written into the publish copy.
+- Differences from MoneyPrinterTurbo-style tools: on-device AI frames when stock has nothing (FLUX.1-schnell via sd.cpp), a vision model can reject off-topic footage before render, cost preview before spending, per-shot redo with everything else reused, no Python environment.
