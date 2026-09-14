@@ -1,6 +1,7 @@
 # 依赖更新提醒：每月一次、按组合并成一个 PR，不要每个包一条。
 # remotion 三个包 + react 两个包各自必须同版本升，分组正是为了这个。
 # 不想要了直接删这个文件即可。
+# 大版本升级（如 vite 8 / TypeScript 7）会让构建挂——那种 PR 关掉、单独适配，别在机器人 PR 里改代码。
 version: 2
 updates:
   - package-ecosystem: npm
@@ -21,3 +22,7 @@ updates:
   - package-ecosystem: github-actions
     directory: /
     schedule: { interval: monthly }
+    # 9-14 首跑没分组，5 个 action 各开一个 PR；分组后同一次升级只开一个
+    open-pull-requests-limit: 2
+    groups:
+      actions: { patterns: ["*"] }
