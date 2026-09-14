@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [2.0.0-alpha.24] - 2026-09-14 · 出片不再随页面和进程一起死，npm 首发
+
 - **安全：不带 Origin 的跨站写请求以前会放行**（推送前全面测试时在真服务上撞上）：写请求防护只看 Origin，
   没有 Origin 一律当 curl 放行；只带 `Sec-Fetch-Site: cross-site` 的 DELETE 直接删掉了项目。
   真浏览器发 DELETE/POST 一定带 Origin，实际可利用性低，但写接口的防护应当两个头都认——
