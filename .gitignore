@@ -18,3 +18,6 @@ public/audio/custom/
 public/assets/quoted/
 desktop/node_modules/
 desktop/release/
+
+# agency-orchestrator 运行产物（出片中间文件）
+ao-output/

@@ -102,6 +102,7 @@ npm run openshorts      # 起本地服务并打开浏览器（http://127.0.0.1:4
 | 《猫为什么总爱钻纸箱》 | 口播科普 · 免 key 素材 · Edge TTS（**早期版本**，字幕与画面都不如上面那条，留作对照） | 37s | [docs/cases/koubo-cat-box](docs/cases/koubo-cat-box/) |
 | 《深夜便利店》本地草稿档 | AI 短剧 · 本地 sd.cpp · MiniMax-H3 Q2 · **0 元** | 7s | [docs/cases/drama-convenience-store](docs/cases/drama-convenience-store/) |
 | 《深夜便利店》云端成片档 | AI 短剧 · Agnes agnes-video-2.5-flash | 13s | 同上（同一故事的草稿 vs 成片对照） |
+| 《留下来的那个》奶奶与猫 | AI 短剧 · 故事与画质块取自 [ai-shortfilm-prompts 模板](https://github.com/jnMetaCode/ai-shortfilm-prompts/blob/main/templates/elderly-cat-companion.zh.md) · Agnes · **人+猫三镜一致** | 13s | [docs/cases/drama-grandma-cat](docs/cases/drama-grandma-cat/) |
 
 **v1 · 图层动画**（纸片剪纸风格，`npm run story -- <名字> render` 渲出，见文末）
 
