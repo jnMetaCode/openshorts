@@ -50,9 +50,8 @@ export async function applyAoKeysToEnv(env = process.env) {
   if (!ids.length) return [];
   let providers = [];
   try {
-    const { fileURLToPath } = await import('node:url');
-    const main = fileURLToPath(import.meta.resolve('agency-orchestrator'));
-    providers = (await import(path.join(path.dirname(main), 'connectors', 'api-providers.js'))).API_PROVIDERS ?? [];
+    const { importAo } = await import('./core/ao-module.mjs');
+    providers = (await importAo('connectors', 'api-providers.js')).API_PROVIDERS ?? [];
   } catch (e) {
     // 吞掉的话症状是"存了 key 却报缺 key"，而原因（AO 包没装好 / 目录结构变了）完全看不见
     console.warn(`[openshorts] 读不到 AO 的供应商表，存好的 key 没能映射成环境变量：${String(e?.message ?? e).split('\n')[0]}`);

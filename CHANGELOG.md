@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+- **Windows 上取不到 AO 的内部模块，而且全都静默**（#12 的新测试在 Windows CI 上红了才发现）：八处把拼出来的绝对路径
+  直接交给 `import()`，Windows 上盘符路径会被当成 `d:` 协议抛 ERR_UNSUPPORTED_ESM_URL_SCHEME，外面又多半包着 catch。
+  后果：Windows 用户在界面存的 key **重启也不生效**、设置面板列不出供应商（500）、代理装不上、配音回落和本机出图路径取不到。
+  macOS / Linux 上裸路径恰好能用，所以开发机上永远撞不到。现在统一走 `src/core/ao-module.mjs`（先转 file:// URL）；
+  测试守三件事：交出去的必须是 file:// URL、开片用到的四个 AO 模块都取得到、仓库里不许再出现裸路径 import（两个变异都会红）。
 - **界面里刚存好的 key 要重启才生效**（issue #12，用户真机报的）：AO 的库函数只认环境变量，开片只在**进程启动时**
   把存好的 key 映射成环境变量；`POST /ao-keys` 只写文件。于是新用户最常走的那条路——打开 → 存 key（验证通过，
   验证那条路是显式传 key 的）→ 写脚本——当场报"缺少 API Key：文本供应商「zhipu」没配 key"，而右栏还显示 ✅。

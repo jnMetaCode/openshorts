@@ -6,6 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
+import { importAo } from '../src/core/ao-module.mjs';
 import { readConfig, writeConfig, aoHome, applyAoKeysToEnv, isEnvAppliedByUs } from '../src/config.mjs';
 import { sourcesAvailability } from '../src/sources/availability.mjs';
 import { DEFAULT_VOICES, voicesFor, synthesize } from '../src/voice/edge-tts.mjs';
@@ -258,8 +259,7 @@ const VISION_CAPABLE = ['agnes', 'openai', 'gemini', 'zhipu', 'qwen', 'volcengin
 
 kaipian.get('/providers/text', async (_req, res, next) => {
   try {
-    const main = fileURLToPath(import.meta.resolve('agency-orchestrator'));
-    const api = await import(path.join(path.dirname(main), 'connectors', 'api-providers.js'));
+    const api = await importAo('connectors', 'api-providers.js');
     const keys = readAoKeys();
     const list = (api.API_PROVIDERS ?? []).map((p) => ({
       id: p.id,
@@ -390,9 +390,8 @@ const runAoCapture = (args) => new Promise((resolve) => {
 });
 async function aoProviders() {
   // AO 的 exports 只暴露主入口；按绝对路径 import 同目录文件绕过白名单（同一份 dist，不会漂）
-  const main = fileURLToPath(import.meta.resolve('agency-orchestrator'));
-  const api = await import(path.join(path.dirname(main), 'connectors', 'api-providers.js'));
-  const local = await import(path.join(path.dirname(main), 'connectors', 'local-sdcpp.js')).catch(() => null);
+  const api = await importAo('connectors', 'api-providers.js');
+  const local = await importAo('connectors', 'local-sdcpp.js').catch(() => null);
   let keys = {}; try { keys = JSON.parse(fs.readFileSync(path.join(aoHome(), '.local', 'web-keys.json'), 'utf-8')); } catch { /* none */ }
   const hasKey = (p) => !!(keys[p.id]?.apiKey || process.env[p.envKey]);
   const localStatus = local?.localSdcppStatus ? local.localSdcppStatus() : null;
@@ -575,7 +574,7 @@ kaipian.get('/projects/:id/drama/redo', (req, res) => {
 import { downloadWithResume, pickSdcppAsset, hfExpectedSha256 } from '../src/local/download.mjs';
 const HF = 'https://huggingface.co/unsloth/MiniMax-H3-GGUF/resolve/main';
 const MODEL_FILES = (m) => [[m.diffusion, `${HF}/${m.diffusion}`], [m.llm, `${HF}/${m.llm}`], ['minimax_h3_video_vae_fp16.safetensors', `${HF}/vae/minimax_h3_video_vae_fp16.safetensors`], ['minimax_h3_audio_vae_fp32.safetensors', `${HF}/vae/minimax_h3_audio_vae_fp32.safetensors`]];
-async function localModule() { const main = fileURLToPath(import.meta.resolve('agency-orchestrator')); return import(path.join(path.dirname(main), 'connectors', 'local-sdcpp.js')); }
+async function localModule() { return importAo('connectors', 'local-sdcpp.js'); }
 kaipian.get('/local/status', async (_req, res, next) => { try { const m = await localModule(); res.json({ ...m.localSdcppStatus(), catalog: m.LOCAL_MODELS, license: 'MiniMax-H3 Community License（含适用地域与用途限制）：https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/LICENSE' }); } catch (e) { next(e); } });
 kaipian.get('/local/install', async (req, res) => {
   const q = req.query; const what = String(q.what || ''); const modelId = String(q.model || 'minimax-h3-q2');

@@ -14,8 +14,7 @@
  * 它自己的注释里也点名了 `EnvHttpProxyAgent` 会忽略显式传入的代理地址这个坑。
  * 两边都调 `setGlobalDispatcher` 只会互相打架，所以这里只做转发。
  */
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { importAo } from '../core/ao-module.mjs';
 
 const VARS = ['HTTPS_PROXY', 'https_proxy', 'HTTP_PROXY', 'http_proxy', 'ALL_PROXY', 'all_proxy'];
 
@@ -36,8 +35,7 @@ export async function installProxy(env = process.env) {
   if (!p) { result = null; return null; }
   if (result) return result;
   try {
-    const main = fileURLToPath(import.meta.resolve('agency-orchestrator'));
-    const { installEnvProxy } = await import(path.join(path.dirname(main), 'utils', 'env-proxy.js'));
+    const { installEnvProxy } = await importAo('utils', 'env-proxy.js');
     const r = await installEnvProxy(env);
     result = { ...p, installed: !!r?.installed, reason: r?.reason };
   } catch (e) {

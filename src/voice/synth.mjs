@@ -8,15 +8,14 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { importAo } from '../core/ao-module.mjs';
 import { synthesize as edgeSynthesize } from './edge-tts.mjs';
 import { readConfig, aoSavedKeys } from '../config.mjs';
 import { tt } from '../project/lang.mjs';
 
 async function aoGenerateSpeech() {
   // AO 的 exports 只声明了主入口；连接器按包目录拼路径（与 server/kaipian.mjs 取 local-sdcpp 同一手法）
-  const main = fileURLToPath(import.meta.resolve('agency-orchestrator'));
-  return (await import(path.join(path.dirname(main), 'connectors', 'tts.js'))).generateSpeech;
+  return (await importAo('connectors', 'tts.js')).generateSpeech;
 }
 
 export function makeSynthesizer({ cfg = readConfig(), edge = edgeSynthesize, aoSpeech = null, log = () => {}, lang = 'zh' } = {}) {
