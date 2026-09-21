@@ -48,7 +48,7 @@ export const Kaipian = () => {
   const [tone, setTone] = useState('科普讲解');
   const [sources, setSources] = useState<Sources | null>(null);
   const [ff, setFf] = useState<{found: boolean; version: string; subtitles: boolean; drawtext: boolean; managed: boolean} | null>(null);
-  const [textProv, setTextProv] = useState<{providers: Array<{id: string; hasKey: boolean; fromEnv: boolean; envKey: string | null; models: string[]; vision: boolean}>; vision: {provider: string; model: string}} | null>(null);
+  const [textProv, setTextProv] = useState<{providers: Array<{id: string; hasKey: boolean; fromEnv: boolean; envKey: string | null; models: string[]; visionModels?: string[]; vision: boolean}>; vision: {provider: string; model: string}} | null>(null);
   const [mdl, setMdl] = useState({provider: '', model: '', apiKey: ''});   // 写脚本的模型（供应商 + 模型 id + key）
   const [vis, setVis] = useState({provider: '', model: ''});
   const [testRes, setTestRes] = useState<{ok: boolean; msg: string} | null>(null);
@@ -230,12 +230,12 @@ export const Kaipian = () => {
     es.addEventListener('error', (e: any) => { try { setError(JSON.parse(e.data).m); } catch { setError(t('模型下载中断（支持断点续传，可重试）')); } es.close(); });
   };
   // 存 key 之前先拿它真发一次请求：key 打错、余额没了、模型 id 不对，都在这里说清楚，别等出片时才炸
-  const testModel = async (provider: string, model: string, apiKey?: string) => {
-    if (!provider || !model) { setTestRes({ok: false, msg: '要先选供应商和模型'}); return false; }
+  const testModel = async (provider: string, model: string, apiKey?: string, kind?: 'vision') => {
+    if (!provider || !model) { setTestRes({ok: false, msg: t('要先选供应商和模型')}); return false; }
     setTestRes(null); setBusy(t('验证模型…'));
     try {
-      const r = await api<{ok: boolean; reply?: string; error?: string}>('/api/kaipian/ao-keys/test', {method: 'POST', body: JSON.stringify({provider, model, apiKey})});
-      setTestRes({ok: r.ok, msg: r.ok ? `通了，模型回了「${r.reply}」` : (r.error ?? '失败')});
+      const r = await api<{ok: boolean; reply?: string; error?: string}>(`/api/kaipian/ao-keys/test?lang=${lang}`, {method: 'POST', body: JSON.stringify({provider, model, apiKey, kind})});
+      setTestRes({ok: r.ok, msg: r.ok ? (kind === 'vision' ? t('通了，而且它真的看得见图（给了一张红色的图，它答：') + r.reply + t('）') : t('通了，模型回了：') + r.reply) : (r.error ?? t('失败'))});
       return r.ok;
     } catch (e: any) { setTestRes({ok: false, msg: e.message}); return false; } finally { setBusy(''); }
   };
@@ -247,7 +247,7 @@ export const Kaipian = () => {
     setMdl({...mdl, apiKey: ''}); await refresh();
   };
   const saveVision = async () => {
-    if (vis.provider && !(await testModel(vis.provider, vis.model))) return;
+    if (vis.provider && !(await testModel(vis.provider, vis.model, undefined, 'vision'))) return;
     await api('/api/kaipian/config', {method: 'PUT', body: JSON.stringify({vision: vis})});
     await refresh();
   };
@@ -318,12 +318,12 @@ export const Kaipian = () => {
       <h4>{t('看图把关的模型')}</h4>
       <p className="kp-hint">{t('给每条候选素材抽一帧打分，不及格的退回本机出图。没开的话，画面只按检索词字面匹配——真机上"猫为什么钻纸箱"因此配过一口铜钟。只能选能看图的供应商。')}</p>
       <label>{t('供应商')}
-        <select value={vis.provider} onChange={(e) => setVis({provider: e.target.value, model: (textProv?.providers.find((p) => p.id === e.target.value)?.models[0]) ?? ''})}>
+        <select value={vis.provider} onChange={(e) => setVis({provider: e.target.value, model: (textProv?.providers.find((p) => p.id === e.target.value)?.visionModels?.[0]) ?? ''})}>
           <option value="">{t('不开')}</option>
           {(textProv?.providers ?? []).filter((p) => p.vision).map((p) => <option key={p.id} value={p.id}>{p.id}{p.hasKey ? ' ✓' : ''}</option>)}
         </select></label>
       {vis.provider && <label>{t('模型')}<input list="kp-vm" value={vis.model} onChange={(e) => setVis({...vis, model: e.target.value})} placeholder={t('模型 id（可手填）')}/></label>}
-      <datalist id="kp-vm">{(textProv?.providers.find((p) => p.id === vis.provider)?.models ?? []).map((m) => <option key={m} value={m}/>)}</datalist>
+      <datalist id="kp-vm">{(textProv?.providers.find((p) => p.id === vis.provider)?.visionModels ?? []).map((m) => <option key={m} value={m}/>)}</datalist>
       <button className="primary" onClick={saveVision} disabled={!!busy}>{vis.provider ? t('验证并开启') : t('关闭看图把关')}</button>
       {testRes && <div className={`kp-testres ${testRes.ok ? 'ok' : 'bad'}`}>{testRes.ok ? '✅ ' : '⛔ '}{testRes.msg}</div>}
 
