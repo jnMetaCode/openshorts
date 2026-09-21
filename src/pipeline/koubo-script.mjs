@@ -37,7 +37,7 @@ export async function generateKoubo({ wf, inputs, buildDefaults, aoOpts = {}, lo
     try {
       project = buildKouboProject(res, { topic: inputs.topic, inputs, defaults: buildDefaults, lang: L });
     } catch (e) {
-      if (attempt < maxAttempts) { log(`脚本解析不了（${String(e.message).split('\n')[0]}），自动重写一次…`); lengthNote = null; continue; }
+      if (attempt < maxAttempts) { log(L === 'en' ? `The script could not be parsed (${String(e.message).split('\n')[0]}) — rewriting once…` : `脚本解析不了（${String(e.message).split('\n')[0]}），自动重写一次…`); lengthNote = null; continue; }
       return { ok: false, kind: 'parse', error: e, res };
     }
     const warn = lengthWarning(project.shots, inputs.duration, L);

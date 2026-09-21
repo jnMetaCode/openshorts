@@ -50,19 +50,19 @@ test('POST /new：没有话题直接 400，不去调 LLM', async () => {
 test('POST /ao-keys：存完立刻进环境变量（issue #12：AO 库函数只认环境变量，不同步就得重启才生效）；能换 key；shell 里显式设的不覆盖', async () => {
   const save = (provider, apiKey) => fetch(`${base}/ao-keys`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ provider, apiKey }) });
   delete process.env.ZHIPU_API_KEY; delete process.env.MOONSHOT_API_KEY;
-  assert.equal((await save('zhipu', 'zp-第一把-0001')).status, 200);
-  assert.equal(process.env.ZHIPU_API_KEY, 'zp-第一把-0001', '存完不重启就得能用');
+  assert.equal((await save('zhipu', 'zp-first-0001')).status, 200);
+  assert.equal(process.env.ZHIPU_API_KEY, 'zp-first-0001', '存完不重启就得能用');
   // 换 key：上一把是我们映射进去的，得跟着换；否则界面显示新 key、实际还在用旧的
-  await save('zhipu', 'zp-第二把-000002');
-  assert.equal(process.env.ZHIPU_API_KEY, 'zp-第二把-000002');
+  await save('zhipu', 'zp-second-000002');
+  assert.equal(process.env.ZHIPU_API_KEY, 'zp-second-000002');
   // 界面列 key 来源时，我们映射进去的变量不能再当成"来自环境变量"列一遍
   const st = await j(await fetch(`${base}/ao-status`));
   assert.deepEqual(st.body.saved, ['zhipu']); assert.ok(!st.body.envs.includes('ZHIPU_API_KEY'), '同一把 key 不能显示两遍');
   // 用户在 shell 里显式设的优先，界面存的不能盖掉它；也不能因为存别家的 key 被连带改动
-  process.env.MOONSHOT_API_KEY = 'ms-来自shell';
-  await save('moonshot', 'ms-界面存的-77');
-  assert.equal(process.env.MOONSHOT_API_KEY, 'ms-来自shell');
-  assert.equal(process.env.ZHIPU_API_KEY, 'zp-第二把-000002');
+  process.env.MOONSHOT_API_KEY = 'ms-from-shell';
+  await save('moonshot', 'ms-from-ui-77');
+  assert.equal(process.env.MOONSHOT_API_KEY, 'ms-from-shell');
+  assert.equal(process.env.ZHIPU_API_KEY, 'zp-second-000002');
   delete process.env.ZHIPU_API_KEY; delete process.env.MOONSHOT_API_KEY;
 });
 

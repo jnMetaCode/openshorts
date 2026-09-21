@@ -6,6 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
+import zlib from 'node:zlib';
 import { importAo } from '../src/core/ao-module.mjs';
 import { readConfig, writeConfig, aoHome, applyAoKeysToEnv, isEnvAppliedByUs } from '../src/config.mjs';
 import { sourcesAvailability } from '../src/sources/availability.mjs';
@@ -248,12 +249,14 @@ const KNOWN_TEXT_MODELS = {
   openai: ['gpt-5', 'gpt-5-mini'],
   agnes: ['agnes-2.0-flash', 'agnes-2.0-pro'],
   moonshot: ['kimi-k2-turbo-preview'],
-  zhipu: ['glm-4.6'],
+  zhipu: ['glm-4.6', 'glm-4-flash', 'glm-4.6v-flash'],   // 后两个是免费档；带 v 的能看图（issue #12 的用户真机验证通过的就是这两个）
   qwen: ['qwen3-max'],
   volcengine: ['doubao-seed-1-6-250615'],
   gemini: ['gemini-3-flash', 'gemini-3-pro'],
   xai: ['grok-4'],
 };
+// 看图把关的候选型号单列：和文本候选共用的话，选智谱时默认落在 glm-4.6（看不了图）。只列真机上验过能看图的，其余手填
+const KNOWN_VISION_MODELS = { agnes: ['agnes-2.0-flash'], zhipu: ['glm-4.6v-flash'] };
 // 能看图的（看图把关只能用这些）——CLI 订阅类连接器会把图片剥掉，选了等于没开
 const VISION_CAPABLE = ['agnes', 'openai', 'gemini', 'zhipu', 'qwen', 'volcengine', 'moonshot', 'apimart', 'lanox'];
 
@@ -267,6 +270,7 @@ kaipian.get('/providers/text', async (_req, res, next) => {
       fromEnv: !!(p.envKey && process.env[p.envKey]),
       envKey: p.envKey ?? null,
       models: KNOWN_TEXT_MODELS[p.id] ?? [],
+      visionModels: KNOWN_VISION_MODELS[p.id] ?? [],
       vision: VISION_CAPABLE.includes(p.id),
     }));
     const c = readConfig();
@@ -279,6 +283,10 @@ kaipian.post('/ao-keys', async (req, res) => {
   const apiKey = String(req.body?.apiKey ?? '').trim();
   if (!/^[a-z0-9-]{2,32}$/.test(provider)) return res.status(400).json({ error: tt(reqLang(req))('供应商 id 不合法', 'Invalid provider id') });
   if (!apiKey || apiKey.includes('…')) return res.status(400).json({ error: tt(reqLang(req))('请粘贴完整的 key', 'Paste the full key') });
+  // key 要放进 HTTP 头，只能是可见 ASCII。从聊天软件 / 网页复制时常带进全角空格、中文引号、零宽字符——
+  // 不在这里拦，到写脚本时引擎报的是"Cannot convert argument to a ByteString…可能原因：无法连接"，完全看不出是 key 的事
+  const badCh = [...apiKey].find((ch) => !/^[\x21-\x7e]$/.test(ch));
+  if (badCh) return res.status(400).json({ error: tt(reqLang(req))(`key 里有不该出现的字符（${/\s/.test(badCh) ? '空格或换行' : `「${badCh}」`}），多半是复制时带进来的——请回到供应商后台重新复制`, `The key contains a character that cannot be part of it (${/\s/.test(badCh) ? 'a space or line break' : `"${badCh}"`}), probably picked up while copying — copy it again from the provider's console`) });
   writeAoKey(provider, apiKey);
   // AO 的库函数只认环境变量：不在这里同步，刚存好的 key 要重启才生效，
   // 新用户"存 key → 写脚本"当场报"缺少 API Key"（issue #12）
@@ -286,17 +294,42 @@ kaipian.post('/ao-keys', async (req, res) => {
   res.json({ ok: true, saved: Object.keys(readAoKeys()).filter((k) => readAoKeys()[k]?.apiKey) });
 });
 
+/** 纯色 PNG 的 data URI（64×64，不引依赖）：验视觉模型用。1×1 的图有的供应商会拒收 */
+export function solidPngDataUri(r, g, b, size = 64) {
+  const crcTable = Array.from({ length: 256 }, (_, n) => { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; return c >>> 0; });
+  const crc = (buf) => { let c = 0xffffffff; for (const x of buf) c = crcTable[(c ^ x) & 0xff] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; };
+  const chunk = (type, data) => { const len = Buffer.alloc(4); len.writeUInt32BE(data.length); const td = Buffer.concat([Buffer.from(type), data]); const c = Buffer.alloc(4); c.writeUInt32BE(crc(td)); return Buffer.concat([len, td, c]); };
+  const ihdr = Buffer.alloc(13); ihdr.writeUInt32BE(size, 0); ihdr.writeUInt32BE(size, 4); ihdr[8] = 8; ihdr[9] = 2;
+  const row = Buffer.concat([Buffer.from([0]), Buffer.from(Array.from({ length: size }, () => [r, g, b]).flat())]);
+  const raw = Buffer.concat(Array.from({ length: size }, () => row));
+  const png = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), chunk('IHDR', ihdr), chunk('IDAT', zlib.deflateSync(raw)), chunk('IEND', Buffer.alloc(0))]);
+  return `data:image/png;base64,${png.toString('base64')}`;
+}
+
 /** 存之前先拿它真发一次请求：key 打错、余额没了、模型 id 不对，都在这里就说清楚，别等到出片时才炸 */
 kaipian.post('/ao-keys/test', async (req, res) => {
-  const { provider, model, apiKey } = req.body ?? {};
-  if (!provider || !model) return res.status(400).json({ error: tt(reqLang(req))('要选供应商和模型', 'Pick a provider and a model') });
+  const { provider, model, apiKey, kind } = req.body ?? {};
+  const T = tt(reqLang(req));
+  if (!provider || !model) return res.status(400).json({ error: T('要选供应商和模型', 'Pick a provider and a model') });
   try {
     const { createConnector } = await import('agency-orchestrator');
     const key = apiKey && !String(apiKey).includes('…') ? String(apiKey) : readAoKeys()[provider]?.apiKey;
     const cfg = { provider, model, api_key: key || undefined, timeout: 60000, retry: 0 };
+    if (kind === 'vision') {
+      // 看图把关必须真发一张图来验：只发文字的话，看不了图的模型（智谱 glm-4.6、deepseek-chat…）照样"验证通过"、
+      // 右栏显示 ✅，出片时每一镜看图才失败，画面退回按检索词字面匹配——又一个"看着好了，后面才炸"。
+      // 图片走的路与出片时一致（data URI 嵌在提示词里，见 src/sources/rank.mjs）。
+      const r = await createConnector(cfg).chat('Answer with one word.', `What is the main colour of this image? One English word only.\n${solidPngDataUri(220, 30, 30)}`, { ...cfg, max_tokens: 1500, temperature: 0 });
+      const reply = String(r.content ?? '').trim();
+      if (!/\bred\b|红/i.test(reply)) return res.json({ ok: false, error: T(`这个模型看不了图：给它一张纯红色的图，它回的是「${reply.slice(0, 40) || '空'}」。换成带视觉能力的型号（型号名里通常带 v / vl / vision）。`, `This model cannot see images: shown a plain red image, it answered "${reply.slice(0, 40) || 'nothing'}". Pick a vision-capable model (usually has v / vl / vision in its name).`) });
+      return res.json({ ok: true, reply: reply.slice(0, 60), saw: 'red' });
+    }
     const r = await createConnector(cfg).chat('只回一个词', '说 ok', { ...cfg, max_tokens: 1500 });
     res.json({ ok: true, reply: String(r.content ?? '').trim().slice(0, 60) });
-  } catch (e) { res.status(200).json({ ok: false, error: String(e.message).split('\n')[0].slice(0, 200) }); }
+  } catch (e) {
+    const first = String(e.message).split('\n')[0].slice(0, 200);
+    res.status(200).json({ ok: false, error: kind === 'vision' ? T(`${first}（验证时发了一张图；如果同一把 key 写脚本是好的，多半是这个模型不支持图片输入）`, `${first} (the check sends an image; if this key works for script writing, the model most likely does not accept image input)`) : first });
+  }
 });
 
 // 本地文生图（sd.cpp + FLUX.1-schnell，Apache-2.0 可商用）：素材库没命中时本机现画一张，不退纯色底

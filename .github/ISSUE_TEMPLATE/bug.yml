@@ -1,36 +1,57 @@
-name: 缺陷报告
-description: 报告可复现的编辑、渲染或素材处理问题
+name: 缺陷报告 / Bug report
+description: 出片、写脚本、配置、桌面包里遇到的问题 · Problems with rendering, script writing, setup or the desktop app
 title: "[Bug] "
 labels: [bug]
 body:
+  - type: markdown
+    attributes:
+      value: |
+        截图最有用——界面上的红色报错条、右栏「这台机器」那一块，一张图顶十句话。**贴之前请遮掉 API key。**
+        A screenshot helps most (the red error bar and the "This machine" panel). **Hide any API keys first.**
   - type: textarea
     id: description
     attributes:
-      label: 问题描述
+      label: 发生了什么 / What happened
+      description: 报错原文请整段贴上来，不要转述。Paste the error text as-is.
     validations:
       required: true
   - type: textarea
     id: reproduce
     attributes:
-      label: 复现步骤
-      placeholder: "1. 打开…\n2. 点击…\n3. 出现…"
+      label: 怎么做会出现 / Steps to reproduce
+      placeholder: "1. 打开开片，在「设置」里存了智谱的 key\n2. 第 1 步输入话题，点「生成脚本」\n3. 顶部出现红色报错…"
     validations:
       required: true
-  - type: textarea
-    id: expected
+  - type: dropdown
+    id: install
     attributes:
-      label: 预期行为
+      label: 怎么装的 / How you run it
+      options: ["桌面包 Desktop app (.dmg / .exe / .AppImage)", "npx openshorts / npm", "源码 git clone", "Docker", "不确定 Not sure"]
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: 系统 / OS
+      options: ["macOS (Apple Silicon)", "macOS (Intel)", "Windows", "Linux"]
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: 卡在哪一步 / Where
+      options: ["配置 key / 模型 Setup (keys, models)", "第 1 步 写脚本 Script", "第 2 步 来源与花费 Sources", "第 3 步 预览与调整 Preview", "第 4 步 出片 Render", "AI 短剧 Mini-drama", "图层动画编辑器 v1 editor", "安装 / 启动 Install / launch", "其它 Other"]
     validations:
       required: true
   - type: input
     id: version
     attributes:
-      label: 版本与环境
-      placeholder: "OpenShorts 1.0.0 / macOS / Node 22"
-    validations:
-      required: true
+      label: 版本 / Version
+      description: 桌面包看「关于」或安装包文件名；命令行跑 `npx openshorts version`。
+      placeholder: "2.0.0-alpha.24 / desktop 0.1.1"
   - type: textarea
-    id: logs
+    id: doctor
     attributes:
-      label: 日志与项目片段
-      description: 请删除密钥、私有素材路径和个人信息。
+      label: 体检输出与日志 / Doctor output & logs
+      description: 命令行用户请贴 `npx openshorts doctor` 的输出。请删除密钥、私有素材路径和个人信息。
+      render: text
