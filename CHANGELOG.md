@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [2.0.0-alpha.25] - 2026-09-21 · 第一个真用户 issue：存好的 key 立刻生效；Windows 修复；本机 Ollama 写脚本
+
 - **命名口径与同名消歧**：GitHub 上有个更早、更大的同名项目 mutonby/openshorts（长视频切条工具，openshorts.app）。我们不改名：
   主名 **OpenShorts**；英文语境（英文 README / 英文官网 / 英文界面页头 / llms.txt / SKILL.md / npm 描述）不再出现中文「开片」，
   需要区分时用拼音 **Kaipian** 作辅助标识；中文语境仍是「OpenShorts · 开片」。中英 README 顶部、llms.txt、SKILL.md 各加一句同名说明
