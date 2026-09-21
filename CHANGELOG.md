@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+- **MCP server（`openshorts mcp`）**：让 Claude Code / Cursor 等 agent 直接"话题 → 成片"。五个工具：`create_video`、`render_project`、`job_status`、
+  `list_projects`、`doctor`。出片 1–25 分钟远超工具调用超时，所以任务化：立刻回任务号，状态落盘在 `~/.openshorts/mcp-jobs/`；
+  server 被客户端重启后旧任务如实报 interrupted，不让 agent 永远等；子进程不 detach，server 退出一并收掉。任务跑的是 CLI 的
+  `new --json` / `run --json`（新增：stdout 末行 `@@json {...}` 结构化结果），不再抄第三份编排。质检没过但片子出来了 → done + qualityPass=false，
+  不算失败；失败原因取日志里最后一条 ⛔ 穿透给 agent。协议自己实现（只用 initialize / ping / tools/list / tools/call），不引 SDK。
+  server 名 `openshorts-kaipian`，与 MCP 注册表里不相关的 `io.github.mutonby/openshorts` 分得开。
+  真跑：通过 MCP 用本机 Ollama 写脚本（60 s）→ `render_project` 出片（285 s，1080×1920，抽帧看过）→ `job_status` 拿到全部路径与提醒。
+
 ## [2.0.0-alpha.25] - 2026-09-21 · 第一个真用户 issue：存好的 key 立刻生效；Windows 修复；本机 Ollama 写脚本
 
 - **命名口径与同名消歧**：GitHub 上有个更早、更大的同名项目 mutonby/openshorts（长视频切条工具，openshorts.app）。我们不改名：

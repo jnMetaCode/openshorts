@@ -160,6 +160,17 @@ openshorts drama --plan -i story="…" -i video_provider=local-sdcpp -i video_mo
 
 v1 的图层动画编辑器仍在 `/editor`，用法见 [`docs/v1.md`](docs/v1.md)。
 
+### 让 AI agent 直接出片（MCP）
+
+开片自带一个 stdio 的 [MCP](https://modelcontextprotocol.io) server：Claude Code、Claude 桌面版、Cursor 等一句"给我做一条 60 秒的 X 科普"，就能在你这台机器上拿到成片。
+
+```bash
+# Claude Code（git 检出方式；npm 包发出后改成 `npx openshorts mcp`）
+claude mcp add openshorts -- node ~/openshorts/bin/openshorts.mjs mcp
+```
+
+工具：`create_video`（话题 → 脚本 → 画面 → 配音 → mp4；出片要 1–25 分钟，所以立刻回任务号）、`render_project`（改过 `project.json` 后重出）、`job_status`（状态、最近日志，完成后给成片 / 字幕 / 封面 / 发布文案的路径和质检提醒）、`list_projects`、`doctor`。全程本机、用你自己的 key 或本机 Ollama，不上传、不自动发布。脚本用户可以直接用 `openshorts new --json` / `openshorts run --json`（stdout 末行，前缀 `@@json`）拿同一份结构化结果。
+
 ### 桌面版（Electron，不需要装 Node）
 
 ```bash

@@ -37,6 +37,11 @@ cd ~/openshorts && npm install
 
 (Once the npm package is published, `npx openshorts …` replaces the clone. Check the README's first code block.)
 
+
+### Alternative: use the MCP server instead of the CLI
+
+If your host supports MCP, register `node ~/openshorts/bin/openshorts.mjs mcp` (or `npx openshorts mcp` once published) and call `create_video` → poll `job_status` every 20–30 s → `doctor` on failure. It runs the same pipeline as the CLI steps below and returns the same file paths; prefer it when the host would otherwise time out on a 10-minute shell command.
+
 ### 2. Health check — do not skip
 
 ```bash

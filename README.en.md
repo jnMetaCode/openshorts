@@ -122,6 +122,17 @@ openshorts drama --plan -i story="…" -i video_provider=local-sdcpp -i video_mo
 
 Script writing needs one text-model key (DeepSeek / Kimi / GLM / … — configured once, shared with the engine's `~/.ao`). Visuals and voice-over are free on the default path (Edge TTS; set `tts.fallback = { provider, model, voice }` in `~/.openshorts/config.json` to fall back to an AO speech provider if Edge ever breaks). No shared keys ship with the product.
 
+## Let an AI agent make the video (MCP)
+
+OpenShorts ships an [MCP](https://modelcontextprotocol.io) server over stdio, so Claude Code, Claude Desktop, Cursor or any MCP client can go from "make me a 60-second explainer about X" to a finished mp4 on your machine — no dashboard, no cloud account.
+
+```bash
+# Claude Code (from a git checkout; once the npm package is out, use `npx openshorts mcp`)
+claude mcp add openshorts -- node ~/openshorts/bin/openshorts.mjs mcp
+```
+
+Tools: `create_video` (topic → script → footage → voice → mp4; returns a job id at once because a render takes 1–25 min), `render_project` (re-render after editing `project.json`), `job_status` (state, recent log, and when done the paths of the video / captions / cover / publish copy plus quality warnings), `list_projects`, `doctor`. Everything runs locally with your own keys or with a local Ollama model; nothing is uploaded and nothing is auto-posted. The same structured result is available to scripts via `openshorts new --json` / `openshorts run --json` (last stdout line, prefixed `@@json`).
+
 ## Desktop app (Electron, no Node install needed)
 
 ```bash
