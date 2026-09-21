@@ -18,7 +18,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawn, execFileSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
+import { importAo } from '../core/ao-module.mjs';
 import { downloadWithResume, pickSdcppAsset, assetMacOS, hfExpectedSha256 } from './download.mjs';
 import { OPENSHORTS_HOME } from '../config.mjs';
 
@@ -66,8 +66,7 @@ export const modelFiles = (m) => [
 /** 与 AO 的 local-sdcpp 共用同一个 sd-cli 和模型目录（装 H3 时已经下过 cli 了就别再下一遍） */
 export async function sdImagePaths() {
   try {
-    const main = fileURLToPath(import.meta.resolve('agency-orchestrator'));
-    const m = await import(path.join(path.dirname(main), 'connectors', 'local-sdcpp.js'));
+    const m = await importAo('connectors', 'local-sdcpp.js');
     if (m.sdcppPaths) return m.sdcppPaths();
   } catch { /* AO 没暴露就用同样的默认路径 */ }
   return { cli: path.join(OPENSHORTS_HOME, 'bin', `sd-cli${process.platform === 'win32' ? '.exe' : ''}`), modelsDir: path.join(OPENSHORTS_HOME, 'models') };
