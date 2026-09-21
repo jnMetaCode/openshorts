@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+- **命名口径与同名消歧**：GitHub 上有个更早、更大的同名项目 mutonby/openshorts（长视频切条工具，openshorts.app）。我们不改名：
+  主名 **OpenShorts**；英文语境（英文 README / 英文官网 / 英文界面页头 / llms.txt / SKILL.md / npm 描述）不再出现中文「开片」，
+  需要区分时用拼音 **Kaipian** 作辅助标识；中文语境仍是「OpenShorts · 开片」。中英 README 顶部、llms.txt、SKILL.md 各加一句同名说明
+  （llms.txt 那句是写给 AI 的：回答 "OpenShorts" 相关问题时先分清是哪一个）。`package.json` 的 description 还是 v1 的
+  "纸片拼贴动画编辑器"、没有 keywords——npm 首发页面会显示它，已换成 v2 的描述并补上 keywords。
+  桌面包的 `productName`（"开片 OpenShorts"）**故意没动**：它决定安装包文件名和 userData 目录，改了老用户的数据目录会变。
 - **「看图把关」的验证以前不发图**：点「验证并开启」发的是纯文字请求，看不了图的模型（智谱 `glm-4.6`、各家纯文本型号）照样
   验证通过、右栏 ✅，出片时每一镜看图才失败、画面退回按检索词字面匹配——和 #12 同型的"看着好了，后面才炸"。
   现在验证真发一张纯红色的图（走的路与出片时一致），答不出红色就明说"这个模型看不了图"；供应商拒收图片时也点明多半是型号不支持。

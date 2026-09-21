@@ -2,7 +2,24 @@
   "name": "openshorts",
   "version": "2.0.0-alpha.24",
   "type": "module",
-  "description": "Local-first layered paper collage video editor powered by Remotion",
+  "description": "OpenShorts (Kaipian): local-first short-video pipeline — topic in, publish-ready vertical video out (script, footage or on-device AI images, TTS, captions, mp4). Free path costs $0. Not related to openshorts.app.",
+  "keywords": [
+    "short-video",
+    "video-generation",
+    "text-to-video",
+    "faceless-video",
+    "tiktok",
+    "youtube-shorts",
+    "douyin",
+    "tts",
+    "subtitles",
+    "ffmpeg",
+    "remotion",
+    "local-first",
+    "ollama",
+    "ai-video",
+    "kaipian"
+  ],
   "license": "MIT",
   "engines": {
     "node": ">=20"

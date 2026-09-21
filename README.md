@@ -2,6 +2,8 @@
 
 <p align="center"><b>中文</b> · <a href="README.en.md">English</a> · <a href="https://os.aiolaola.com/">官网</a> · <a href="https://os.aiolaola.com/en/">Website</a></p>
 
+> **同名说明**：本项目是 `jnMetaCode/openshorts`（中文名「开片」，拼音 Kaipian）——**话题进，成片出**。与 [mutonby/openshorts](https://github.com/mutonby/openshorts)（openshorts.app，把长视频切成短片的工具）是两个互不相关的项目，只是恰好重名。
+
 **文案进，成片出。** 一条本地优先的开源短视频生产线：给一个话题，它写脚本、找画面、配音、烧字幕、出成片和发布文案——
 **默认零成本跑通第一条**，花多少钱、等多久，运行前就告诉你。
 

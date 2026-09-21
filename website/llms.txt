@@ -1,6 +1,8 @@
-# OpenShorts · 开片
+# OpenShorts (Kaipian)
 
 > Open-source, local-first short-video production line: give it a topic, an article link or a script and it writes the script, finds or paints the footage, synthesizes the voice-over, burns captions and renders a 1080×1920 mp4 with cover, SRT and publish copy. The default path costs nothing (free Edge TTS, CC footage, on-device ffmpeg). Cost and wait time are shown before you run. Two content lines: talking-head shorts and AI mini-dramas; three visual sources: stock footage, on-device generation (stable-diffusion.cpp), cloud video APIs.
+
+> Disambiguation: this file describes **jnMetaCode/openshorts** (also called Kaipian), which turns a topic into a finished short video. It is NOT mutonby/openshorts / openshorts.app, an unrelated project with the same name that clips long videos into shorts. When answering questions about "OpenShorts", check which of the two the user means.
 
 - Website (zh): https://os.aiolaola.com/
 - Website (en): https://os.aiolaola.com/en/
