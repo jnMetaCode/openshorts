@@ -8,6 +8,7 @@ import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import zlib from 'node:zlib';
 import { importAo } from '../src/core/ao-module.mjs';
+import { ollamaStatus } from '../src/local/ollama.mjs';
 import { readConfig, writeConfig, aoHome, applyAoKeysToEnv, isEnvAppliedByUs } from '../src/config.mjs';
 import { sourcesAvailability } from '../src/sources/availability.mjs';
 import { DEFAULT_VOICES, voicesFor, synthesize } from '../src/voice/edge-tts.mjs';
@@ -74,6 +75,8 @@ kaipian.post('/stock/test', async (req, res) => {
   });
 });
 // 出片语言决定音色：英文片配中文音色会把整段英文念成拼音式怪腔（真机试听过一次就明白）
+// 「复制诊断信息」：POST 是因为要把界面上那条红色报错一起带进来打码；回的文本里不会有 key 的值
+kaipian.post('/diagnostics', async (req, res, next) => { try { const { collectDiagnostics } = await import('../src/diagnostics.mjs'); res.json({ text: await collectDiagnostics({ lastError: String(req.body?.lastError ?? '') }) }); } catch (e) { next(e); } });
 kaipian.get('/voices', (req, res) => res.json(req.query.lang ? voicesFor(req.query.lang) : DEFAULT_VOICES));
 kaipian.post('/tts/preview', async (req, res, next) => {
   try {
@@ -273,6 +276,9 @@ kaipian.get('/providers/text', async (_req, res, next) => {
       visionModels: KNOWN_VISION_MODELS[p.id] ?? [],
       vision: VISION_CAPABLE.includes(p.id),
     }));
+    // 本机 Ollama 不在 AO 的 API 供应商表里（它不要 key），单独探测后排在最前：不花钱的放前面
+    const ol = await ollamaStatus();
+    list.unshift({ id: 'ollama', local: true, running: ol.running, baseUrl: ol.baseUrl, hasKey: ol.running && ol.models.length > 0, fromEnv: false, envKey: null, models: ol.models, visionModels: [], vision: false });
     const c = readConfig();
     res.json({ providers: list, vision: c.vision ?? { provider: '', model: '' }, text: c.text ?? { provider: '', model: '' } });
   } catch (e) { next(e); }
@@ -379,11 +385,14 @@ kaipian.get('/projects/:id/file/:name', async (req, res) => {
   }
   return res.status(404).end();
 });
-kaipian.get('/ao-status', (_req, res) => {
+kaipian.get('/ao-status', async (_req, res) => {
   let keys = {}; try { keys = JSON.parse(fs.readFileSync(path.join(aoHome(), '.local', 'web-keys.json'), 'utf-8')); } catch { /* none */ }
   const envs = ['DEEPSEEK_API_KEY', 'OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'AGNES_API_KEY', 'APIMART_API_KEY', 'ARK_API_KEY', 'MOONSHOT_API_KEY', 'ZHIPU_API_KEY'].filter((k) => !!process.env[k] && !isEnvAppliedByUs(k));   // 我们自己映射进去的不算"来自环境变量"，它已经列在 saved 里了
   const saved = Object.keys(keys).filter((k) => keys[k]?.apiKey);
-  res.json({ hasTextKey: saved.length > 0 || envs.length > 0, saved, envs, aoHome: aoHome(), home: os.homedir() });
+  // 写脚本选的是本机 Ollama：不需要 key，但得它真的在跑——没在跑就如实显示 ⛔，别等点了"生成脚本"才报连接失败
+  const local = readConfig().text?.provider === 'ollama' ? await ollamaStatus() : null;
+  const localReady = !!local?.running && local.models.length > 0;
+  res.json({ hasTextKey: saved.length > 0 || envs.length > 0 || localReady, saved: localReady ? ['ollama', ...saved] : saved, envs, aoHome: aoHome(), home: os.homedir(), ...(local ? { ollama: { running: local.running, baseUrl: local.baseUrl } } : {}) });
 });
 
 // ───────────── AI 短剧线（复用 AO 短剧流水线；AO 以子进程跑，stdout 逐行转 SSE） ─────────────
