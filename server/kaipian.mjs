@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
-import { readConfig, writeConfig, aoHome } from '../src/config.mjs';
+import { readConfig, writeConfig, aoHome, applyAoKeysToEnv, isEnvAppliedByUs } from '../src/config.mjs';
 import { sourcesAvailability } from '../src/sources/availability.mjs';
 import { DEFAULT_VOICES, voicesFor, synthesize } from '../src/voice/edge-tts.mjs';
 import { uniqueProjectId } from '../src/project/koubo.mjs';
@@ -274,12 +274,15 @@ kaipian.get('/providers/text', async (_req, res, next) => {
   } catch (e) { next(e); }
 });
 
-kaipian.post('/ao-keys', (req, res) => {
+kaipian.post('/ao-keys', async (req, res) => {
   const provider = String(req.body?.provider ?? '').trim();
   const apiKey = String(req.body?.apiKey ?? '').trim();
   if (!/^[a-z0-9-]{2,32}$/.test(provider)) return res.status(400).json({ error: tt(reqLang(req))('供应商 id 不合法', 'Invalid provider id') });
   if (!apiKey || apiKey.includes('…')) return res.status(400).json({ error: tt(reqLang(req))('请粘贴完整的 key', 'Paste the full key') });
   writeAoKey(provider, apiKey);
+  // AO 的库函数只认环境变量：不在这里同步，刚存好的 key 要重启才生效，
+  // 新用户"存 key → 写脚本"当场报"缺少 API Key"（issue #12）
+  await applyAoKeysToEnv();
   res.json({ ok: true, saved: Object.keys(readAoKeys()).filter((k) => readAoKeys()[k]?.apiKey) });
 });
 
@@ -345,7 +348,7 @@ kaipian.get('/projects/:id/file/:name', async (req, res) => {
 });
 kaipian.get('/ao-status', (_req, res) => {
   let keys = {}; try { keys = JSON.parse(fs.readFileSync(path.join(aoHome(), '.local', 'web-keys.json'), 'utf-8')); } catch { /* none */ }
-  const envs = ['DEEPSEEK_API_KEY', 'OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'AGNES_API_KEY', 'APIMART_API_KEY', 'ARK_API_KEY', 'MOONSHOT_API_KEY', 'ZHIPU_API_KEY'].filter((k) => !!process.env[k]);
+  const envs = ['DEEPSEEK_API_KEY', 'OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'AGNES_API_KEY', 'APIMART_API_KEY', 'ARK_API_KEY', 'MOONSHOT_API_KEY', 'ZHIPU_API_KEY'].filter((k) => !!process.env[k] && !isEnvAppliedByUs(k));   // 我们自己映射进去的不算"来自环境变量"，它已经列在 saved 里了
   const saved = Object.keys(keys).filter((k) => keys[k]?.apiKey);
   res.json({ hasTextKey: saved.length > 0 || envs.length > 0, saved, envs, aoHome: aoHome(), home: os.homedir() });
 });

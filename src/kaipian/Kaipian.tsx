@@ -401,7 +401,7 @@ export const Kaipian = () => {
           <label>{t('目标时长')}<select value={duration} onChange={(e) => setDuration(e.target.value)}>{['45秒', '60秒', '90秒'].map((d) => <option key={d} value={d}>{t(d)}</option>)}</select></label>
           <label>{t('语气')}<select value={tone} onChange={(e) => setTone(e.target.value)}>{['科普讲解', '犀利观点', '轻松口播'].map((d) => <option key={d} value={d}>{t(d)}</option>)}</select></label>
         </div>
-        {aoStatus && !aoStatus.hasTextKey && <div className="kp-warn">{t('还没有写脚本用的文本模型 key。用你自己的 key：在 AO 密钥页配置（')}<code>{aoStatus.aoHome}</code>{t('）或设置环境变量 ')}<code>DEEPSEEK_API_KEY</code>{t(' 等后重启。')}</div>}
+        {aoStatus && !aoStatus.hasTextKey && <div className="kp-warn">{t('还没有写脚本用的文本模型 key。')}<button className="kp-cfgbtn" onClick={() => setShowCfg(true)}>⚙ {t('设置')}</button>{t(' 里选供应商、粘贴 key，验证通过就能用，不用重启。也可以设环境变量 ')}<code>DEEPSEEK_API_KEY</code>{t(' 等（改环境变量要重启）。')}</div>}
         <div className="kp-actions"><button className="primary" disabled={!topic.trim() || !!busy} onClick={() => setStep(2)}>{t('下一步：选来源')}</button></div>
       </> : <>
         <label>{t('一段故事（一两句话即可，AI 编剧会拆成 3 镜）')}<textarea value={story} onChange={(e) => setStory(e.target.value)} rows={5} placeholder={t('例如：深夜便利店，值夜班的女孩把最后一份关东煮留给每天来但从不说话的流浪老人；今晚老人没来……')}/></label>
@@ -410,7 +410,7 @@ export const Kaipian = () => {
           <label>{t('视觉风格')}<input value={style} onChange={(e) => setStyle(e.target.value)} placeholder={t('美式复古好莱坞 / 霓虹赛博电影 / 日系清新…')}/></label>
           <label>{t('画幅')}<select value={ratio} onChange={(e) => setRatio(e.target.value)}><option value="16:9">{t('横版 16:9')}</option><option value="9:16">{t('竖版 9:16')}</option></select></label>
         </div>
-        {aoStatus && !aoStatus.hasTextKey && <div className="kp-warn">{t('写剧本需要文本模型 key（AO 密钥页或环境变量）。')}</div>}
+        {aoStatus && !aoStatus.hasTextKey && <div className="kp-warn">{t('写剧本需要文本模型 key：')}<button className="kp-cfgbtn" onClick={() => setShowCfg(true)}>⚙ {t('设置')}</button>{t(' 里配，存完即用。')}</div>}
         <div className="kp-actions"><button className="primary" disabled={!story.trim() || !!busy} onClick={() => setStep(2)}>{t('下一步：选档位')}</button></div>
       </>}
     </section>}

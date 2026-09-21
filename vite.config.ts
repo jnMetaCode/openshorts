@@ -6,9 +6,8 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          remotion: ['remotion', '@remotion/player'],
-        },
+        // 函数形式：Vite 8（rolldown）不再接受对象形式（TS2769），函数形式新旧版本都认
+        manualChunks: (id) => (/\/node_modules\/(remotion|@remotion\/player)\//.test(id) ? 'remotion' : undefined),
       },
     },
   },
