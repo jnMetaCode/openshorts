@@ -48,7 +48,7 @@ export const Kaipian = () => {
   const [tone, setTone] = useState('科普讲解');
   const [sources, setSources] = useState<Sources | null>(null);
   const [ff, setFf] = useState<{found: boolean; version: string; subtitles: boolean; drawtext: boolean; managed: boolean} | null>(null);
-  const [textProv, setTextProv] = useState<{providers: Array<{id: string; hasKey: boolean; fromEnv: boolean; envKey: string | null; models: string[]; visionModels?: string[]; vision: boolean}>; vision: {provider: string; model: string}} | null>(null);
+  const [textProv, setTextProv] = useState<{providers: Array<{id: string; hasKey: boolean; fromEnv: boolean; envKey: string | null; models: string[]; visionModels?: string[]; vision: boolean; local?: boolean; running?: boolean; baseUrl?: string}>; vision: {provider: string; model: string}} | null>(null);
   const [mdl, setMdl] = useState({provider: '', model: '', apiKey: ''});   // 写脚本的模型（供应商 + 模型 id + key）
   const [vis, setVis] = useState({provider: '', model: ''});
   const [testRes, setTestRes] = useState<{ok: boolean; msg: string} | null>(null);
@@ -246,6 +246,22 @@ export const Kaipian = () => {
     await api('/api/kaipian/config', {method: 'PUT', body: JSON.stringify({text: {provider: mdl.provider, model: mdl.model}})});
     setMdl({...mdl, apiKey: ''}); await refresh();
   };
+  // 「复制诊断信息」：版本 / 系统 / 安装方式 / 体检 / 当前报错，一键进剪贴板（服务端已打码 key 和家目录）。
+  // 桌面包用户查不到版本、也跑不了 `openshorts doctor`——第一个真用户 issue 的"版本"一栏填的是"mac"
+  const [diagState, setDiagState] = useState<'' | 'busy' | 'copied' | 'manual'>('');
+  const [diagText, setDiagText] = useState('');
+  const copyDiag = async () => {
+    setDiagState('busy');
+    try {
+      const r = await api<{text: string}>('/api/kaipian/diagnostics', {method: 'POST', body: JSON.stringify({lastError: error})});
+      setDiagText(r.text);
+      try { await navigator.clipboard.writeText(r.text); setDiagState('copied'); } catch { setDiagState('manual'); }   // 剪贴板被拒就把文本摆出来让用户自己选
+    } catch (e: any) { setDiagText(String(e.message)); setDiagState('manual'); }
+  };
+  const DiagButton = () => <>
+    <button className="kp-cfgbtn" disabled={diagState === 'busy'} onClick={(e) => { e.stopPropagation(); copyDiag(); }}>{diagState === 'copied' ? t('已复制 ✓') : diagState === 'busy' ? t('正在体检…') : t('复制诊断信息')}</button>
+    {(diagState === 'copied' || diagState === 'manual') && <a href="https://github.com/jnMetaCode/openshorts/issues/new?template=bug.yml" target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} style={{marginLeft: 8}}>{t('去反馈 ↗')}</a>}
+  </>;
   const saveVision = async () => {
     if (vis.provider && !(await testModel(vis.provider, vis.model, undefined, 'vision'))) return;
     await api('/api/kaipian/config', {method: 'PUT', body: JSON.stringify({vision: vis})});
@@ -300,18 +316,24 @@ export const Kaipian = () => {
       {row(t('本机出图'), !!gen?.ok, gen?.ok ? `${gen.ready}${t(' 就绪')}` : t('没装模型，找不到素材时退纯色底'))}
       {row(t('文本模型'), !!aoStatus?.hasTextKey, aoStatus?.hasTextKey ? [...(aoStatus.saved ?? []), ...(aoStatus.envs ?? [])].join(lang === 'en' ? ', ' : '、') : t('没配，第 1 步写不了脚本'))}
       {row(t('素材源'), !!sources?.stock?.ok, sources?.stock?.tier === 'keyed' ? t('Pexels/Pixabay + CC 兜底') : t('CC 免 key（配 Pexels 更好）'))}
+      <p className="kp-hint" style={{marginTop: 8}}><DiagButton/> {t('报问题时贴上它：版本、系统、体检结果，key 已打码。')}</p>
 
       <h4>{t('写脚本的模型')}</h4>
       <label>{t('供应商')}
         <select value={mdl.provider} onChange={(e) => setMdl({provider: e.target.value, model: (textProv?.providers.find((p) => p.id === e.target.value)?.models[0]) ?? '', apiKey: ''})}>
           <option value="">{t('选一个…')}</option>
-          {(textProv?.providers ?? []).map((p) => <option key={p.id} value={p.id}>{p.id}{p.hasKey ? ' ✓' : ''}</option>)}
+          {(textProv?.providers ?? []).map((p) => <option key={p.id} value={p.id}>{p.local ? t('ollama（本机，免费，不用 key）') : p.id}{p.hasKey ? ' ✓' : ''}</option>)}
         </select></label>
       {mdl.provider && <>
         <label>{t('模型')}<input list="kp-tm" value={mdl.model} onChange={(e) => setMdl({...mdl, model: e.target.value})} placeholder={t('模型 id（可手填）')}/></label>
         <datalist id="kp-tm">{(textProv?.providers.find((p) => p.id === mdl.provider)?.models ?? []).map((m) => <option key={m} value={m}/>)}</datalist>
-        <label>{t('key')}<input type="password" value={mdl.apiKey} onChange={(e) => setMdl({...mdl, apiKey: e.target.value})}
-          placeholder={textProv?.providers.find((p) => p.id === mdl.provider)?.hasKey ? t('已存过，留空则沿用') : t('粘贴后保存')}/></label>
+        {(() => { const p = textProv?.providers.find((x) => x.id === mdl.provider); if (!p?.local) return null;
+          // 本机模型：不要 key，但要说清两种"用不了"——没在跑 / 在跑但一个能聊天的模型都没装
+          return <p className="kp-hint">{!p.running ? <>{t('没连上本机的 Ollama（')}<code>{p.baseUrl}</code>{t('）。装好并启动后回来刷新：')}<a href="https://ollama.com/download" target="_blank" rel="noreferrer">ollama.com</a></>
+            : p.models.length === 0 ? <>{t('Ollama 在跑，但还没装能写稿的模型。终端里跑：')}<code>ollama pull qwen2.5:7b</code></>
+            : t('用这台机器上的模型写脚本：不花钱、不联网。7B 级的小模型偶尔写得偏短，开片会自动要求重写一次；想更稳就换 14B 以上。')}</p>; })()}
+        {!textProv?.providers.find((p) => p.id === mdl.provider)?.local && <label>{t('key')}<input type="password" value={mdl.apiKey} onChange={(e) => setMdl({...mdl, apiKey: e.target.value})}
+          placeholder={textProv?.providers.find((p) => p.id === mdl.provider)?.hasKey ? t('已存过，留空则沿用') : t('粘贴后保存')}/></label>}
         <button className="primary" onClick={saveTextModel} disabled={!!busy}>{t('验证并保存')}</button>
       </>}
 
@@ -372,7 +394,8 @@ export const Kaipian = () => {
     </div>}
     <div className={`kp-shell ${showCfg ? '' : 'wide'}`}><div className="kp-main">
     <Steps/>
-    {error && <div className="kp-error" onClick={() => setError('')}>{error} ×</div>}
+    {error && <div className="kp-error" onClick={() => setError('')}>{error} × <span style={{marginLeft: 10}}><DiagButton/></span></div>}
+    {diagState === 'manual' && <textarea className="kp-diag" readOnly value={diagText} onFocus={(e) => e.currentTarget.select()} rows={8} style={{width: '100%', fontSize: 11}}/>}
     {busy && <div className="kp-busy">{busy}</div>}
     {busy && step === 2 && log.length > 0 && <pre className="kp-log" style={{maxHeight: 160}}>{log.join('\n')}</pre>}
     {!showCfg && <StatusStrip/>}
@@ -401,7 +424,7 @@ export const Kaipian = () => {
           <label>{t('目标时长')}<select value={duration} onChange={(e) => setDuration(e.target.value)}>{['45秒', '60秒', '90秒'].map((d) => <option key={d} value={d}>{t(d)}</option>)}</select></label>
           <label>{t('语气')}<select value={tone} onChange={(e) => setTone(e.target.value)}>{['科普讲解', '犀利观点', '轻松口播'].map((d) => <option key={d} value={d}>{t(d)}</option>)}</select></label>
         </div>
-        {aoStatus && !aoStatus.hasTextKey && <div className="kp-warn">{t('还没有写脚本用的文本模型 key。')}<button className="kp-cfgbtn" onClick={() => setShowCfg(true)}>⚙ {t('设置')}</button>{t(' 里选供应商、粘贴 key，验证通过就能用，不用重启。也可以设环境变量 ')}<code>DEEPSEEK_API_KEY</code>{t(' 等（改环境变量要重启）。')}</div>}
+        {aoStatus && !aoStatus.hasTextKey && <div className="kp-warn">{t('还没有写脚本用的文本模型 key。')}<button className="kp-cfgbtn" onClick={() => setShowCfg(true)}>⚙ {t('设置')}</button>{t(' 里选供应商、粘贴 key，验证通过就能用，不用重启。也可以设环境变量 ')}<code>DEEPSEEK_API_KEY</code>{t(' 等（改环境变量要重启）。')}{t('没有 key 也行：设置里选 ollama，用本机模型写，免费。')}</div>}
         <div className="kp-actions"><button className="primary" disabled={!topic.trim() || !!busy} onClick={() => setStep(2)}>{t('下一步：选来源')}</button></div>
       </> : <>
         <label>{t('一段故事（一两句话即可，AI 编剧会拆成 3 镜）')}<textarea value={story} onChange={(e) => setStory(e.target.value)} rows={5} placeholder={t('例如：深夜便利店，值夜班的女孩把最后一份关东煮留给每天来但从不说话的流浪老人；今晚老人没来……')}/></label>

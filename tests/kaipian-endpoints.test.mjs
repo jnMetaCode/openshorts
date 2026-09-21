@@ -42,6 +42,43 @@ test('PUT /config：根目录拒绝，合法目录通过，打码的 key 不会�
   assert.ok(!JSON.stringify(cfg.body).includes('px-真key-123456'), 'GET /config 不能回显完整 key');
 });
 
+test('页面一打开就会请求的只读路由：空目录、任何平台上都得回 200 + JSON', async () => {
+  // 这些路由以前一条测试都没有。Windows 上其中三条（/providers/text、/drama/providers、/local/status）
+  // 因为裸路径 import 一直是 500，设置面板列不出供应商——CI 三平台都在跑，就是没人打过它们。
+  const routes = ['/sources', '/sources?lang=en', '/config', '/voices', '/voices?lang=en', '/projects', '/providers/text', '/local-image', '/ffmpeg', '/ao-status', '/drama/providers', '/drama/options', '/drama/status', '/local/status', '/platforms'];
+  for (const r of routes) {
+    const res = await fetch(base + r);
+    const body = await res.json().catch(() => undefined);
+    assert.equal(res.status, 200, `${r} → ${res.status} ${JSON.stringify(body ?? '').slice(0, 200)}`);
+    assert.ok(body && typeof body === 'object', `${r} 回的不是 JSON`);
+  }
+  const prov = await (await fetch(`${base}/providers/text`)).json();
+  assert.ok(prov.providers.length >= 10 && prov.providers.every((p) => p.id), '供应商表要真的从 AO 里取到');
+  assert.ok((await (await fetch(`${base}/local/status`)).json()).catalog, '本地模型目录要真的从 AO 里取到');
+});
+
+test('本机 Ollama：在跑就排在供应商最前、不要 key；选了它 /ao-status 才算"能写脚本"，它一停就如实变 ⛔', async () => {
+  const http = await import('node:http');
+  const fakeOllama = http.createServer((req, res) => { res.writeHead(200, { 'content-type': 'application/json' }); res.end(JSON.stringify({ models: [{ name: 'nomic-embed-text:latest', size: 3e8 }, { name: 'qwen2.5:7b', size: 4.7e9 }] })); });
+  await new Promise((ok) => fakeOllama.listen(0, '127.0.0.1', ok));
+  process.env.OLLAMA_BASE_URL = `http://127.0.0.1:${fakeOllama.address().port}`;
+  try {
+    const first = (await (await fetch(`${base}/providers/text`)).json()).providers[0];
+    assert.deepEqual([first.id, first.local, first.running, first.hasKey, first.models], ['ollama', true, true, true, ['qwen2.5:7b']]);
+    // 只是装了 Ollama 不算数——得用户真的选了它
+    writeConfig({ text: { provider: '', model: '' } });
+    const keysFile = path.join(home, '.ao', '.local', 'web-keys.json'); const keep = fs.existsSync(keysFile) ? fs.readFileSync(keysFile) : null; if (keep) fs.rmSync(keysFile);
+    assert.equal((await (await fetch(`${base}/ao-status`)).json()).hasTextKey, false);
+    writeConfig({ text: { provider: 'ollama', model: 'qwen2.5:7b' } });
+    const on = await (await fetch(`${base}/ao-status`)).json();
+    assert.equal(on.hasTextKey, true); assert.deepEqual(on.saved, ['ollama']);
+    await new Promise((ok) => fakeOllama.close(ok));
+    const off = await (await fetch(`${base}/ao-status`)).json();
+    assert.equal(off.hasTextKey, false, 'Ollama 停了就不能再显示 ✅'); assert.equal(off.ollama.running, false);
+    if (keep) fs.writeFileSync(keysFile, keep);
+  } finally { delete process.env.OLLAMA_BASE_URL; writeConfig({ text: { provider: '', model: '' } }); fakeOllama.close(); }
+});
+
 test('POST /new：没有话题直接 400，不去调 LLM', async () => {
   const r = await j(await fetch(`${base}/new`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' }));
   assert.equal(r.status, 400); assert.match(r.body.error, /话题/);
