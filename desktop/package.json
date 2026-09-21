@@ -2,7 +2,7 @@
   "name": "openshorts-desktop",
   "private": true,
   "version": "0.1.1",
-  "description": "开片 OpenShorts — desktop app (Electron)",
+  "description": "OpenShorts — desktop app (Electron)",
   "main": "main.cjs",
   "scripts": {
     "start": "electron .",

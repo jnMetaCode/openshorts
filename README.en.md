@@ -1,6 +1,8 @@
-# OpenShorts · 开片
+# OpenShorts
 
 <p align="center"><a href="README.md">中文</a> · <b>English</b> · <a href="https://os.aiolaola.com/en/">Website</a></p>
+
+> **Not the clip generator.** This is `jnMetaCode/openshorts` (a.k.a. **Kaipian**): *topic in → finished short video out*. It is unrelated to [mutonby/openshorts](https://github.com/mutonby/openshorts) (openshorts.app), a separate project that cuts long videos into clips and happens to share the name.
 
 **Copy in, video out.** A local-first, open-source short-video production line: give it a topic and it writes the script, finds the footage, voices it, burns in subtitles, and hands you a finished video plus publish copy — **the first video costs $0 by default**, and it tells you cost and wait time *before* running.
 

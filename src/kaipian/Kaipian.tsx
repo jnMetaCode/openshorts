@@ -380,7 +380,7 @@ export const Kaipian = () => {
 
   return <div className="kp">
     <header className="kp-top">
-      <div className="kp-brand"><span className="kp-mark">开</span><div><strong>OpenShorts · 开片</strong><small>{t('文案进，成片出 · 本地优先 · 花多少钱运行前看见')}</small></div></div>
+      <div className="kp-brand"><span className="kp-mark">开</span><div><strong>{lang === 'en' ? 'OpenShorts' : 'OpenShorts · 开片'}</strong><small>{t('文案进，成片出 · 本地优先 · 花多少钱运行前看见')}</small></div></div>
       <nav>
         {projects.length > 0 && <select onChange={(e) => e.target.value && openProject(e.target.value)} defaultValue=""><option value="">{t('最近项目…')}</option>{projects.map((p) => <option key={p.id} value={p.id}>{p.final ? '🎬 ' : '✍️ '}{p.title || p.id}　{p.updatedAt?.slice(5, 16).replace('T', ' ')}</option>)}</select>}
         <button className="kp-lang" onClick={() => { const l = lang === 'zh' ? 'en' : 'zh'; setLang(l); setLangState(l); }}>{lang === 'zh' ? 'EN' : '中'}</button>
