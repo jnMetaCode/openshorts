@@ -68,18 +68,18 @@
     "@remotion/player": "4.0.523",
     "@remotion/renderer": "4.0.523",
     "agency-orchestrator": "^0.19.2",
-    "cors": "2.8.5",
-    "express": "5.1.0",
+    "cors": "2.8.6",
+    "express": "5.2.1",
     "msedge-tts": "^2.0.7",
-    "multer": "2.0.2",
+    "multer": "2.4.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "remotion": "4.0.523",
-    "zod": "4.1.12"
+    "zod": "4.6.5"
   },
   "devDependencies": {
     "@remotion/cli": "4.0.523",
-    "@types/express": "5.0.3",
+    "@types/express": "5.0.6",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
     "@vitejs/plugin-react": "5.0.4",
