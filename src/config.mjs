@@ -28,6 +28,10 @@ export function aoHome() { return process.env.AO_DATA_DIR || process.env.AO_HOME
 /** AO 保存的 key（Studio 存的）：{ provider: { apiKey } } */
 export function aoSavedKeys() { try { return JSON.parse(fs.readFileSync(path.join(aoHome(), '.local', 'web-keys.json'), 'utf-8')); } catch { return {}; } }
 
+const appliedByUs = new Map();   // envKey → 我们写进去的值
+/** 这个环境变量是不是我们从存好的 key 映射进去的（而不是用户自己在 shell 里设的）——界面列"来自环境变量"时要排除，否则同一把 key 显示两遍 */
+export function isEnvAppliedByUs(envKey, env = process.env) { return !!env[envKey] && appliedByUs.get(envKey) === env[envKey]; }
+
 /**
  * 把 Studio 存的 key 映射成对应的环境变量。
  *
@@ -35,6 +39,10 @@ export function aoSavedKeys() { try { return JSON.parse(fs.readFileSync(path.joi
  * 而开片调的正是库函数。结果就是：在界面里存好 key、验证也通过（验证那条路是显式传 api_key 的），
  * 一到"写脚本"就报"缺少 API Key"。典型的"看着好了，后面才炸"。
  * 这里在进程启动时补上这一步，跟 AO CLI 的行为对齐；已经设了的环境变量优先，不覆盖用户的显式设置。
+ *
+ * **存 key 之后也要再调一次**（issue #12）：只在启动时映射的话，新用户"打开 → 存 key → 写脚本"
+ * 这条最常走的路必炸，重启才好。再调时要能换 key：变量的值还是我们上次写进去的那个，
+ * 说明它是我们映射的、不是用户在 shell 里设的，可以覆盖。
  */
 export async function applyAoKeysToEnv(env = process.env) {
   const saved = aoSavedKeys();
@@ -45,11 +53,19 @@ export async function applyAoKeysToEnv(env = process.env) {
     const { fileURLToPath } = await import('node:url');
     const main = fileURLToPath(import.meta.resolve('agency-orchestrator'));
     providers = (await import(path.join(path.dirname(main), 'connectors', 'api-providers.js'))).API_PROVIDERS ?? [];
-  } catch { return []; }
+  } catch (e) {
+    // 吞掉的话症状是"存了 key 却报缺 key"，而原因（AO 包没装好 / 目录结构变了）完全看不见
+    console.warn(`[openshorts] 读不到 AO 的供应商表，存好的 key 没能映射成环境变量：${String(e?.message ?? e).split('\n')[0]}`);
+    return [];
+  }
   const applied = [];
   for (const p of providers) {
-    if (!p.envKey || !saved[p.id]?.apiKey || env[p.envKey]) continue;
+    if (!p.envKey || !saved[p.id]?.apiKey) continue;
+    const ours = env[p.envKey] && appliedByUs.get(p.envKey) === env[p.envKey];
+    if (env[p.envKey] && !ours) continue;
+    if (env[p.envKey] === saved[p.id].apiKey) continue;
     env[p.envKey] = saved[p.id].apiKey;
+    appliedByUs.set(p.envKey, saved[p.id].apiKey);
     applied.push(p.id);
   }
   return applied;
