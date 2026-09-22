@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { generateKoubo } from '../src/pipeline/koubo-script.mjs';
+import { scriptLength } from '../src/project/koubo.mjs';
 
 /**
  * 长度门槛的自动重写。模板里把字数区间写得再清楚，模型也是时灵时不灵
@@ -48,11 +49,47 @@ test('JSON 写坏也自动重跑一次；第二次好了就正常返回', async 
   assert.equal(g.ok, true); assert.equal(n, 2);
 });
 
-test('重写一次仍太短：不再无限重试，项目带着长度警告返回', async () => {
+test('重写一次仍太短、也没有可扩写的模型：不再无限重试，项目带着说真话的长度警告返回', async () => {
   let n = 0;
-  const g = await generateKoubo({ wf: 'x.yaml', inputs, runFn: async () => { n++; return makeResult(120); } });
+  const g = await generateKoubo({ wf: 'x.yaml', inputs, chatFn: null, runFn: async () => { n++; return makeResult(120); } });
   assert.equal(g.ok, true); assert.equal(n, 2, '最多两次——每次都花真 token');
-  assert.equal(g.project.scriptWarnings.some((w) => w.includes('目标')), true, '还是短就把警告留给用户');
+  const w = g.project.scriptWarnings.find((x) => x.includes('目标'));
+  assert.ok(w, '还是短就把警告留给用户');
+  assert.ok(!w.includes('重新生成一次通常就对了'), '已经重写过了，不能再说"重新生成一次通常就对了"');
+  assert.match(w, /已自动重写 2 次/);
+});
+
+test('留最好的一稿，不是最后的一稿（真机：重写后 114 → 110 字反而更差）', async () => {
+  let n = 0;
+  const g = await generateKoubo({ wf: 'x.yaml', inputs, chatFn: null, runFn: async () => { n++; return makeResult(n === 1 ? 200 : 120); } });
+  assert.equal(scriptLength(g.project.shots), 200, '200 字离 243 更近，留它');
+});
+
+test('从零重写救不回来 → 扩写现有稿：只改文字、保留 id / 画面意图 / 检索词、明说不要编数字；落进区间就用它', async () => {
+  const chats = [];
+  const chatFn = async (system, user) => {
+    chats.push(user);
+    const draft = JSON.parse(user.slice(user.indexOf('{')));
+    // 照小模型的样子：每段多说几句
+    return JSON.stringify({ hook: draft.hook + '钩'.repeat(30), segments: draft.segments.map((x) => ({ id: x.id, text: x.text + '补'.repeat(100) })), outro: draft.outro + '尾'.repeat(20) });
+  };
+  const logs = [];
+  const g = await generateKoubo({ wf: 'x.yaml', inputs, chatFn, log: (m) => logs.push(m), runFn: async () => makeResult(120) });
+  assert.equal(chats.length, 1); assert.match(chats[0], /不要编造数字/); assert.match(chats[0], /243–297/); assert.match(chats[0], /增加约 150 个字/, "算好要加多少（120 → 中点 270）");
+  assert.equal(scriptLength(g.project.shots), 270); assert.equal(g.attempts, 3);
+  assert.equal(g.project.scriptWarnings.filter((w) => w.includes('目标')).length, 0);
+  const s1 = g.project.shots.find((x) => x.id === 's1');
+  assert.equal(s1.query, 'cat close up', '扩写只动文字，检索词原样');
+  assert.ok(logs.some((m) => m.includes('扩写')), '扩写这件事要让用户看见');
+});
+
+test('扩写回来的是垃圾 / 太长：不炸，留最接近的一稿；太长时要求的是精简', async () => {
+  const g = await generateKoubo({ wf: 'x.yaml', inputs, chatFn: async () => 'sorry, no json here', runFn: async () => makeResult(120) });
+  assert.equal(g.ok, true); assert.equal(scriptLength(g.project.shots), 120);
+  const asked = [];
+  const g2 = await generateKoubo({ wf: 'x.yaml', inputs, chatFn: async (_s, u) => { asked.push(u); return '{}'; }, runFn: async () => makeResult(400) });
+  assert.match(asked[0], /删去约 130 个字/, "太长时要求删去、并算好数量（400 → 区间中点 270）"); assert.equal(scriptLength(g2.project.shots), 400);
+  assert.equal(asked.length, 2, '扩写最多两轮');
 });
 
 test('AO 步骤失败原样交回，不重试', async () => {
