@@ -92,3 +92,13 @@ test('低于补位线的照样判退，绝不混进成片', { skip: !hasFfmpeg &
   assert.ok(r.every((c) => !c.fillOnly));
   fs.rmSync(d, { recursive: true, force: true });
 });
+
+test('parseScores：候选按 1..n 编号时按 1 起解释；模型仍按 0 起（出现 i=0）时按 0 起——真机 3B 视觉模型回 i=1,2 把第 1 条永远算成 0 分', () => {
+  const one = parseScores('[{"i":1,"score":8},{"i":2,"score":1},{"i":3,"score":2}]', 3);
+  assert.deepEqual(one.map((x) => x.score), [8, 1, 2]);
+  const zero = parseScores('[{"i":0,"score":8},{"i":1,"score":1},{"i":2,"score":2}]', 3);
+  assert.deepEqual(zero.map((x) => x.score), [8, 1, 2]);
+  // 只回了一部分且从 1 起：缺的那条 0 分，不能把第 1 条的分挪到第 0 条
+  const partial = parseScores('[{"i":2,"score":9}]', 3);
+  assert.deepEqual(partial.map((x) => x.score), [0, 9, 0]);
+});

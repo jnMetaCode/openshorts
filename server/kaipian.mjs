@@ -278,7 +278,9 @@ kaipian.get('/providers/text', async (_req, res, next) => {
     }));
     // 本机 Ollama 不在 AO 的 API 供应商表里（它不要 key），单独探测后排在最前：不花钱的放前面
     const ol = await ollamaStatus();
-    list.unshift({ id: 'ollama', local: true, running: ol.running, baseUrl: ol.baseUrl, hasKey: ol.running && ol.models.length > 0, fromEnv: false, envKey: null, models: ol.models, visionModels: [], vision: false });
+    // 看图把关也能走本机：只列名字带 vl / llava / vision 的型号（需要引擎 ≥ 0.19.3 才真的把图发给 Ollama；旧引擎会剥图，
+    // "验证并开启"那一步真发一张红图，答不出来就会如实报"这个模型看不了图"）
+    list.unshift({ id: 'ollama', local: true, running: ol.running, baseUrl: ol.baseUrl, hasKey: ol.running && ol.models.length > 0, fromEnv: false, envKey: null, models: ol.models, visionModels: ol.visionModels ?? [], vision: ol.running && (ol.visionModels ?? []).length > 0 });
     const c = readConfig();
     res.json({ providers: list, vision: c.vision ?? { provider: '', model: '' }, text: c.text ?? { provider: '', model: '' } });
   } catch (e) { next(e); }

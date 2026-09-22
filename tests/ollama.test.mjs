@@ -9,13 +9,16 @@ const TAGS = { models: [
   { name: 'mxbai-embed-large:latest', size: 669_000_000, details: { family: 'bert' } },
   { name: 'qwen2.5:14b', size: 8_988_000_000, details: { family: 'qwen2' } },
   { name: 'qwen2.5-coder:7b', size: 4_683_000_000, details: { family: 'qwen2' } },
+  { name: 'qwen2.5vl:3b', size: 3_200_000_000, details: { family: 'qwen25vl' } },
+  { name: 'llava:7b', size: 4_700_000_000, details: { family: 'llama' } },
 ] };
 const ok = (body) => async () => ({ ok: true, json: async () => body });
 
 test('嵌入模型不进下拉（选了它写脚本会直接报错）；大模型排前面', async () => {
   const s = await ollamaStatus({ fetchImpl: ok(TAGS), env: {} });
   assert.equal(s.running, true);
-  assert.deepEqual(s.models, ['qwen2.5:14b', 'qwen2.5-coder:7b', 'llama3:latest']);
+  assert.deepEqual(s.models, ['qwen2.5:14b', 'llava:7b', 'qwen2.5-coder:7b', 'llama3:latest', 'qwen2.5vl:3b']);
+  assert.deepEqual(s.visionModels, ['llava:7b', 'qwen2.5vl:3b'], '看图把关只列能看图的；纯文本模型选了等于没开');
 });
 
 test('没在跑 / 回了错误码：running=false 并带原因，不抛', async () => {
