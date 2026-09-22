@@ -163,6 +163,8 @@ switch (cmd) {
     if (project.publish.error) console.log(`  ⚠️ ${project.publish.error}`);
     for (const x of project.scriptWarnings ?? []) console.log(`  ⚠️ ${x}`);
     console.log(T(`  下一步：openshorts run "${pf}"`, `  Next: openshorts run "${pf}"`));
+    // --json：末行给一条机器可读的结果（脚本 / AI agent / MCP 用），前面的人话照常输出。前缀固定，好从混着日志的输出里捞
+    if (opt.json) console.log('@@json ' + JSON.stringify({ ok: true, project: pf, id: project.id, shots: project.shots.length, title: project.publish.titles[0] ?? null, warnings: project.scriptWarnings ?? [] }));
     break;
   }
   case 'run': {
@@ -195,6 +197,7 @@ switch (cmd) {
       for (const it of q.items.filter((x) => x.status !== 'pass')) console.log(`  ${icon[it.status] ?? '·'} ${it.msg}`);
       if (!q.pass) { console.error(T('\n⛔ 质检未过（上面 ⛔ 的条目）。文件已生成，但按这个状态发出去观众会看到问题。', '\n⛔ Quality check failed (the ⛔ items above). The files exist, but published as-is your viewers will see the problem.')); process.exitCode = 1; }
     }
+    if (o.json) console.log('@@json ' + JSON.stringify({ ok: true, qualityPass: q ? !!q.pass : null, video: p.final.file, captions: p.final.srt, cover: p.final.cover ?? null, publishCopy: p.final.publish, durationSec: p.final.durationSec, notes: p.final.notes ?? [], quality: (q?.items ?? []).filter((x) => x.status !== 'pass').map((x) => ({ status: x.status, msg: x.msg })) }));
     break;
   }
   case 'batch': {
@@ -332,6 +335,12 @@ switch (cmd) {
     } catch (e) { console.error(`\n⛔ ${e.message}`); process.exit(1); }
     break;
   }
+  case 'mcp': {
+    // stdio 的 MCP server：让 Claude / Cursor 等 agent 直接调开片出片。stdout 只出协议消息，这里不能 console.log
+    const { serveStdio } = await import('../src/mcp/server.mjs');
+    serveStdio();
+    break;
+  }
   case 'doctor': {
     const { doctor, formatDoctor } = await import('../src/doctor.mjs');
     console.log(T('\nOpenShorts 体检', '\nOpenShorts health check')); console.log(formatDoctor(await doctor()));
@@ -353,12 +362,13 @@ switch (cmd) {
 }
 
 function printHelp(out) {
-  out(cliLang === 'en' ? `Usage: openshorts [open|sources|new|run|batch|export|estimate|rm|drama|install-ffmpeg|install-image|doctor|version]
+  out(cliLang === 'en' ? `Usage: openshorts [open|sources|new|run|batch|export|estimate|rm|drama|install-ffmpeg|install-image|doctor|mcp|version]
   open      start the local server and open the browser (default)
   sources   what this machine can use for visuals (stock / AI images / local gen / cloud video)
   drama     AI mini-drama: runs the engine's drama workflow (args pass through to \`ao run\`;
             --validate / --plan check or price it without rendering, -i inputs still apply)
   doctor    environment health check (delegates to \`ao doctor\`)
+  mcp       MCP server over stdio, so AI agents can make videos: claude mcp add openshorts -- npx openshorts mcp
   install-ffmpeg  install an ffmpeg **with libass** into ~/.openshorts/bin — Homebrew's no longer
                   ships it, and without libass subtitles cannot be burned in [--force to reinstall]
   install-image   install the local text-to-image model (FLUX.1-schnell, Apache-2.0): paints a frame
@@ -378,11 +388,12 @@ function printHelp(out) {
   batch     versions: openshorts batch <project.json> --voices a,b [--captions douyin,clean] [--rates 1,1.1]
   rm        delete a project (the whole folder, irreversible): openshorts rm <project.json> --yes
 
-  This CLI speaks your system locale. Force it with OPENSHORTS_LANG=zh|en.` : `用法：openshorts [open|sources|new|run|batch|export|estimate|rm|drama|install-ffmpeg|install-image|doctor|version]
+  This CLI speaks your system locale. Force it with OPENSHORTS_LANG=zh|en.` : `用法：openshorts [open|sources|new|run|batch|export|estimate|rm|drama|install-ffmpeg|install-image|doctor|mcp|version]
   open      起本地服务并打开浏览器（默认）
   sources   看这台机器能用哪些画面来源（素材库 / AI 配图 / 本地生成 / 云端出片）
   drama     AI 短剧：跑 AO 短剧流水线（参数透传给 ao run；--validate / --plan 只检查不出片，-i 输入照常带上）
   doctor    环境体检（转 ao doctor）
+  mcp       MCP server（stdio），让 AI agent 直接出片：claude mcp add openshorts -- npx openshorts mcp
   install-ffmpeg  装一份带 libass 的 ffmpeg 到 ~/.openshorts/bin（Homebrew 的不带，字幕会烧不进画面）[--force 重装]
   install-image   装本地文生图模型（FLUX.1-schnell，Apache-2.0 可商用）：素材库没命中时本机现画一张
                   openshorts install-image --list / --model flux-schnell-q4 [--force 重装]
