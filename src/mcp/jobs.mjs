@@ -59,7 +59,15 @@ function runCli(job, args, { spawnImpl = spawn, env = process.env } = {}) {
 /** 失败原因要穿透到 agent 眼前：取日志里最后一条 ⛔，没有就取最后几行 */
 const whyFailed = (job, r) => r.spawnError ?? ([...job.log].reverse().find((l) => l.includes('⛔')) ?? job.log.slice(-3).join(' | ')) ?? `exit code ${r.code}`;
 
+/** 终态超过 14 天的任务文件清掉：agent 一天几十次调用，不清这个目录会无限长 */
+export function pruneJobs({ maxAgeMs = 14 * 86400_000, now = Date.now() } = {}) {
+  let removed = 0;
+  try { for (const n of fs.readdirSync(jobsDir())) { if (!n.endsWith('.json')) continue; const f = path.join(jobsDir(), n); try { const j = JSON.parse(fs.readFileSync(f, 'utf-8')); if (TERMINAL.has(j.state) && now - Date.parse(j.updatedAt ?? j.createdAt) > maxAgeMs) { fs.rmSync(f); removed++; } } catch { /* 坏文件留着，别误删 */ } } } catch { /* 目录还没建 */ }
+  return removed;
+}
+
 export function startJob(params, deps = {}) {
+  pruneJobs();
   const id = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
   const job = { id, state: 'writing_script', createdAt: new Date().toISOString(), serverPid: process.pid, params, project: null, result: null, error: null, log: [] };
   save(job);

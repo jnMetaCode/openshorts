@@ -13,7 +13,7 @@ import { spawn } from 'node:child_process';
 const home = fs.mkdtempSync(path.join(os.tmpdir(), 'os-mcp-'));
 process.env.OPENSHORTS_HOME = path.join(home, '.openshorts');
 const { handleMessage, TOOLS } = await import('../src/mcp/server.mjs');
-const { startJob, readJob, listJobs, shutdownJobs, jobsDir } = await import('../src/mcp/jobs.mjs');
+const { startJob, readJob, listJobs, shutdownJobs, jobsDir, pruneJobs } = await import('../src/mcp/jobs.mjs');
 test.after(() => fs.rmSync(home, { recursive: true, force: true }));
 
 const rpc = (method, params, id = 1) => handleMessage({ jsonrpc: '2.0', id, method, params });
@@ -80,4 +80,13 @@ test('server 退出时正在跑的任务记成 interrupted；另一个进程留�
   const stale = { id: 'stale0-abcdef', state: 'rendering', createdAt: new Date().toISOString(), serverPid: 999999, log: [] };
   fs.writeFileSync(path.join(jobsDir(), `${stale.id}.json`), JSON.stringify(stale));
   assert.equal(readJob(stale.id).state, 'interrupted');
+});
+
+test('过期清理：终态且超过 14 天的删，还在跑的和坏文件不动', () => {
+  const old = new Date(Date.now() - 20 * 86400_000).toISOString();
+  fs.writeFileSync(path.join(jobsDir(), 'oldone-done.json'), JSON.stringify({ id: 'oldone-done', state: 'done', createdAt: old, updatedAt: old }));
+  fs.writeFileSync(path.join(jobsDir(), 'oldone-run.json'), JSON.stringify({ id: 'oldone-run', state: 'rendering', createdAt: old, updatedAt: old, serverPid: process.pid }));
+  fs.writeFileSync(path.join(jobsDir(), 'broken-file.json'), '{not json');
+  assert.equal(pruneJobs(), 1);
+  assert.deepEqual(['oldone-done.json', 'oldone-run.json', 'broken-file.json'].map((n) => fs.existsSync(path.join(jobsDir(), n))), [false, true, true]);
 });
