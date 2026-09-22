@@ -66,7 +66,16 @@ export async function evidenceFrame(candidate, { fetchImpl = fetch, timeoutMs = 
 /** 解析回复里的 JSON 数组 [{i, score, why}] */
 export function parseScores(text, n) {
   const m = String(text).match(/\[[\s\S]*\]/); if (!m) return null;
-  try { const arr = JSON.parse(m[0]); const out = Array.from({ length: n }, (_, i) => ({ i, score: 0, why: '' })); for (const x of arr) { const i = Number(x.i ?? x.index); if (i >= 0 && i < n) out[i] = { i, score: Math.max(0, Math.min(10, Number(x.score) || 0)), why: String(x.why ?? '') }; } return out; } catch { return null; }
+  try {
+    const arr = JSON.parse(m[0]); if (!Array.isArray(arr)) return null;
+    // 候选按 1..n 编号（与连接器留的 [图片N] 占位一致——以前"候选 0：[图片1]"两套编号打架，模型回的 i 按哪个数没法确定）。
+    // 兼容仍按 0 起数的模型：出现了 i=0 或 i=n 越界的情况就按 0 起解释
+    const idx = arr.map((x) => Number(x.i ?? x.index)).filter(Number.isFinite);
+    const oneBased = !idx.includes(0) && idx.every((i) => i >= 1 && i <= n);
+    const out = Array.from({ length: n }, (_, i) => ({ i, score: 0, why: '' }));
+    for (const x of arr) { const i = Number(x.i ?? x.index) - (oneBased ? 1 : 0); if (i >= 0 && i < n) out[i] = { i, score: Math.max(0, Math.min(10, Number(x.score) || 0)), why: String(x.why ?? '') }; }
+    return out;
+  } catch { return null; }
 }
 
 /**
@@ -89,8 +98,8 @@ export async function rankCandidates(candidates, intent, { connector, cfg, thres
   if (!usable.length) return candidates.map((c) => ({ ...c, score: null }));
   const zh = /[一-鿿]/.test(intent);
   const prompt = (zh
-    ? [`你是短视频剪辑师。下面是同一段口播要配的画面意图，以及 ${usable.length} 条候选素材各一帧。给每条打分 0–10：画面主体、场景与意图是否匹配（主体对得上给 6 分起，完全无关 0–2 分，图表/文字/标题卡一律 ≤ 2）。`, `画面意图：${intent}`, ...usable.map((x, k) => `候选 ${k}：${x.f}`), '只输出 JSON 数组：[{"i":0,"score":7,"why":"一句话"}, …]']
-    : [`You are a video editor. Below is the visual intent for one narration segment and one frame from each of ${usable.length} candidate clips. Score each 0–10 for how well subject/scene match the intent (subject matches → ≥6; unrelated → 0–2; charts/text/title cards ≤ 2).`, `Intent: ${intent}`, ...usable.map((x, k) => `Candidate ${k}: ${x.f}`), 'Output only a JSON array: [{"i":0,"score":7,"why":"…"}, …]']).join('\n');
+    ? [`你是短视频剪辑师。下面是同一段口播要配的画面意图，以及 ${usable.length} 条候选素材各一帧。给每条打分 0–10：画面主体、场景与意图是否匹配（主体对得上给 6 分起，完全无关 0–2 分，图表/文字/标题卡一律 ≤ 2）。`, `画面意图：${intent}`, ...usable.map((x, k) => `候选 ${k + 1}：${x.f}`), `只输出 JSON 数组，i 是候选编号（1 到 ${usable.length}）：[{"i":1,"score":7,"why":"一句话"}, …]`]
+    : [`You are a video editor. Below is the visual intent for one narration segment and one frame from each of ${usable.length} candidate clips. Score each 0–10 for how well subject/scene match the intent (subject matches → ≥6; unrelated → 0–2; charts/text/title cards ≤ 2).`, `Intent: ${intent}`, ...usable.map((x, k) => `Candidate ${k + 1}: ${x.f}`), `Output only a JSON array where i is the candidate number (1 to ${usable.length}): [{"i":1,"score":7,"why":"one sentence"}, …]`]).join('\n');
   let scores = null;
   // 推理模型（Agnes 2.0-flash）会先吐几百字思考再给 JSON：预算给足。
   // 接口偶尔会抽（真机上六镜里抽了一次），所以多试两次并退避——一次失败就等于这一镜没人把关。

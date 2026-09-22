@@ -342,8 +342,9 @@ export const Kaipian = () => {
       <label>{t('供应商')}
         <select value={vis.provider} onChange={(e) => setVis({provider: e.target.value, model: (textProv?.providers.find((p) => p.id === e.target.value)?.visionModels?.[0]) ?? ''})}>
           <option value="">{t('不开')}</option>
-          {(textProv?.providers ?? []).filter((p) => p.vision).map((p) => <option key={p.id} value={p.id}>{p.id}{p.hasKey ? ' ✓' : ''}</option>)}
+          {(textProv?.providers ?? []).filter((p) => p.vision).map((p) => <option key={p.id} value={p.id}>{p.local ? t('ollama（本机，免费，不用 key）') : p.id}{p.hasKey ? ' ✓' : ''}</option>)}
         </select></label>
+      {vis.provider === 'ollama' && <p className="kp-hint">{t('用本机视觉模型看图：不花钱、不联网。3B 的小模型 3 选 1 能对 4/5，偶尔把雕像当真猫；想更稳装 7B：')}<code>ollama pull qwen2.5vl:7b</code></p>}
       {vis.provider && <label>{t('模型')}<input list="kp-vm" value={vis.model} onChange={(e) => setVis({...vis, model: e.target.value})} placeholder={t('模型 id（可手填）')}/></label>}
       <datalist id="kp-vm">{(textProv?.providers.find((p) => p.id === vis.provider)?.visionModels ?? []).map((m) => <option key={m} value={m}/>)}</datalist>
       <button className="primary" onClick={saveVision} disabled={!!busy}>{vis.provider ? t('验证并开启') : t('关闭看图把关')}</button>

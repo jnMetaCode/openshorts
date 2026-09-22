@@ -47,6 +47,7 @@ const EN: Record<string, string> = {
   '没连上本机的 Ollama（': 'Cannot reach Ollama on this machine (', '）。装好并启动后回来刷新：': '). Install and start it, then refresh: ',
   'Ollama 在跑，但还没装能写稿的模型。终端里跑：': 'Ollama is running but has no chat model yet. In a terminal run: ',
   '用这台机器上的模型写脚本：不花钱、不联网。7B 级的小模型偶尔写得偏短，开片会自动要求重写一次；想更稳就换 14B 以上。': 'Write scripts with a model on this machine: free and offline. 7B-class models sometimes write too short — OpenShorts asks for one rewrite automatically; use 14B+ for steadier results.',
+  '用本机视觉模型看图：不花钱、不联网。3B 的小模型 3 选 1 能对 4/5，偶尔把雕像当真猫；想更稳装 7B：': 'Judge footage with a vision model on this machine: free and offline. A 3B model picks the right clip 4 times out of 5 and occasionally mistakes a statue for a cat; for steadier results install 7B: ',
   '复制诊断信息': 'Copy diagnostics', '已复制 ✓': 'Copied ✓', '正在体检…': 'Checking…', '去反馈 ↗': 'Report an issue ↗',
   '报问题时贴上它：版本、系统、体检结果，key 已打码。': 'Paste this when reporting a problem: version, system, health check — keys are masked.',
   '还没有写脚本用的文本模型 key。': 'No text-model key for script writing yet. Open ',

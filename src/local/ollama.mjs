@@ -13,14 +13,17 @@ export const ollamaBaseUrl = (env = process.env) => {
 /** 嵌入模型聊不了天：列进下拉等于埋雷（选了它写脚本直接报错） */
 const isEmbedding = (m) => /embed|bge-|minilm|nomic|e5-|gte-/i.test(m.name ?? '') || /bert/i.test(m.details?.family ?? '');
 
+/** 能看图的本机模型（按名字判：qwen2.5vl / llava / minicpm-v / moondream / llama3.2-vision…）——看图把关只能选这些 */
+export const isVisionModel = (name) => /vl|llava|vision|minicpm-v|moondream|bakllava|gemma3/i.test(String(name));
+
 export async function ollamaStatus({ fetchImpl = fetch, env = process.env, timeoutMs = 1500 } = {}) {
   const baseUrl = ollamaBaseUrl(env);
   try {
     const r = await fetchImpl(`${baseUrl}/api/tags`, { signal: AbortSignal.timeout(timeoutMs) });
-    if (!r.ok) return { running: false, baseUrl, models: [], reason: `HTTP ${r.status}` };
+    if (!r.ok) return { running: false, baseUrl, models: [], visionModels: [], reason: `HTTP ${r.status}` };
     const all = (await r.json()).models ?? [];
     // 大的在前：同一台机器上，参数多的那个写口播稿明显更稳
     const models = all.filter((m) => !isEmbedding(m)).sort((a, b) => (b.size ?? 0) - (a.size ?? 0)).map((m) => m.name);
-    return { running: true, baseUrl, models };
-  } catch (e) { return { running: false, baseUrl, models: [], reason: String(e?.cause?.code ?? e?.name ?? e).slice(0, 60) }; }
+    return { running: true, baseUrl, models, visionModels: models.filter(isVisionModel) };
+  } catch (e) { return { running: false, baseUrl, models: [], visionModels: [], reason: String(e?.cause?.code ?? e?.name ?? e).slice(0, 60) }; }
 }
