@@ -153,7 +153,7 @@ openshorts rm      ~/OpenShorts/<项目>/project.json --yes   # 删项目（整�
 openshorts drama --plan -i story="…" -i video_provider=local-sdcpp -i video_model=minimax-h3-q2   # AI 短剧：先看花费
 ```
 
-- 写脚本用你自己的文本模型 key（复用 [AO](https://github.com/jnMetaCode/agency-orchestrator) 的 `~/.ao` 配置或环境变量如 `DEEPSEEK_API_KEY`）；画面**不配 key 也能出**（Wikimedia Commons 的 CC 图片为主、视频为辅；图片检索比视频准得多，静图会加虚化垫底与缓推），配一把免费的 Pexels / Pixabay key 换成实拍视频会更好（界面一分钟引导）；配音默认 Edge TTS（免费）；怕它哪天被微软改坏，可在 `~/.openshorts/config.json` 配 `tts.fallback = { provider, model, voice }`（AO 里有语音端点的供应商），Edge 挂了自动改走。产品不内置任何共享 key。
+- 写脚本要一个文本模型：用你自己的 key（复用 [AO](https://github.com/jnMetaCode/agency-orchestrator) 的 `~/.ao` 配置或环境变量如 `DEEPSEEK_API_KEY`），**或者本机 [Ollama](https://ollama.com) 模型、一把 key 都不用**（设置 → 写脚本的模型 → `ollama`）。本机模型的档位要说实话：7B 能跑通整条链路，但稿子偏薄、偶尔编事实（真机写出过"地理北极在地球南极附近"）；开片会自动重写和扩写偏短的稿，但要发出去的片子请用 **14B 以上**（`ollama pull qwen2.5:14b`）或云端模型；画面**不配 key 也能出**（Wikimedia Commons 的 CC 图片为主、视频为辅；图片检索比视频准得多，静图会加虚化垫底与缓推），配一把免费的 Pexels / Pixabay key 换成实拍视频会更好（界面一分钟引导）；配音默认 Edge TTS（免费）；怕它哪天被微软改坏，可在 `~/.openshorts/config.json` 配 `tts.fallback = { provider, model, voice }`（AO 里有语音端点的供应商），Edge 挂了自动改走。产品不内置任何共享 key。
 - **本机出图**（口播线）：`openshorts install-image` 装 FLUX.1-schnell（6.4 / 10 GB 两档，Apache-2.0 可商用）。装了之后，素材库没命中的镜头会本机现画一张（M2 Max 实测约 57 秒），而不是退纯色底。
 - **本地出片**（短剧线）：`openshorts doctor` 会告诉你这台机器能跑哪一档（24 GB 内存起，草稿画质），以及 sd-cli 与模型怎么装。镜头提示词按 [ai-shortfilm-prompts](https://github.com/jnMetaCode/ai-shortfilm-prompts) 的五段式写：氛围锁定块三镜逐字共用，每镜提示词在第 4 屏可看可复制，拿去别的模型抽卡也行。
 - 产物落在 `~/OpenShorts/<项目>/`；成片默认带 AI 生成标识；素材署名写进发布文案。
