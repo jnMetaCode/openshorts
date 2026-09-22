@@ -120,7 +120,7 @@ openshorts rm      <project.json> --yes              # delete a project (whole f
 openshorts drama --plan -i story="…" -i video_provider=local-sdcpp -i video_model=minimax-h3-q2
 ```
 
-Script writing needs one text-model key (DeepSeek / Kimi / GLM / … — configured once, shared with the engine's `~/.ao`). Visuals and voice-over are free on the default path (Edge TTS; set `tts.fallback = { provider, model, voice }` in `~/.openshorts/config.json` to fall back to an AO speech provider if Edge ever breaks). No shared keys ship with the product.
+Script writing needs a text model: your own key (DeepSeek / Kimi / GLM / … — configured once, shared with the engine's `~/.ao`) **or a local [Ollama](https://ollama.com) model with no key at all** (Settings → Script model → `ollama`). Be honest with yourself about local model size: a 7B model gets through the pipeline but writes thin scripts and sometimes invents facts (on a real run: "the geographic north pole is near the south pole"); OpenShorts auto-rewrites and expands short drafts, but for anything you publish use **14B or larger** (`ollama pull qwen2.5:14b`) or a cloud model. Visuals and voice-over are free on the default path (Edge TTS; set `tts.fallback = { provider, model, voice }` in `~/.openshorts/config.json` to fall back to an AO speech provider if Edge ever breaks). No shared keys ship with the product.
 
 ## Let an AI agent make the video (MCP)
 
