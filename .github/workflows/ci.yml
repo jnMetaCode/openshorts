@@ -43,4 +43,8 @@ jobs:
         with:
           context: .
           push: false
+          load: true          # 不 load 的话镜像只在 buildx 缓存里，下一步 docker run 找不到它
           tags: openshorts:ci
+      # 镜像建出来 ≠ 它能跑。以前这里只 build 不 run——跟桌面包那道闸修之前是同一个盲区。
+      - name: Smoke-test the image
+        run: ./scripts/smoke-container.sh openshorts:ci

@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+- **CI 的 docker 任务一直只 build 不 run**——跟桌面包那道闸修之前是同一个盲区：镜像建出来不等于它能跑。
+  新增 `scripts/smoke-container.sh`：真起一个容器，打七条页面加载时就会请求的路由（两条必须取到引擎内部模块），
+  外加两项只有容器里才验得到的——镜像内 ffmpeg 带不带字幕滤镜（没有就等于成片没字）、非 root 用户下配置目录可不可写
+  （命名卷属主弄错会让存 key / 出片全部 EACCES）。本地真建真跑通过；两个变异（删掉引擎连接器 / 容器启动即退出）都会红。
+- **两个冒烟脚本的 shell 坑各修一处**（都是本地真跑才暴露的）：① `… | grep -q` 在 `set -o pipefail` 下会被 SIGPIPE
+  判成失败——滤镜明明在却报没有；改成先取回文本再匹配。② 变量名后面紧跟全角字符（`${VAR}）`）会被 bash 当成变量名的一部分，
+  直接 unbound variable；两个脚本统一加花括号。
+
 - **桌面冒烟闸首次在 CI 真跑就拦下了一次发版——拦的是它自己**：Windows 上按 uname 猜路径的写法挑中了
   `resources/elevate.exe`（electron-builder 的辅助程序），后端当然起不来。`desktop-v0.1.2` 的 mac / Linux 包已发出，
   Windows 包被这道闸挡住没发。现在改成**按产物布局找**：先定位包内的 `resources/app/server/index.mjs`，
