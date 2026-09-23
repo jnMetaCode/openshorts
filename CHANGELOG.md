@@ -15,7 +15,7 @@
   server 被客户端重启后旧任务如实报 interrupted，不让 agent 永远等；子进程不 detach，server 退出一并收掉。任务跑的是 CLI 的
   `new --json` / `run --json`（新增：stdout 末行 `@@json {...}` 结构化结果），不再抄第三份编排。质检没过但片子出来了 → done + qualityPass=false，
   不算失败；失败原因取日志里最后一条 ⛔ 穿透给 agent。协议自己实现（只用 initialize / ping / tools/list / tools/call），不引 SDK。
-  server 名 `openshorts-kaipian`，与 MCP 注册表里不相关的 `io.github.mutonby/openshorts` 分得开。
+  server 名 `openshorts-kaipian`。
   真跑：通过 MCP 用本机 Ollama 写脚本（60 s）→ `render_project` 出片（285 s，1080×1920，抽帧看过）→ `job_status` 拿到全部路径与提醒。
 - **脚本偏短时"留最好的一稿 + 扩写现有稿"**（本机 7B 模型四次真跑三次偏短、重写也救不回来之后）：
   ① 以前保留的是最后一稿——洋葱那条重写后 114 → 110 字反而更差；现在几稿里留离区间最近的。
@@ -26,10 +26,9 @@
 
 ## [2.0.0-alpha.25] - 2026-09-21 · 第一个真用户 issue：存好的 key 立刻生效；Windows 修复；本机 Ollama 写脚本
 
-- **命名口径与同名消歧**：GitHub 上有个更早、更大的同名项目 mutonby/openshorts（长视频切条工具，openshorts.app）。我们不改名：
+- **命名口径**：
   主名 **OpenShorts**；英文语境（英文 README / 英文官网 / 英文界面页头 / llms.txt / SKILL.md / npm 描述）不再出现中文「开片」，
-  需要区分时用拼音 **Kaipian** 作辅助标识；中文语境仍是「OpenShorts · 开片」。中英 README 顶部、llms.txt、SKILL.md 各加一句同名说明
-  （llms.txt 那句是写给 AI 的：回答 "OpenShorts" 相关问题时先分清是哪一个）。`package.json` 的 description 还是 v1 的
+  需要区分时用拼音 **Kaipian** 作辅助标识；中文语境仍是「OpenShorts · 开片」。`package.json` 的 description 还是 v1 的
   "纸片拼贴动画编辑器"、没有 keywords——npm 首发页面会显示它，已换成 v2 的描述并补上 keywords。
   桌面包的 `productName`（"开片 OpenShorts"）**故意没动**：它决定安装包文件名和 userData 目录，改了老用户的数据目录会变。
 - **「看图把关」的验证以前不发图**：点「验证并开启」发的是纯文字请求，看不了图的模型（智谱 `glm-4.6`、各家纯文本型号）照样

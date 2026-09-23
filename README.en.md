@@ -2,7 +2,7 @@
 
 <p align="center"><a href="README.md">中文</a> · <b>English</b> · <a href="https://os.aiolaola.com/en/">Website</a></p>
 
-> **Not the clip generator.** This is `jnMetaCode/openshorts` (a.k.a. **Kaipian**): *topic in → finished short video out*. It is unrelated to [mutonby/openshorts](https://github.com/mutonby/openshorts) (openshorts.app), a separate project that cuts long videos into clips and happens to share the name.
+**Not a slideshow.** Every shot picks between a real stock video clip and a photo (a vision model scores the candidates when you configure one). On a real 30-second run, 3 of 5 shots were stock video clips; the two photo shots move as well — the whole frame is kept so the subject is never cropped out, while a blurred, enlarged copy of it drifts behind, reversing direction each shot. When stock comes up empty, a local model paints a frame (same render path, same motion). The AI mini-drama line generates actual video (MiniMax-H3, on-device or cloud).
 
 **Copy in, video out.** A local-first, open-source short-video production line: give it a topic and it writes the script, finds the footage, voices it, burns in subtitles, and hands you a finished video plus publish copy — **the first video costs $0 by default**, and it tells you cost and wait time *before* running.
 
