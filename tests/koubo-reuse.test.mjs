@@ -185,3 +185,16 @@ test('英文片里残留的中文本机出图署名，出片收尾时按项目�
   assert.equal(credit.license, 'Apache-2.0 (generated locally with FLUX.1-schnell)');
   assert.doesNotMatch(fs.readFileSync(out.final.publish, 'utf-8'), /本地生成/, '发布文案里不能再有中文署名');
 });
+
+test('手改 project.json 把某镜的 visual 整个删掉：按"还没挑过画面"补回来，不是原始 TypeError', { skip: !hasFfmpeg && '无 ffmpeg' }, async () => {
+  // 文档让用户直接改这份 JSON（改文案 / 重出单镜），删掉 visual 是最自然的"让它重挑画面"写法。
+  // 以前直接读 shot.visual.file → Cannot read properties of undefined，用户看不出是自己删的那行还是程序坏了。
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'os-novisual-'));
+  const project = mkProject(dir, [['hook', 'a'], ['s1', 'b']]);
+  delete project.shots[0].visual;
+  let err = null;
+  try { await runKoubo(project, { outDir: dir, synthesizeImpl: makeTts({ calls: [] }) }); } catch (e) { err = e; }
+  assert.ok(!/Cannot read properties of undefined/.test(String(err?.message ?? '')), `不该是原始 TypeError：${err?.message}`);
+  assert.equal(project.shots[0].visual?.source, 'solid', '缺的 visual 按项目默认补回来');
+  fs.rmSync(dir, { recursive: true, force: true });
+});

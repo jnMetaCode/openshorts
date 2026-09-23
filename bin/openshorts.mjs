@@ -343,7 +343,7 @@ switch (cmd) {
   }
   case 'doctor': {
     const { doctor, formatDoctor } = await import('../src/doctor.mjs');
-    console.log(T('\nOpenShorts 体检', '\nOpenShorts health check')); console.log(formatDoctor(await doctor()));
+    console.log(T('\nOpenShorts 体检', '\nOpenShorts health check')); console.log(formatDoctor(await doctor({ lang: cliLang })));
     console.log(T('\nAO 引擎体检（文本/出图/出片供应商）：', '\nEngine health check (text / image / video providers):'));
     runAO(['doctor', ...rest]); break;
   }

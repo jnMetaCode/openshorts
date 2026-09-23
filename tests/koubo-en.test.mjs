@@ -251,20 +251,56 @@ test('关键词高亮：英文按整词 + 不分大小写，中文照旧按子�
 
 test('出片链路上的中文都包在 T() 里（界面把日志/报错原样显示，字典翻不了）', async () => {
   const { cjkLiterals } = await import('./helpers-cjk-scan.mjs');
-  // 白名单：这些中文**本来就该是中文**，或者外层已经按 lang 选过分支
-  const OK = [
-    "'AI 生成'",                                    // finalize 的缺省角标（调用方按语言传）
-    'Apache-2.0（FLUX.1-schnell 本地生成）',          // 署名，外层 lang === 'en' ? … : … 已选
-    "'-发布文案'", '-发布文案.txt',                    // 文件名，外层同上
-    '标题候选：', '话题：', '发布说明：', 'AI 标识：', '素材署名：',   // PL 表，外层 lang === 'en' ? … : …
-    "T('素材', 'footage')",                          // 内层已经是 T()
-    "T('失败：', ' failed: ')",
-    '你是短视频剪辑师', '画面意图：', '候选 ', '只输出 JSON 数组', '只输出一行 JSON 数组',   // 看图打分的中文提示词分支（按 intent 选）
-  ];
+  // 白名单按文件分，不能全局共用：`'候选 '` 本来是给 rank.mjs 的看图提示词开的口子，
+  // 一旦全局生效，stock.mjs 里真漏的 `\u0060候选 ${id} 下载到 0 字节\u0060` 也跟着被放过——
+  // 9-23 把 stock.mjs 纳入扫描时，就是靠一次变异检查才发现这个洞。
+  const OK = {
+    'src/pipeline/koubo-run.mjs': [
+      'Apache-2.0（FLUX.1-schnell 本地生成）',          // 署名，外层 lang === 'en' ? … : … 已选
+      "'-发布文案'", '-发布文案.txt',                    // 文件名，外层同上
+      '标题候选：', '话题：', '发布说明：', 'AI 标识：', '素材署名：',   // PL 表，外层 lang === 'en' ? … : …
+      "T('素材', 'footage')", "T('失败：', ' failed: ')",   // 内层已经是 T()
+    ],
+    'src/sources/rank.mjs': ['你是短视频剪辑师', '画面意图：', '候选 ', '只输出 JSON 数组', '只输出一行 JSON 数组'],   // 中文提示词分支（按 intent 选）
+    'src/doctor.mjs': ["'fc-list 命中'", "'你好'"],      // 内部标记 / 试合成用的最短文本，都不显示给用户
+    'src/compose/koubo.mjs': ["'AI 生成'"],          // 角标缺省值，调用方按语言传
+    'src/sources/stock.mjs': [],
+  };
+
+  // 模板串里的中文常常整段嵌在 `${T('中', 'en')}` 或 `${cond ? T('中','en') : ''}` 里。
+  // 按括号配平把每个 ${...} 里的 T(...) 调用挖掉，再看这段插值还剩不剩中文——
+  // 剩下就是真漏（比如 `${cond ? '中文' : 'en'}`），整条加白名单会把这种一起放过。
+  const dropCalls = (src, name) => {   // 挖掉 name(...) 整个调用，括号配平
+    let out = ''; let i = 0;
+    while (i < src.length) {
+      if (src.startsWith(name + '(', i) && !/[A-Za-z0-9_$.]/.test(src[i - 1] ?? '')) {
+        let d = 0; let j = i + name.length;
+        for (; j < src.length; j++) { const c = src[j]; if (c === '(') d++; else if (c === ')') { d--; if (!d) { j++; break; } } }
+        i = j; continue;
+      }
+      out += src[i++];
+    }
+    return out;
+  };
+  const stripWrapped = (lit) => {      // 剥掉「里面的中文都包在 T() 里」的插值
+    let out = ''; let i = 0;
+    while (i < lit.length) {
+      if (lit[i] === '$' && lit[i + 1] === '{') {
+        let d = 0; let j = i + 1;
+        for (; j < lit.length; j++) { const c = lit[j]; if (c === '{') d++; else if (c === '}') { d--; if (!d) { j++; break; } } }
+        const seg = lit.slice(i + 2, j - 1);
+        out += /[\u4e00-\u9fff]/.test(dropCalls(seg, 'T')) ? seg : '';
+        i = j; continue;
+      }
+      out += lit[i++];
+    }
+    return out;
+  };
   const bare = [];
-  for (const f of ['src/pipeline/koubo-run.mjs', 'src/compose/koubo.mjs', 'src/sources/rank.mjs']) {
+  for (const [f, allow] of Object.entries(OK)) {
     for (const x of cjkLiterals(fs.readFileSync(path.join(root, f), 'utf-8'))) {
-      if (x.wrapped || OK.some((k) => x.lit.includes(k))) continue;
+      if (x.wrapped || allow.some((k) => x.lit.includes(k))) continue;
+      if (!/[\u4e00-\u9fff]/.test(stripWrapped(x.lit))) continue;
       bare.push(`${f}:${x.line} ${x.lit}`);
     }
   }
@@ -535,4 +571,19 @@ test('断言中文原话的 CLI 用例必须钉住语言，不能被机器 local
   assert.match(pinned.stdout, /^用法：openshorts/, 'CI 的 locale 下，钉住 zh 后必须仍是中文');
   const unpinned = sp(process.execPath, [bin, 'help'], { encoding: 'utf-8', env: ci });
   assert.match(unpinned.stdout, /^Usage: openshorts/, '不钉的话就会跟着 CI 的 locale 变英文——这正是当初 CI 全红的原因');
+});
+
+test('doctor 按语言说话：英文用户跑 `openshorts doctor` 不该看到中文（README 和 SKILL 都让他第一步就跑它）', async () => {
+  const { doctor } = await import('../src/doctor.mjs');
+  // 只看我们自己的条目；AO 的 `ao doctor` 是另一个进程、另一个仓库的输出
+  const en = await doctor({ lang: 'en' });
+  const zh = await doctor({ lang: 'zh' });
+  assert.ok(en.length >= 8 && en.length === zh.length, '两种语言的条目数应当一致');
+  const cjk = en.filter((i) => /[\u4e00-\u9fff]/.test(i.msg.replace(/[^\u4e00-\u9fff]*(?:PingFang|Noto|WenQuanYi|SimHei|YaHei|Han)[^\u4e00-\u9fff]*/g, '')));
+  assert.deepEqual(cjk.map((i) => i.msg.slice(0, 60)), [], '这些体检条目会以中文出现在英文用户眼前');
+  assert.ok(!en.some((i) => i.msg.includes('：')), '英文条目里不该出现全角冒号');
+  assert.ok(zh.some((i) => /[\u4e00-\u9fff]/.test(i.msg)), '中文用户仍要看到中文');
+  // 第一条是"现在能不能出片"的一句话结论，两种语言都得有
+  assert.match(en[0].msg, /Ready to render|Cannot render yet/);
+  assert.match(zh[0].msg, /现在就能出片|现在还出不了片/);
 });
