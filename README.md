@@ -2,10 +2,12 @@
 
 <p align="center"><b>中文</b> · <a href="README.en.md">English</a> · <a href="https://os.aiolaola.com/">官网</a> · <a href="https://os.aiolaola.com/en/">Website</a></p>
 
-> **同名说明**：本项目是 `jnMetaCode/openshorts`（中文名「开片」，拼音 Kaipian）——**话题进，成片出**。与 [mutonby/openshorts](https://github.com/mutonby/openshorts)（openshorts.app，把长视频切成短片的工具）是两个互不相关的项目，只是恰好重名。
-
 **文案进，成片出。** 一条本地优先的开源短视频生产线：给一个话题，它写脚本、找画面、配音、烧字幕、出成片和发布文案——
 **默认零成本跑通第一条**，花多少钱、等多久，运行前就告诉你。
+
+**画面不是幻灯片**：每镜在实拍视频片段与照片之间挑（有看图模型时由它打分挑，没有就按检索顺序）。
+真机一条 30 秒的片，5 镜里 3 镜是实拍视频片段；照片那两镜也在动——整图居中不裁主体，背后垫一层自身的放大虚化版缓缓推移、方向逐镜交替。
+素材库没命中就本机现画一张（走同一条渲染路径，同样有运镜）。AI 短剧线则是真正的 AI 生成视频（本机 MiniMax-H3 或云端）。
 
 <table align="center">
 <tr>

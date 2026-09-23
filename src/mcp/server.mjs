@@ -5,8 +5,7 @@
  * 自己实现比引 SDK 划算（包体、冷启动、又一个要跟版本的依赖）。
  * **stdout 只能出协议消息**——任何 console.log 都会把客户端的解析弄坏；人话一律走 stderr。
  *
- * server 名带 kaipian：MCP 注册表里已有一个不相关的 `io.github.mutonby/openshorts`（长视频切条），
- * 两个装在同一个客户端里时得分得清。
+ * server 名带 kaipian，与同名的其它 MCP server 装在同一个客户端里时分得清。
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -96,7 +95,7 @@ export async function handleMessage(msg, deps = {}) {
   if (!msg || msg.jsonrpc !== '2.0' || typeof msg.method !== 'string') return msg?.id !== undefined ? { jsonrpc: '2.0', id: msg.id ?? null, error: { code: -32600, message: 'Invalid Request' } } : null;
   switch (msg.method) {
     case 'initialize': return ok({ protocolVersion: SUPPORTED.includes(msg.params?.protocolVersion) ? msg.params.protocolVersion : SUPPORTED[0], capabilities: { tools: {} }, serverInfo: { name: 'openshorts-kaipian', title: 'OpenShorts (Kaipian) — topic in, short video out', version: pkgVersion() },
-      instructions: 'OpenShorts (Kaipian, github.com/jnMetaCode/openshorts) turns a topic or script into a finished vertical short video on this machine. Typical flow: create_video → poll job_status every 20-30 s → report the video path. If it fails, run doctor. Not related to openshorts.app (a long-video clipper).' });
+      instructions: 'OpenShorts (Kaipian, github.com/jnMetaCode/openshorts) turns a topic or script into a finished vertical short video on this machine. Typical flow: create_video → poll job_status every 20-30 s → report the video path. If it fails, run doctor.' });
     case 'ping': return ok({});
     case 'tools/list': return ok({ tools: TOOLS });
     case 'tools/call': {

@@ -1,6 +1,6 @@
 ---
 name: openshorts-video
-description: Use this skill whenever the user wants a finished short video (talking-head explainer, opinion piece, product pitch, or an AI mini-drama) from a topic, article link, or script, using OpenShorts (Kaipian, github.com/jnMetaCode/openshorts — not the unrelated clip generator at openshorts.app). It installs OpenShorts locally, writes the script with the user's own text model, picks free stock footage or paints frames on-device, synthesizes the voice-over with free Edge TTS, burns captions, renders a 1080×1920 mp4 with cover, SRT and publish copy, and returns the file paths. Default path costs ¥0 / $0.
+description: Use this skill whenever the user wants a finished short video (talking-head explainer, opinion piece, product pitch, or an AI mini-drama) from a topic, article link, or script, using OpenShorts (Kaipian, github.com/jnMetaCode/openshorts). It installs OpenShorts locally, writes the script with the user's own text model, picks free stock footage or paints frames on-device, synthesizes the voice-over with free Edge TTS, burns captions, renders a 1080×1920 mp4 with cover, SRT and publish copy, and returns the file paths. Default path costs ¥0 / $0.
 compatibility: Needs an AI agent with terminal, network and filesystem access. Node.js 20+ and git. macOS, Linux and Windows. Uses `npm`; no Python.
 metadata:
   author: "jnMetaCode"
