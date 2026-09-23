@@ -82,7 +82,7 @@ switch (cmd) {
   }
   case 'sources': {
     const { sourcesAvailability } = await import('../src/sources/availability.mjs');
-    const a = sourcesAvailability({ lang: cliLang });   // 不传的话状态说明会是中文——英文用户只看得懂标签、看不懂原因
+    const a = await sourcesAvailability({ lang: cliLang });   // 不传的话状态说明会是中文——英文用户只看得懂标签、看不懂原因
     const { sdImageStatus } = await import('../src/local/sd-image.mjs');
     const g = await sdImageStatus({ lang: cliLang }).catch(() => null);
     // 中文标签按全角空格补齐,英文标签按半角——混用会让整列歪掉
