@@ -42,12 +42,11 @@
 ![License](https://img.shields.io/badge/license-MIT-green) ![Node](https://img.shields.io/badge/node-%E2%89%A520-brightgreen) ![Tests](https://img.shields.io/badge/tests-269%20passing-brightgreen) ![CI](https://img.shields.io/badge/CI-ubuntu%20%7C%20macOS%20%7C%20windows-brightgreen) ![Format](https://img.shields.io/badge/format-9%3A16%20%7C%2016%3A9-blue)
 
 ```bash
-git clone https://github.com/jnMetaCode/openshorts.git
-cd openshorts && npm install
-npm run openshorts      # 起本地服务并打开浏览器（http://127.0.0.1:4174）
+npx openshorts          # 起本地服务并打开浏览器（http://127.0.0.1:4174）
 ```
 
-需要 Node.js 20+ 和 FFmpeg（npm 包即将发布，届时一行 `npx openshorts` 即可；当前请用源码或 [Release 包](https://github.com/jnMetaCode/openshorts/releases)）。
+只需要 Node.js 20+；ffmpeg 装好后跑一次 `npx openshorts install-ffmpeg` 就能补齐（不动系统那份）。
+也可以用[桌面版](https://github.com/jnMetaCode/openshorts/releases)（不用装 Node），或克隆源码：`git clone … && npm install && npm run openshorts`。
 
 **不想自己装？把下面这段话发给你的 AI（Claude Code / Codex / Cursor…），它会自己装好、体检、写脚本、出片，最后把文件路径给你：**
 
@@ -90,7 +89,7 @@ npm run openshorts      # 起本地服务并打开浏览器（http://127.0.0.1:4
 | **改一镜要不要全重来** | 单镜重出：口播改一句话只重出那一镜；短剧按验收意见 / 提意见 / 换来源 | 全部重跑 | 重新生成 |
 | **脚本谁写** | 276 位专家角色分工（科普作者写稿、抖音策略师起标题、编剧拆三镜） | 一个通用 prompt | 黑盒 |
 | **数据在哪** | 本地优先：key 只存本机，产物在你硬盘，素材署名与 AI 标识写进发布文案 | 本地 | 云端 |
-| **怎么装** | 克隆一行跑 / Release 包 / Docker（npm 包即将发布） | Python 环境 / 整合包 | App |
+| **怎么装** | `npx openshorts` 一行 / 桌面包 / Docker / 源码 | Python 环境 / 整合包 | App |
 
 一句话：**别人给你一个出片按钮，开片给你一条能看见成本、能被审、能改单镜的生产线。**
 
@@ -126,11 +125,10 @@ npm run openshorts      # 起本地服务并打开浏览器（http://127.0.0.1:4
 需要 Node.js 20+ 和 FFmpeg。起本地服务并打开浏览器（默认 http://127.0.0.1:4174）：
 
 ```bash
-git clone https://github.com/jnMetaCode/openshorts.git
-cd openshorts && npm install && npm run openshorts
+npx openshorts
 ```
 
-（npm 包即将发布，届时一行 `npx openshorts` 即可。）
+
 
 > **装完先跑一次 `openshorts doctor`。** 短视频的字幕必须**烧进画面**（抖音、视频号一律不认软字幕轨），
 > 而烧字幕要 ffmpeg 带 libass。**Homebrew 现在的 `ffmpeg` formula 已经不再依赖 libass**
@@ -167,8 +165,8 @@ v1 的图层动画编辑器仍在 `/editor`，用法见 [`docs/v1.md`](docs/v1.m
 开片自带一个 stdio 的 [MCP](https://modelcontextprotocol.io) server：Claude Code、Claude 桌面版、Cursor 等一句"给我做一条 60 秒的 X 科普"，就能在你这台机器上拿到成片。
 
 ```bash
-# Claude Code（git 检出方式；npm 包发出后改成 `npx openshorts mcp`）
-claude mcp add openshorts -- node ~/openshorts/bin/openshorts.mjs mcp
+# Claude Code
+claude mcp add openshorts -- npx openshorts mcp
 ```
 
 工具：`create_video`（话题 → 脚本 → 画面 → 配音 → mp4；出片要 1–25 分钟，所以立刻回任务号）、`render_project`（改过 `project.json` 后重出）、`job_status`（状态、最近日志，完成后给成片 / 字幕 / 封面 / 发布文案的路径和质检提醒）、`list_projects`、`doctor`。全程本机、用你自己的 key 或本机 Ollama，不上传、不自动发布。脚本用户可以直接用 `openshorts new --json` / `openshorts run --json`（stdout 末行，前缀 `@@json`）拿同一份结构化结果。

@@ -281,16 +281,14 @@
   <p class="sub">Requires Node ≥ 20. ffmpeg and the local image model are one-command installs afterwards.</p>
   <div class="qs">
     <div>
-      <pre><span class="c"># Install (or grab the bundle from GitHub Releases)</span>
-git clone https://github.com/jnMetaCode/openshorts.git
-cd openshorts &amp;&amp; npm install
+      <pre><span class="c"># Open the GUI (recommended): four steps to a video</span>
+npx openshorts
+<span class="g"># → http://127.0.0.1:4174</span>
 
-<span class="c"># Open the GUI (recommended): four steps to a video</span>
-npm run openshorts
-<span class="g"># → http://127.0.0.1:4174</span></pre>
+<span class="c"># No Node? Grab the desktop build from GitHub Releases</span></pre>
     </div>
     <div>
-      <pre><span class="c"># Or three CLI steps (run inside the cloned repo)</span>
+      <pre><span class="c"># Or three CLI steps</span>
 npx openshorts new --lang en --topic "Why is the sky blue"
 npx openshorts run ~/OpenShorts/&lt;project&gt;/project.json
 npx openshorts export ~/OpenShorts/&lt;project&gt;/project.json
