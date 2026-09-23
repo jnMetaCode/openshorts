@@ -11,6 +11,7 @@ import { importAo } from '../src/core/ao-module.mjs';
 import { ollamaStatus } from '../src/local/ollama.mjs';
 import { readConfig, writeConfig, aoHome, applyAoKeysToEnv, isEnvAppliedByUs } from '../src/config.mjs';
 import { sourcesAvailability } from '../src/sources/availability.mjs';
+import { LOCAL_DRAMA, localResolution } from '../src/pipeline/drama-local.mjs';
 import { DEFAULT_VOICES, voicesFor, synthesize } from '../src/voice/edge-tts.mjs';
 import { uniqueProjectId } from '../src/project/koubo.mjs';
 import { langSpec, normLang, localizeInputs, tt } from '../src/project/lang.mjs';
@@ -404,7 +405,7 @@ import { listDramaRuns, pickFreshRunDir } from './lib/ao-run-dir.mjs';
 // OPENSHORTS_AO_DIR：指向本地 AO 检出（改工作流 / 技能时不用先发 npm 再验）；不设就用 node_modules 里那份
 function aoCli() { const dir = process.env.OPENSHORTS_AO_DIR ? path.resolve(process.env.OPENSHORTS_AO_DIR) : path.resolve(path.dirname(fileURLToPath(import.meta.resolve('agency-orchestrator'))), '..'); return { dir, cli: path.join(dir, 'dist', 'cli.js'), wf: path.join(dir, 'workflows', '短剧流水线.yaml') }; }
 const TIERS = {
-  local: { video_provider: 'local-sdcpp', video_model: 'minimax-h3-q2', video_resolution: '640x384', video_ratio: '16:9', video_duration: '2', label: '本地草稿档（不花钱，每镜约 3–4 分钟，2-bit 画质）' },
+  local: { ...LOCAL_DRAMA, video_resolution: localResolution('16:9'), video_ratio: '16:9', label: '本地草稿档（不花钱，每镜约 3–4 分钟，2-bit 画质）' },
   cloud: { label: '云端成片档（按秒计费，运行前看花费）' },
 };
 function dramaInputs(b) {
@@ -412,7 +413,7 @@ function dramaInputs(b) {
   const inputs = { story: String(b.story ?? '').trim(), genre: b.genre || '剧情短剧', style: b.style || '美式复古好莱坞', narration: '不配音',
     image_provider: b.image_provider || '', image_model: b.image_model || '',
     video_provider: b.video_provider || t.video_provider || 'apimart', video_model: b.video_model || t.video_model || 'veo3.1-fast', video_resolution: b.video_resolution || t.video_resolution || '720p', video_ratio: b.video_ratio || t.video_ratio || '16:9', video_duration: String(b.video_duration || t.video_duration || '8') };
-  if (b.tier === 'local') { inputs.video_ratio = b.video_ratio === '9:16' ? '9:16' : '16:9'; inputs.video_resolution = inputs.video_ratio === '9:16' ? '384x640' : '640x384'; }
+  if (b.tier === 'local') { inputs.video_ratio = b.video_ratio === '9:16' ? '9:16' : '16:9'; inputs.video_resolution = localResolution(inputs.video_ratio); }
   return inputs;
 }
 const inputArgs = (inputs) => Object.entries(inputs).flatMap(([k, v]) => (v === '' ? [] : ['-i', `${k}=${v}`]));
@@ -601,7 +602,7 @@ kaipian.get('/projects/:id/drama/redo', (req, res) => {
   // 换来源：本镜的 tier 覆盖只影响这次 -i；记进 shotSources 让标注正确
   const inputs = { ...prev.inputs };
   const shotSources = {};
-  if (q.tier === 'local') { Object.assign(inputs, { video_provider: TIERS.local.video_provider, video_model: TIERS.local.video_model, video_resolution: inputs.video_ratio === '9:16' ? '384x640' : '640x384', video_duration: TIERS.local.video_duration }); }
+  if (q.tier === 'local') { Object.assign(inputs, { video_provider: TIERS.local.video_provider, video_model: TIERS.local.video_model, video_resolution: localResolution(inputs.video_ratio), video_duration: TIERS.local.video_duration }); }
   else if (q.tier === 'cloud') { for (const k of ['video_provider', 'video_model', 'video_resolution', 'video_duration']) { const v = flagVal(q[k]); if (v) inputs[k] = v; } }
   shotSources[shot] = { video_provider: inputs.video_provider, video_model: inputs.video_model };
   const args = [cli, 'run', wf, '--output', runsDir, '--resume', prev.final.aoRun, '--from', shot, ...inputArgs(inputs)];
