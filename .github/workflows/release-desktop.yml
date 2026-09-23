@@ -90,6 +90,13 @@ jobs:
           fi
           echo "UI in package: $found"
 
+      # 真把包里的后端起起来打几条接口——白屏闸只证明文件在，不证明它能跑。
+      # #14：Windows 上八处取引擎模块的调用一直静默失败（设置面板列不出供应商、存的 key 重启也不生效），
+      # 三平台 CI 全绿，因为没有一条测试打过那几个路由，更没人启动过打出来的包。
+      - name: Smoke-test the packaged app
+        shell: bash
+        run: ./desktop/scripts/smoke-packaged.sh desktop/release
+
       # 先把产物名规范成 ASCII,再算校验和。
       # 不做这一步的话:electron-builder 出的是「开片 OpenShorts-0.1.0-arm64.dmg」,
       # 而 GitHub 上传时会把中文前缀和空格改掉(变成 OpenShorts-0.1.0-arm64.dmg),
