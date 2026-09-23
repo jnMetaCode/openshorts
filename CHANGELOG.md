@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+- **桌面冒烟闸首次在 CI 真跑就拦下了一次发版——拦的是它自己**：Windows 上按 uname 猜路径的写法挑中了
+  `resources/elevate.exe`（electron-builder 的辅助程序），后端当然起不来。`desktop-v0.1.2` 的 mac / Linux 包已发出，
+  Windows 包被这道闸挡住没发。现在改成**按产物布局找**：先定位包内的 `resources/app/server/index.mjs`，
+  再取它旁边**最大**的那个可执行文件（Electron 主程序一两百 MB，elevate 只有几百 KB；靠 find 的返回顺序取第一个是碰运气）。
+  本地用真 mac 包 + 仿真的 win-unpacked / linux-unpacked 假包（含 elevate 诱饵）三种布局各验一遍。
+
 - **桌面包发版加"真把包起起来"的闸**（`desktop/scripts/smoke-packaged.sh`）：以前只检查 `dist/index.html` 在不在包里（白屏闸），
   从没启动过包内后端。#14 证明这不够——Windows 上八处取引擎模块的调用一直静默失败，三平台 CI 全绿。现在用包自带的 Electron
   当 Node 起包内 server，打五条页面一打开就会请求的路由（含两条要取引擎内部模块的），数据目录指到临时目录。
