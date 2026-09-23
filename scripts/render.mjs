@@ -5,7 +5,11 @@ import {bundle} from '@remotion/bundler';
 import {renderMedia, selectComposition} from '@remotion/renderer';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const projectPath = path.resolve(process.argv[2] ?? path.join(root, 'projects', 'sample.json'));
+const projectsDir = path.join(root, 'projects');
+const projectPath = path.resolve(projectsDir, process.argv[2] ?? 'sample.json');
+if (projectPath !== projectsDir && !projectPath.startsWith(projectsDir + path.sep)) {
+  throw new Error('Invalid project path: must resolve inside the projects directory');
+}
 const project = JSON.parse(await fs.readFile(projectPath, 'utf8'));
 const systemChrome = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const chromeCandidates = [process.env.CHROME_PATH,systemChrome,'/usr/bin/chromium','/usr/bin/google-chrome'].filter(Boolean);
