@@ -189,6 +189,10 @@ export async function runKoubo(project, { outDir, log = () => {}, fetchImpl = fe
     //    等于给没用到的作品署名，这在一份交给运营去发布的版权说明里是错的。
     // ② 切镜头：复用画面时 extras 是空的，重算 picked 只剩主画面 → 上一轮切好的多段被丢掉，
     //    一个画面挂满整镜。真机上重出一次 s4 的 2 段就没了，第二次 s2 的 3 段也没了，全程无提示。
+    // 手改 project.json 时把整个 visual 删掉是最自然的"让它重挑画面"的写法（文档也让用户改这份 JSON）。
+    // 以前这里直接 `shot.visual.file` → 原始 TypeError "Cannot read properties of undefined"，
+    // 用户看不出是自己删的那行还是程序坏了。缺了就按"还没挑过"补一个空壳。
+    if (!shot.visual) shot.visual = { source: project.defaults?.visualSource ?? 'stock' };
     const repick = !shot.visual.file;
     if (repick) project.provenance = project.provenance.filter((x) => x.shot !== shot.id);
     let clip = shot.visual.file; let chosen = null;
@@ -199,16 +203,16 @@ export async function runKoubo(project, { outDir, log = () => {}, fetchImpl = fe
         // 缩略图打分很便宜（几十 KB 一张），多取几条的代价主要在那次模型调用的提示词长度上。
         const cutEvery0 = Number(shot.cutEverySec ?? project.defaults?.cutEverySec ?? 4);
         const wantCands = Math.max(3, Math.min(6, cutEvery0 > 0 ? Math.ceil(durationSec / cutEvery0) : 3));
-        let cands = await findCandidates(shot.query || shot.visualIntent, { localDirs: project.defaults.localDirs, used, minDuration: 0, limit: wantCands, fetchImpl, ...(config ? { config } : {}) });
+        let cands = await findCandidates(shot.query || shot.visualIntent, { lang: L, localDirs: project.defaults.localDirs, used, minDuration: 0, limit: wantCands, fetchImpl, ...(config ? { config } : {}) });
         // 没有没用过的候选时，宁可复用一条也别落到纯色底（复用会在 notes 里说明）
-        if (!cands.length && used.size) { cands = await findCandidates(shot.query || shot.visualIntent, { localDirs: project.defaults.localDirs, used: new Set(), minDuration: 0, limit: wantCands, fetchImpl, ...(config ? { config } : {}) }); if (cands.length) notes.push(T(`镜头 ${shot.id} 复用了已用过的素材 ${cands[0].id}（候选不够）`, `Shot ${shot.id} reused already-used footage ${cands[0].id} (not enough candidates)`)); }
+        if (!cands.length && used.size) { cands = await findCandidates(shot.query || shot.visualIntent, { lang: L, localDirs: project.defaults.localDirs, used: new Set(), minDuration: 0, limit: wantCands, fetchImpl, ...(config ? { config } : {}) }); if (cands.length) notes.push(T(`镜头 ${shot.id} 复用了已用过的素材 ${cands[0].id}（候选不够）`, `Shot ${shot.id} reused already-used footage ${cands[0].id} (not enough candidates)`)); }
         if (judge && cands.length) {
           // 看图排序：先拿各来源自带的缩略图（几十 KB）打分，**只有中选的那条才真下**——
           // 以前是 3 条全下再扔掉 2 条，Commons 的原文件动辄几十 MB。
           // 没有缩略图的候选才回落到"先下再抽帧"。
           // 没有缩略图（或缩略图挂了）的候选，rankCandidates 会通过 getFile 按需把它下下来再抽帧，
           // 保证每条候选都真的被判过——常见情况下这个回调一次都不会被调用
-          const getFile = async (c) => { try { return await materialize(c, { fetchImpl }); } catch (e) { notes.push(T(`候选 ${c.id} 取不到：${e.message.slice(0, 80)}`, `Candidate ${c.id} could not be fetched: ${e.message.slice(0, 80)}`)); return null; } };
+          const getFile = async (c) => { try { return await materialize(c, { fetchImpl, lang: L }); } catch (e) { notes.push(T(`候选 ${c.id} 取不到：${e.message.slice(0, 80)}`, `Candidate ${c.id} could not be fetched: ${e.message.slice(0, 80)}`)); return null; } };
           const ranked = await rankCandidates(cands.slice(0, wantCands), shot.visualIntent || shot.query, { connector: judge.connector, cfg: judge.cfg, log, fetchImpl, getFile, T });
           log(T(`🔍 ${shot.id} 候选 ${ranked.map((r) => `${r.id.split(':')[0]}=${r.score ?? '-'}`).join(' ')}`, `🔍 ${shot.id} candidates ${ranked.map((r) => `${r.id.split(':')[0]}=${r.score ?? '-'}`).join(' ')}`));
           // 开了把关却一条都没判成（视觉接口抽了 / 都取不到画面证据）时，别默默拿一条没判过的顶上——
@@ -224,7 +228,7 @@ export async function runKoubo(project, { outDir, log = () => {}, fetchImpl = fe
           for (const cand of pool) {
             if (cand.unjudged) notes.push(T(`镜头 ${shot.id} 用了没能打分的候选 ${cand.id}（本机也出不了图）`, `Shot ${shot.id} used unscored candidate ${cand.id} (local generation was unavailable too)`));
             try {
-              const f = await materialize(cand, { fetchImpl });
+              const f = await materialize(cand, { fetchImpl, lang: L });
               // fillOnly 的分数不够当主画面，只能用来补切镜头的后几段
               if (!chosen && !cand.fillOnly) { chosen = cand; clip = f; log(T(`  → 选 ${cand.id}${cand.why ? `（${cand.why}）` : ''}`, `  → picked ${cand.id}${cand.why ? ` (${cand.why})` : ''}`)); }
               extras.push({ ...cand, file: f });
@@ -235,7 +239,7 @@ export async function runKoubo(project, { outDir, log = () => {}, fetchImpl = fe
           if (!chosen) notes.push(T(`镜头 ${shot.id} 的 ${ranked.length} 条候选都没过看图把关或都取不到（分数 ${ranked.map((r) => r.score ?? '-').join('/')}，及格线 6）`, `Shot ${shot.id}: all ${ranked.length} candidates failed the visual check or could not be fetched (scores ${ranked.map((r) => r.score ?? '-').join('/')}, pass mark 6)`));
         } else if (cands.length) {
           // 不看图时也别在第一条上吊死：第一条下不动（超大 / 超时 / 404）就顺位试下一条，别直接掉进纯色底
-          const got = await materializeFirst(cands, { fetchImpl, onError: (c, e) => notes.push(T(`候选 ${c.id} 取不到：${e.message.slice(0, 80)}`, `Candidate ${c.id} could not be fetched: ${e.message.slice(0, 80)}`)) });
+          const got = await materializeFirst(cands, { fetchImpl, lang: L, onError: (c, e) => notes.push(T(`候选 ${c.id} 取不到：${e.message.slice(0, 80)}`, `Candidate ${c.id} could not be fetched: ${e.message.slice(0, 80)}`)) });
           if (got) { chosen = got.candidate; clip = got.file; extras.push({ ...got.candidate, file: got.file }); }
         }
         if (chosen) used.add(chosen.id);

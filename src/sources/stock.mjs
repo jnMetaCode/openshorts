@@ -4,6 +4,7 @@
  * key 由 ~/.openshorts/config.json 提供（用户自己的，注册即得，不内置共享 key，ADR-009）。
  */
 import fs from 'node:fs';
+import { tt, normLang } from '../project/lang.mjs';
 import path from 'node:path';
 import os from 'node:os';
 import crypto from 'node:crypto';
@@ -35,12 +36,13 @@ export function searchLocal(query, { dirs = [], limit = 3 } = {}) {
   }));
 }
 
-export async function searchPexels(query, { key, limit = 3, orientation = 'portrait', minDuration = 0, fetchImpl = fetch } = {}) {
+export async function searchPexels(query, { key, limit = 3, orientation = 'portrait', minDuration = 0, fetchImpl = fetch, lang = 'zh' } = {}) {
+  const T = tt(normLang(lang));
   if (!key) return [];
   const u = new URL('https://api.pexels.com/videos/search');
   u.searchParams.set('query', query); u.searchParams.set('per_page', String(Math.max(limit * 3, 9))); u.searchParams.set('orientation', orientation); u.searchParams.set('size', 'medium');
   const r = await fetchImpl(u, { headers: { Authorization: key, 'User-Agent': UA } });
-  if (r.status === 429) throw new StockRateLimit('Pexels 触发限额（免费 key 200 次/小时、2 万次/月）');
+  if (r.status === 429) throw new StockRateLimit(T('Pexels 触发限额（免费 key 200 次/小时、2 万次/月）', 'Pexels rate limit hit (free keys allow 200/hour, 20k/month)'));
   if (!r.ok) throw new Error(`Pexels ${r.status}`);
   const j = await r.json();
   return (j.videos ?? []).filter((v) => (v.duration ?? 0) >= minDuration).slice(0, limit).map((v) => {
@@ -50,12 +52,13 @@ export async function searchPexels(query, { key, limit = 3, orientation = 'portr
   });
 }
 
-export async function searchPixabay(query, { key, limit = 3, minDuration = 0, fetchImpl = fetch } = {}) {
+export async function searchPixabay(query, { key, limit = 3, minDuration = 0, fetchImpl = fetch, lang = 'zh' } = {}) {
+  const T = tt(normLang(lang));
   if (!key) return [];
   const u = new URL('https://pixabay.com/api/videos/');
   u.searchParams.set('key', key); u.searchParams.set('q', query); u.searchParams.set('per_page', String(Math.max(limit * 3, 9))); u.searchParams.set('safesearch', 'true');
   const r = await fetchImpl(u, { headers: { 'User-Agent': UA } });
-  if (r.status === 429) throw new StockRateLimit('Pixabay 触发限额（100 次/分钟）');
+  if (r.status === 429) throw new StockRateLimit(T('Pixabay 触发限额（100 次/分钟）', 'Pixabay rate limit hit (100/minute)'));
   if (!r.ok) throw new Error(`Pixabay ${r.status}`);
   const j = await r.json();
   return (j.hits ?? []).filter((v) => (v.duration ?? 0) >= minDuration).slice(0, limit).map((v) => {
@@ -86,7 +89,8 @@ export function wikimediaTranscoded(url, height) {
  * Wikimedia Commons（不要 key！CC / 公有领域，需署名）：真正零配置的免费素材源。
  * 检索 `filetype:video`，多为 webm/ogv，ffmpeg 都能吃；署名信息进 provenance（CC BY-SA 要求）。
  */
-export async function searchWikimedia(query, { limit = 3, minDuration = 0, maxDuration = 1800, fetchImpl = fetch } = {}) {
+export async function searchWikimedia(query, { limit = 3, minDuration = 0, maxDuration = 1800, fetchImpl = fetch, lang = 'zh' } = {}) {
+  const T = tt(normLang(lang));
   const u = new URL('https://commons.wikimedia.org/w/api.php');
   Object.entries({ action: 'query', generator: 'search', gsrsearch: `filetype:video ${query}`, gsrnamespace: '6', gsrlimit: String(Math.max(limit * 3, 9)), prop: 'imageinfo', iiprop: 'url|size|mime|extmetadata', iiextmetadatafilter: 'LicenseShortName|Artist|Credit|LicenseUrl',
     // 顺带要一张缩略图给看图排序用：seek=10 是为了躲开片头标题卡（真机被一段 1920 年代动画的标题卡坑过），
@@ -94,7 +98,7 @@ export async function searchWikimedia(query, { limit = 3, minDuration = 0, maxDu
     iiurlwidth: '640', iiurlparam: 'seek=10',
     format: 'json', origin: '*' }).forEach(([k, v]) => u.searchParams.set(k, v));
   const r = await fetchImpl(u, { headers: { 'User-Agent': UA } });
-  if (r.status === 429) throw new StockRateLimit('Wikimedia 触发限速，稍后再试');
+  if (r.status === 429) throw new StockRateLimit(T('Wikimedia 触发限速，稍后再试', 'Wikimedia rate limit hit; try again later'));
   if (!r.ok) throw new Error(`Wikimedia ${r.status}`);
   const j = await r.json();
   const pages = Object.values(j.query?.pages ?? {});
@@ -121,7 +125,7 @@ export async function searchWikimedia(query, { limit = 3, minDuration = 0, maxDu
     return { id: `wikimedia:${p.pageid}`, source: 'wikimedia', kind: 'video', file: null,
       url: wikimediaTranscoded(ii.url, ii.height) ?? ii.url, fallbackUrl: ii.url, thumb: ii.thumburl ?? null,
       width: ii.width, height: ii.height, duration: Number(ii.duration ?? 0) || null, bytes: Number(ii.size ?? 0) || null,
-      license: strip(em.LicenseShortName?.value) || 'CC（见页面）', licenseUrl: em.LicenseUrl?.value ?? null, author: strip(em.Artist?.value) || null,
+      license: strip(em.LicenseShortName?.value) || T('CC（见页面）', 'CC (see page)'), licenseUrl: em.LicenseUrl?.value ?? null, author: strip(em.Artist?.value) || null,
       page: ii.descriptionurl ?? `https://commons.wikimedia.org/?curid=${p.pageid}`, title: p.title };
   });
 }
@@ -137,12 +141,13 @@ export async function searchWikimedia(query, { limit = 3, minDuration = 0, maxDu
  * 只要可商用 + 可改编的许可证：用户是要发到平台上的，NC（非商用）不能给他们埋雷；
  * 裁切推拉属于改编，ND（禁改）也要排除。服务端过滤之外本地再兜一道。
  */
-export async function searchOpenverse(query, { limit = 3, fetchImpl = fetch } = {}) {
+export async function searchOpenverse(query, { limit = 3, fetchImpl = fetch, lang = 'zh' } = {}) {
+  const T = tt(normLang(lang));
   const u = new URL('https://api.openverse.org/v1/images/');
   Object.entries({ q: query, page_size: String(Math.max(limit * 3, 9)), license_type: 'commercial,modification', mature: 'false' })
     .forEach(([k, v]) => u.searchParams.set(k, v));
   const r = await fetchImpl(u, { headers: { 'User-Agent': UA } });
-  if (r.status === 429) throw new StockRateLimit('Openverse 触发限速（匿名调用有配额），稍后再试');
+  if (r.status === 429) throw new StockRateLimit(T('Openverse 触发限速（匿名调用有配额），稍后再试', 'Openverse rate limit hit (anonymous calls are throttled); try again later'));
   if (!r.ok) throw new Error(`Openverse ${r.status}`);
   const j = await r.json();
   const usable = (lic) => lic && !/\bnc\b/.test(lic) && !/\bnd\b/.test(lic);
@@ -171,14 +176,15 @@ export const commonsThumbWidth = (url, px) => (url ? String(url).replace(/\/(\d+
  *
  * 下的是 2400px 的派生图（几百 KB），不是动辄 6000×4000 的原图；排序用 640px 的那份。
  */
-export async function searchWikimediaImages(query, { limit = 3, fetchImpl = fetch } = {}) {
+export async function searchWikimediaImages(query, { limit = 3, fetchImpl = fetch, lang = 'zh' } = {}) {
+  const T = tt(normLang(lang));
   const u = new URL('https://commons.wikimedia.org/w/api.php');
   Object.entries({ action: 'query', generator: 'search', gsrsearch: `filetype:bitmap ${query}`, gsrnamespace: '6',
     gsrlimit: String(Math.max(limit * 3, 9)), prop: 'imageinfo', iiprop: 'url|size|mime|extmetadata',
     iiextmetadatafilter: 'LicenseShortName|Artist|Credit|LicenseUrl', iiurlwidth: '2400',
     format: 'json', origin: '*' }).forEach(([k, v]) => u.searchParams.set(k, v));
   const r = await fetchImpl(u, { headers: { 'User-Agent': UA } });
-  if (r.status === 429) throw new StockRateLimit('Wikimedia 触发限速，稍后再试');
+  if (r.status === 429) throw new StockRateLimit(T('Wikimedia 触发限速，稍后再试', 'Wikimedia rate limit hit; try again later'));
   if (!r.ok) throw new Error(`Wikimedia ${r.status}`);
   const j = await r.json();
   const words = tokenize(query).filter((w) => w.length > 2);
@@ -199,7 +205,7 @@ export async function searchWikimediaImages(query, { limit = 3, fetchImpl = fetc
       return { id: `wikimedia-img:${p.pageid}`, source: 'wikimedia', kind: 'image', file: null,
         url: big, fallbackUrl: ii.url, thumb: commonsThumbWidth(big, 640) ?? big,
         width: ii.thumbwidth ?? ii.width, height: ii.thumbheight ?? ii.height, duration: null,
-        license: strip(em.LicenseShortName?.value) || 'CC（见页面）', licenseUrl: em.LicenseUrl?.value ?? null,
+        license: strip(em.LicenseShortName?.value) || T('CC（见页面）', 'CC (see page)'), licenseUrl: em.LicenseUrl?.value ?? null,
         author: strip(em.Artist?.value) || null,
         page: ii.descriptionurl ?? `https://commons.wikimedia.org/?curid=${p.pageid}`, title: p.title };
     });
@@ -217,7 +223,8 @@ export function relaxQueries(query) {
 }
 
 /** 统一入口：按顺序找候选，去掉本项目已用过的；全部为空时返回 []（调用方降级到 AI 配图 / 纯色底） */
-export async function findCandidates(query, { localDirs = [], used = new Set(), limit = 3, minDuration = 0, fetchImpl = fetch, config = readConfig() } = {}) {
+export async function findCandidates(query, { localDirs = [], used = new Set(), limit = 3, minDuration = 0, fetchImpl = fetch, config = readConfig(), lang = 'zh' } = {}) {
+  const T = tt(normLang(lang));
   const out = [];
   const push = (arr) => { for (const c of arr) if (!used.has(c.id) && !out.some((o) => o.id === c.id)) out.push(c); };
   push(searchLocal(query, { dirs: localDirs, limit }));
@@ -234,7 +241,7 @@ export async function findCandidates(query, { localDirs = [], used = new Set(), 
   // 视频源夹在两个图片源中间而不是垫底——这样候选里一定有一条视频可选（图片源会把 3 个位子占满），
   // 开了看图排序时模型才有"图 vs 视频"可挑；没开时排在前面的图片会中选，这也正是我们想要的默认。
   const chain = [[searchPexels, { key: config.stock?.pexelsKey }], [searchPixabay, { key: config.stock?.pixabayKey }],
-    [searchOpenverse, { limit: 2 }], [searchWikimedia, { limit: 1 }], [searchWikimediaImages, { limit: 2 }]];
+    [searchOpenverse, { limit: 2 }], [searchWikimedia, { limit: 1 }], [searchWikimediaImages, { limit: 2 }]].map(([fn, x]) => [fn, { ...x, lang }]);
   for (const [fn, extra] of chain) {
     if (out.length >= limit) break;
     if ('key' in extra && !extra.key) continue;
@@ -245,7 +252,7 @@ export async function findCandidates(query, { localDirs = [], used = new Set(), 
       catch (e) { errors.push(e.message); if (e instanceof StockRateLimit) break; }
     }
   }
-  if (!out.length && errors.length) throw new Error(`素材库检索失败：${errors.join('；')}`);
+  if (!out.length && errors.length) throw new Error(T(`素材库检索失败：${errors.join('；')}`, `Footage search failed: ${errors.join('; ')}`));
   return out.slice(0, limit);
 }
 
@@ -254,9 +261,11 @@ export async function findCandidates(query, { localDirs = [], used = new Set(), 
  * 三条护栏，都是踩过的：Wikimedia 上有几百 MB 的纪录片（我们只用其中几秒）——超过 maxBytes 直接换下一条；
  * 网络挂住不能无限等——带超时；写 .part 再改名——中途被 Ctrl-C 不会在缓存里留下一个"看着像好的"半截文件。
  */
-export async function materialize(candidate, { fetchImpl = fetch, maxBytes = 256 << 20, timeoutMs = 90_000 } = {}) {
+export async function materialize(candidate, { fetchImpl = fetch, maxBytes = 256 << 20, timeoutMs = 90_000, lang = 'zh' } = {}) {
+  // 这些原因会原样进 project 的 notes、再显示给用户——英文片里嵌一句中文就是 9-23 真跑逮到的那个样子
+  const T = tt(normLang(lang));
   if (candidate.file) return candidate.file;
-  if (!candidate.url) throw new Error(`候选 ${candidate.id} 没有可下载地址`);
+  if (!candidate.url) throw new Error(T(`候选 ${candidate.id} 没有可下载地址`, `Candidate ${candidate.id} has no downloadable URL`));
   fs.mkdirSync(CACHE_DIR, { recursive: true });
   const ext = (candidate.url.match(/\.(webm|ogv|ogg|mov|mp4|m4v|jpe?g|png|webp|gif)(\?|$)/i)?.[1]
     ?? (candidate.kind === 'image' ? 'jpg' : 'mp4')).toLowerCase();
@@ -269,31 +278,31 @@ export async function materialize(candidate, { fetchImpl = fetch, maxBytes = 256
     // 首选转码版（小得多），Commons 没给这个文件生成过就回落到原文件
     let r = await fetchImpl(candidate.url, { headers: { 'User-Agent': UA }, redirect: 'follow', signal: ac.signal });
     if (!r.ok && candidate.fallbackUrl && candidate.fallbackUrl !== candidate.url) r = await fetchImpl(candidate.fallbackUrl, { headers: { 'User-Agent': UA }, redirect: 'follow', signal: ac.signal });
-    if (!r.ok) throw new Error(`下载素材失败 ${r.status}：${candidate.url}`);
+    if (!r.ok) throw new Error(T(`下载素材失败 ${r.status}：${candidate.url}`, `Footage download failed with ${r.status}: ${candidate.url}`));
     const declared = Number(r.headers?.get?.('content-length') || 0);
-    if (declared > maxBytes) throw new StockTooLarge(`候选 ${candidate.id} 有 ${(declared / 1048576).toFixed(0)} MB，超过 ${(maxBytes / 1048576).toFixed(0)} MB 上限，换下一条`);
+    if (declared > maxBytes) throw new StockTooLarge(T(`候选 ${candidate.id} 有 ${(declared / 1048576).toFixed(0)} MB，超过 ${(maxBytes / 1048576).toFixed(0)} MB 上限，换下一条`, `Candidate ${candidate.id} is ${(declared / 1048576).toFixed(0)} MB, over the ${(maxBytes / 1048576).toFixed(0)} MB cap; trying the next one`));
     let bytes = 0; const chunks = [];
     // 没有 content-length 的源（Wikimedia 常见）边收边数，超了立刻断
     for await (const chunk of r.body) {
       bytes += chunk.length;
-      if (bytes > maxBytes) { ac.abort(); throw new StockTooLarge(`候选 ${candidate.id} 下载超过 ${(maxBytes / 1048576).toFixed(0)} MB 上限，换下一条`); }
+      if (bytes > maxBytes) { ac.abort(); throw new StockTooLarge(T(`候选 ${candidate.id} 下载超过 ${(maxBytes / 1048576).toFixed(0)} MB 上限，换下一条`, `Candidate ${candidate.id} exceeded the ${(maxBytes / 1048576).toFixed(0)} MB cap while downloading; trying the next one`)); }
       chunks.push(Buffer.from(chunk));
     }
-    if (!bytes) throw new Error(`候选 ${candidate.id} 下载到 0 字节`);
+    if (!bytes) throw new Error(T(`候选 ${candidate.id} 下载到 0 字节`, `Candidate ${candidate.id} downloaded 0 bytes`));
     fs.writeFileSync(part, Buffer.concat(chunks));
     fs.renameSync(part, dest);
     return dest;
   } catch (e) {
     fs.rmSync(part, { force: true });
-    if (e?.name === 'AbortError' && !(e instanceof StockTooLarge)) throw new Error(`下载素材超时（${timeoutMs / 1000}s）：${candidate.url}`);
+    if (e?.name === 'AbortError' && !(e instanceof StockTooLarge)) throw new Error(T(`下载素材超时（${timeoutMs / 1000}s）：${candidate.url}`, `Footage download timed out after ${timeoutMs / 1000}s: ${candidate.url}`));
     throw e;
   } finally { clearTimeout(timer); }
 }
 
 /** 按顺序试候选，返回第一条下载成功的 { candidate, file }；全失败返回 null（失败原因进 notes） */
-export async function materializeFirst(candidates, { fetchImpl = fetch, onError = () => {} } = {}) {
+export async function materializeFirst(candidates, { fetchImpl = fetch, onError = () => {}, lang = 'zh' } = {}) {
   for (const c of candidates) {
-    try { return { candidate: c, file: await materialize(c, { fetchImpl }) }; }
+    try { return { candidate: c, file: await materialize(c, { fetchImpl, lang }) }; }
     catch (e) { onError(c, e); }
   }
   return null;
