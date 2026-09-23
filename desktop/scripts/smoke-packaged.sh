@@ -25,8 +25,8 @@ for base in $ORDER; do
     # 取**最大**的那个可执行文件：Electron 主程序有一两百 MB，而同目录的 elevate.exe /
     # chrome_crashpad_handler 只有几百 KB。靠 find 的返回顺序取第一个是碰运气——
     # CI 首跑时正是挑中了 resources/elevate.exe。
-    cand=$(find "$approot" -maxdepth 1 -type f -perm -u+x ! -name "*.dll" ! -name "*.so*" ! -name "*.pak" ! -name "*.dat" ! -name "*.bin" ! -name "*.json" -exec ls -S {} + 2>/dev/null | head -1)
-    [ -n "$cand" ] || cand=$(find "$approot/MacOS" -maxdepth 1 -type f -perm -u+x -exec ls -S {} + 2>/dev/null | head -1)
+    cand=$( { find "$approot" -maxdepth 1 -type f -perm -u+x ! -name "*.dll" ! -name "*.so*" ! -name "*.pak" ! -name "*.dat" ! -name "*.bin" ! -name "*.json" -exec ls -S {} + 2>/dev/null || true; } | head -1)
+    [ -n "$cand" ] || cand=$( { find "$approot/MacOS" -maxdepth 1 -type f -perm -u+x -exec ls -S {} + 2>/dev/null || true; } | head -1)
     if [ -n "$cand" ]; then BIN="$cand"; SERVER="$srv"; break; fi
   done <<EOF
 $(find "$base" -ipath "*resources/app/server/index.mjs" 2>/dev/null)
