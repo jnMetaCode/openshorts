@@ -11,20 +11,29 @@ set -euo pipefail
 REL="${1:-desktop/release}"
 PORT="${SMOKE_PORT:-4477}"
 
-case "$(uname -s)" in
-  Darwin)
-    # 优先挑与本机架构一致的那份：x64 包在 arm64 上走 Rosetta 能跑，但启动要 30 秒
-    [ "$(uname -m)" = "arm64" ] && PREF="mac-arm64" || PREF="mac"
-    BIN=$(find "$REL/$PREF" -maxdepth 4 -type f -path "*.app/Contents/MacOS/*" 2>/dev/null | head -1)
-    [ -n "$BIN" ] || BIN=$(find "$REL" -maxdepth 6 -type f -path "*.app/Contents/MacOS/*" | head -1) ;;
-  MINGW*|MSYS*|CYGWIN*) BIN=$(find "$REL" -maxdepth 4 -type f -iname "*.exe" -path "*unpacked*" | head -1) ;;
-  *) BIN=$(find "$REL" -maxdepth 4 -type f -perm -u+x -path "*linux-unpacked*" ! -name "*.so*" ! -name "*.bin" ! -name "*.pak" ! -name "*.dat" | head -1) ;;
-esac
-SERVER=$(dirname "$BIN")/../Resources/app/server/index.mjs
-[ -f "$SERVER" ] || SERVER=$(dirname "$BIN")/resources/app/server/index.mjs
-[ -f "$SERVER" ] || SERVER=$(find "$REL" -ipath "*resources/app/server/index.mjs" | head -1)
-[ -n "$BIN" ] && [ -x "$BIN" ] || { echo "::error::找不到包里的可执行文件（${REL}）"; find "$REL" -maxdepth 4 -type d | head -20; exit 1; }
-[ -n "$SERVER" ] || { echo "::error::找不到包里的 server/index.mjs"; exit 1; }
+# 按**产物布局**找，不按 uname 猜：先找包内的 server 入口，再取它旁边的可执行文件。
+# 首次在 CI 上真跑时，按 uname 猜的写法在 Windows 上挑中了 resources/elevate.exe（electron-builder 的辅助程序），
+# 后端当然起不来——这道闸因此拦下了那次发版，但拦的是脚本自己的毛病。
+BIN=""; SERVER=""
+# mac 上优先本机架构：x64 包在 arm64 上走 Rosetta 能跑，但启动要 30 秒
+if [ "$(uname -s)" = "Darwin" ] && [ "$(uname -m)" = "arm64" ]; then ORDER="$REL/mac-arm64 $REL"; else ORDER="$REL"; fi
+for base in $ORDER; do
+  [ -d "$base" ] || continue
+  while IFS= read -r srv; do
+    [ -n "$srv" ] || continue
+    approot=$(cd "$(dirname "$srv")/../../.." && pwd)      # …/resources/app/server/index.mjs → 含 resources 的那层
+    # 取**最大**的那个可执行文件：Electron 主程序有一两百 MB，而同目录的 elevate.exe /
+    # chrome_crashpad_handler 只有几百 KB。靠 find 的返回顺序取第一个是碰运气——
+    # CI 首跑时正是挑中了 resources/elevate.exe。
+    cand=$(find "$approot" -maxdepth 1 -type f -perm -u+x ! -name "*.dll" ! -name "*.so*" ! -name "*.pak" ! -name "*.dat" ! -name "*.bin" ! -name "*.json" -exec ls -S {} + 2>/dev/null | head -1)
+    [ -n "$cand" ] || cand=$(find "$approot/MacOS" -maxdepth 1 -type f -perm -u+x -exec ls -S {} + 2>/dev/null | head -1)
+    if [ -n "$cand" ]; then BIN="$cand"; SERVER="$srv"; break; fi
+  done <<EOF
+$(find "$base" -ipath "*resources/app/server/index.mjs" 2>/dev/null)
+EOF
+  [ -n "$BIN" ] && break
+done
+[ -n "$BIN" ] && [ -n "$SERVER" ] || { echo "::error::找不到「可执行文件 + 包内 server」这一对（${REL}）"; find "$REL" -maxdepth 4 -type d | head -20; exit 1; }
 echo "bin:    $BIN"
 echo "server: $SERVER"
 
