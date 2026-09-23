@@ -9,6 +9,11 @@
 - **两个冒烟脚本的 shell 坑各修一处**（都是本地真跑才暴露的）：① `… | grep -q` 在 `set -o pipefail` 下会被 SIGPIPE
   判成失败——滤镜明明在却报没有；改成先取回文本再匹配。② 变量名后面紧跟全角字符（`${VAR}）`）会被 bash 当成变量名的一部分，
   直接 unbound variable；两个脚本统一加花括号。
+- **`openshorts drama --help` 以前需要 key**：它一路透传给引擎，用户想看用法却被告知"缺少 API Key：文本供应商 deepseek"，
+  完全看不出是自己没配还是命令坏了。现在直接给双语用法，含本机零成本档的那一行参数。
+- **短剧线没用设置里选的文本模型**（口播线早就用 `llmOverride` 带上了，短剧线一直漏）：选了 ollama / 智谱，
+  它照样按模板默认去找 deepseek 的 key——报出来的供应商名用户根本没选过。现在默认带上配置里的，显式传 `--provider` 时不覆盖。
+  测试用桩引擎截获传给引擎的参数（只断言退出码的话，这条测试永远绿）。
 
 - **桌面冒烟闸首次在 CI 真跑就拦下了一次发版——拦的是它自己**：Windows 上按 uname 猜路径的写法挑中了
   `resources/elevate.exe`（electron-builder 的辅助程序），后端当然起不来。`desktop-v0.1.2` 的 mac / Linux 包已发出，
