@@ -4,7 +4,7 @@ description: Use this skill whenever the user wants a finished short video (talk
 compatibility: Needs an AI agent with terminal, network and filesystem access. Node.js 20+ and git. macOS, Linux and Windows. Uses `npm`; no Python.
 metadata:
   author: "jnMetaCode"
-  version: "2.0.0-alpha.25"
+  version: "2.0.0-alpha.26"
   upstream: "https://github.com/jnMetaCode/openshorts"
   homepage: "https://os.aiolaola.com"
 ---
