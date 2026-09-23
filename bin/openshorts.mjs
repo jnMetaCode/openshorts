@@ -105,10 +105,38 @@ switch (cmd) {
     const wf = path.join(aoBin().dir, t.ao.workflow);
     // --plan 必须带上用户的 -i：报价按供应商/模型/秒数算，不带输入的 plan 报的是默认档的价，
     // 不是他实际要跑的那一单（README 恰好教人用 --plan -i … 先看花费）
-    const passthru = rest.filter((a) => a !== '--validate' && a !== '--plan');
+    // `--help` 不该需要凭证：以前它一路透传到 `ao run`，用户想看用法却被告知"缺少 API Key：文本供应商 deepseek…"，
+    // 完全看不出是自己没配 key 还是这条命令坏了
+    if (rest.includes('--help') || rest.includes('-h')) {
+      console.log(T(`用法：openshorts drama -i story="一段故事" -i image_provider=<家> -i image_model=<模型> [-i video_provider=… -i video_model=…]
+
+  --plan      先看花费与逐镜报价（带上你真正要用的 -i，否则报的是默认档的价）
+  --validate  只校验工作流与参数，不出片、不花钱
+  其余参数原样透传给引擎（\`ao run\`）。
+
+  本机零成本档：-i image_provider=local-sdcpp -i image_model=flux-schnell-q2 -i video_provider=local-sdcpp -i video_model=minimax-h3-q2
+  看这台机器能跑哪些：openshorts sources`,
+        `Usage: openshorts drama -i story="a story" -i image_provider=<vendor> -i image_model=<model> [-i video_provider=… -i video_model=…]
+
+  --plan      show the cost and a per-shot quote first (pass the same -i you will really use, or you get the default tier's price)
+  --validate  check the workflow and inputs only — no render, no spend
+  Everything else is passed through to the engine (\`ao run\`).
+
+  Free on-device tier: -i image_provider=local-sdcpp -i image_model=flux-schnell-q2 -i video_provider=local-sdcpp -i video_model=minimax-h3-q2
+  What this machine can run: openshorts sources`));
+      break;
+    }
+    // 用户在设置里选的文本模型，短剧线也得用上——口播线早就这么做了（llmOverride），
+    // 短剧线一直漏了：选了 ollama / 智谱，它照样按模板默认去找 deepseek 的 key，
+    // 报"缺少 API Key：文本供应商 deepseek"，而用户根本没选过 deepseek。
+    const { readConfig: rcd } = await import('../src/config.mjs');
+    const cfgd = rcd();
+    const llmArgs = rest.includes('--provider') || !cfgd.text?.provider ? []
+      : ['--provider', cfgd.text.provider, ...(cfgd.text.model ? ['--model', cfgd.text.model] : [])];
+    const passthru = [...rest.filter((a) => a !== '--validate' && a !== '--plan'), ...llmArgs];
     if (rest.includes('--validate')) runAO(['validate', wf, ...passthru]);
     if (rest.includes('--plan')) runAO(['plan', wf, ...passthru]);
-    runAO(['run', wf, ...rest]);
+    runAO(['run', wf, ...rest, ...llmArgs]);
     break;
   }
   case 'new': {
