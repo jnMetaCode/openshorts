@@ -280,16 +280,14 @@
   <p class="sub">要求：Node ≥ 20。ffmpeg 与本地出图模型都可以在装好后一键补齐。</p>
   <div class="qs">
     <div>
-      <pre><span class="c"># 装（发布包见 GitHub Releases，或直接用源码）</span>
-git clone https://github.com/jnMetaCode/openshorts.git
-cd openshorts &amp;&amp; npm install
+      <pre><span class="c"># 打开图形界面（推荐）：四步出片</span>
+npx openshorts
+<span class="g"># → http://127.0.0.1:4174</span>
 
-<span class="c"># 打开图形界面（推荐）：四步出片</span>
-npm run openshorts
-<span class="g"># → http://127.0.0.1:4174</span></pre>
+<span class="c"># 不想装 Node？用桌面版（见 GitHub Releases）</span></pre>
     </div>
     <div>
-      <pre><span class="c"># 或者命令行三步（在克隆目录里执行）</span>
+      <pre><span class="c"># 或者命令行三步</span>
 npx openshorts new koubo-kepu --topic "为什么天空是蓝色的"
 npx openshorts run ~/OpenShorts/为什么天空是蓝色的/project.json
 npx openshorts export ~/OpenShorts/为什么天空是蓝色的/project.json

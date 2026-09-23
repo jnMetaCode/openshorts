@@ -39,10 +39,11 @@
 ![License](https://img.shields.io/badge/license-MIT-green) ![Node](https://img.shields.io/badge/node-%E2%89%A520-brightgreen) ![Tests](https://img.shields.io/badge/tests-269%20passing-brightgreen) ![CI](https://img.shields.io/badge/CI-ubuntu%20%7C%20macOS%20%7C%20windows-brightgreen) ![Format](https://img.shields.io/badge/format-9%3A16%20%7C%2016%3A9-blue)
 
 ```bash
-git clone https://github.com/jnMetaCode/openshorts.git
-cd openshorts && npm install
-npm run openshorts      # opens the GUI at http://127.0.0.1:4174
+npx openshorts          # opens the GUI at http://127.0.0.1:4174
 ```
+
+Node.js 20+ is all you need; `npx openshorts install-ffmpeg` fetches an ffmpeg with subtitle support without touching your system one.
+There is also a [desktop build](https://github.com/jnMetaCode/openshorts/releases) (no Node required), or clone the source: `git clone … && npm install && npm run openshorts`.
 
 **Don't want to install anything by hand? Paste this into your AI agent (Claude Code / Codex / Cursor…) — it installs, health-checks, writes the script, renders, and hands back the file paths:**
 
@@ -127,8 +128,8 @@ Script writing needs a text model: your own key (DeepSeek / Kimi / GLM / … —
 OpenShorts ships an [MCP](https://modelcontextprotocol.io) server over stdio, so Claude Code, Claude Desktop, Cursor or any MCP client can go from "make me a 60-second explainer about X" to a finished mp4 on your machine — no dashboard, no cloud account.
 
 ```bash
-# Claude Code (from a git checkout; once the npm package is out, use `npx openshorts mcp`)
-claude mcp add openshorts -- node ~/openshorts/bin/openshorts.mjs mcp
+# Claude Code
+claude mcp add openshorts -- npx openshorts mcp
 ```
 
 Tools: `create_video` (topic → script → footage → voice → mp4; returns a job id at once because a render takes 1–25 min), `render_project` (re-render after editing `project.json`), `job_status` (state, recent log, and when done the paths of the video / captions / cover / publish copy plus quality warnings), `list_projects`, `doctor`. Everything runs locally with your own keys or with a local Ollama model; nothing is uploaded and nothing is auto-posted. The same structured result is available to scripts via `openshorts new --json` / `openshorts run --json` (last stdout line, prefixed `@@json`).
