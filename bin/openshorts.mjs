@@ -114,8 +114,9 @@ switch (cmd) {
   --validate  只校验工作流与参数，不出片、不花钱
   其余参数原样透传给引擎（\`ao run\`）。
 
-  本机零成本档：-i image_provider=local-sdcpp -i image_model=flux-schnell-q2 -i video_provider=local-sdcpp -i video_model=minimax-h3-q2
+  本机出片（不花钱）：-i video_provider=local-sdcpp -i video_model=minimax-h3-q2
               （没给分辨率/时长时自动用草稿档 640x384 · 每镜 2 秒；显式 -i video_resolution=… 不覆盖）
+  定妆图那一步要一家云端出图供应商（-i image_provider=… -i image_model=…）——引擎的本机档目前只接了出片，没接出图。
   看这台机器能跑哪些：openshorts sources`,
         `Usage: openshorts drama -i story="a story" -i image_provider=<vendor> -i image_model=<model> [-i video_provider=… -i video_model=…]
 
@@ -123,8 +124,9 @@ switch (cmd) {
   --validate  check the workflow and inputs only — no render, no spend
   Everything else is passed through to the engine (\`ao run\`).
 
-  Free on-device tier: -i image_provider=local-sdcpp -i image_model=flux-schnell-q2 -i video_provider=local-sdcpp -i video_model=minimax-h3-q2
+  On-device video (free): -i video_provider=local-sdcpp -i video_model=minimax-h3-q2
                        (without a resolution/duration it uses the draft tier, 640x384 · 2 s per shot; an explicit -i video_resolution=… wins)
+  The character-portrait step needs a cloud image provider (-i image_provider=… -i image_model=…) — the engine's on-device tier covers video only, not images.
   What this machine can run: openshorts sources`));
       break;
     }
