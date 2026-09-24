@@ -13,7 +13,7 @@ const LIT = String.raw`'((?:[^'\\]|\\.)*)'`;
 
 test('界面里每条 t(\'中文\') 都有英文', () => {
   const missing = [];
-  for (const f of ['Kaipian.tsx', 'Characters.tsx']) {
+  for (const f of ['Kaipian.tsx', 'Characters.tsx', 'Scenes.tsx']) {
     const src = fs.readFileSync(path.join(root, 'src', 'kaipian', f), 'utf-8');
     const lits = [...src.matchAll(new RegExp(String.raw`\bt\(` + LIT + String.raw`\)`, 'g'))].map((m) => m[1]);
     // field('k', '标签', '占位') 在里面调 t(label) / t(ph)：字面量不在 t( 后面，要单独捞

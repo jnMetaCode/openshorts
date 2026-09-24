@@ -170,3 +170,4 @@ body:has(.kp){overflow:auto}
 .kp-charform{margin-top:10px}
 .kp-charform label{display:block;margin-bottom:8px}
 @media (max-width:560px){.kp-charcard{grid-template-columns:1fr}.kp-portrait{width:100%}}
+.kp-thumb-wide{width:56px;height:32px}

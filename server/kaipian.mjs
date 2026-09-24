@@ -26,6 +26,7 @@ import { readStepOutput } from './lib/ao-run-dir.mjs';
 import { writeJsonAtomic } from '../src/core/fs-atomic.mjs';
 import { JobHub } from './lib/job-hub.mjs';
 import * as cards from '../src/characters/cards.mjs';
+import * as scenes from '../src/scenes/scenes.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const kaipian = express.Router();
@@ -442,12 +443,12 @@ async function aoProviders() {
   const hasKey = (p) => !!(keys[p.id]?.apiKey || process.env[p.envKey]);
   const localStatus = local?.localSdcppStatus ? local.localSdcppStatus() : null;
   const video = (api.VIDEO_PROVIDERS ?? []).map((v) => ({ id: v.id, shape: v.shape, hasKey: v.shape === 'local' ? !!localStatus?.ok : hasKey(v), models: (v.models ?? []).map((m) => ({ id: m.id, resolutions: m.resolutions ?? [], durations: m.durations ?? [], ratios: m.ratios ?? [] })) }));
-  const KNOWN_IMAGE = { agnes: ['agnes-image-2.0-flash', 'agnes-image-2.1-flash'], volcengine: ['doubao-seedream-5-0-260128'], 'volcengine-plan': ['doubao-seedream-5.0-lite'], lanox: ['gpt-image-2'], apimart: ['gpt-image-2'], openai: ['gpt-image-2'] };
+  const KNOWN_IMAGE = { agnes: ['agnes-image-2.5-flash', 'agnes-image-2.0-flash', 'agnes-image-2.1-flash'], volcengine: ['doubao-seedream-5-0-260128'], 'volcengine-plan': ['doubao-seedream-5.0-lite'], lanox: ['gpt-image-2'], apimart: ['gpt-image-2'], openai: ['gpt-image-2'] };
   const image = (api.API_PROVIDERS ?? []).filter((p) => hasKey(p)).map((p) => ({ id: p.id, hasKey: true, models: KNOWN_IMAGE[p.id] ?? [] }));
   return { video, image, localStatus };
 }
 // ── 角色卡（src/characters/cards.mjs）：人设 + 标志特征 + 定妆图，跨片复用 ──
-const cardView = (c) => ({ ...c, stale: cards.portraitStale(c), portraitUrl: c.portrait ? `/api/kaipian/characters/${encodeURIComponent(c.id)}/portrait?f=${encodeURIComponent(c.portrait.file)}` : null });
+const cardView = (c) => ({ ...c, stale: cards.portraitStale(c), drift: cards.portraitDrift(c), portraitUrl: c.portrait ? `/api/kaipian/characters/${encodeURIComponent(c.id)}/portrait?f=${encodeURIComponent(c.portrait.file)}` : null });
 const cardErr = (res, e) => res.status(e.status ?? 500).json({ error: e.message });
 kaipian.get('/characters', (_req, res) => res.json(cards.listCards().map(cardView)));
 kaipian.post('/characters', (req, res) => { try { res.json(cardView(cards.saveCard({ lang: reqLang(req), ...(req.body ?? {}) }))); } catch (e) { cardErr(res, e); } });
@@ -478,6 +479,48 @@ kaipian.post('/characters/:id/upload', express.raw({ type: ['image/png', 'image/
   } catch (e) { cardErr(res, e); }
 });
 kaipian.post('/characters/:id/restore', (req, res) => { try { res.json(cardView(cards.restorePortrait(req.params.id, String(req.body?.file ?? '')))); } catch (e) { cardErr(res, e); } });
+// 云端保脸改图（src/characters/cloud-edit.mjs）：以当前定妆图为参考，可再带一张场景图"把人放进去"。按张计费，界面点之前写明
+kaipian.get('/image-edit/options', async (_req, res, next) => { try { res.json({ providers: (await aoProviders()).image, saved: readConfig().imageEdit ?? null }); } catch (e) { next(e); } });
+kaipian.post('/characters/:id/edit', async (req, res) => {
+  const b = req.body ?? {}; const T = tt(reqLang(req));
+  const provider = String(b.provider ?? ''), model = String(b.model ?? '');
+  if (!provider || !model) return res.status(400).json({ error: T('选一家改图供应商并填模型', 'Pick an image-edit provider and model') });
+  try {
+    let sceneImage = null, sceneRef = null;
+    if (b.scene) { const sc = scenes.readScene(String(b.scene)); const f = scenes.sceneImagePath(sc); if (!f) return res.status(400).json({ error: T(`场景「${sc.name}」还没有图`, `Scene "${sc.name}" has no image yet`) }); sceneImage = fs.readFileSync(f); sceneRef = { id: sc.id, file: sc.image.file }; }
+    const { editImage } = await import('../src/characters/cloud-edit.mjs');
+    const c = await cards.editPortraitCloud(req.params.id, { edit: editImage, provider, model, instruction: String(b.instruction ?? ''), sceneImage, sceneRef });
+    writeConfig({ imageEdit: { provider, model } });   // 下次默认用同一家
+    res.json(cardView(c));
+  } catch (e) { cardErr(res, e); }
+});
+
+// ── 场景卡（src/scenes/scenes.mjs）：地点 / 时间天气光线 / 细节 / 风格 + 场景图 ──
+const sceneView = (x) => ({ ...x, stale: scenes.sceneStale(x), imageUrl: x.image ? `/api/kaipian/scenes/${encodeURIComponent(x.id)}/image?f=${encodeURIComponent(x.image.file)}` : null });
+kaipian.get('/scenes', (_req, res) => res.json(scenes.listScenes().map(sceneView)));
+kaipian.post('/scenes', (req, res) => { try { res.json(sceneView(scenes.saveScene({ lang: reqLang(req), ...(req.body ?? {}) }))); } catch (e) { cardErr(res, e); } });
+kaipian.put('/scenes/:id', (req, res) => { try { res.json(sceneView(scenes.saveScene({ lang: reqLang(req), ...(req.body ?? {}) }, { id: req.params.id }))); } catch (e) { cardErr(res, e); } });
+kaipian.delete('/scenes/:id', (req, res) => { try { scenes.deleteScene(req.params.id); res.json({ ok: true }); } catch (e) { cardErr(res, e); } });
+kaipian.get('/scenes/:id/image', (req, res) => {
+  try {
+    const x = scenes.readScene(req.params.id); const f = String(req.query.f || x.image?.file || '');
+    if (!f || ![x.image, ...(x.history ?? [])].some((p) => p?.file === f)) return res.status(404).end();
+    res.sendFile(path.join(scenes.SCENES_DIR, scenes.safeSceneId(x.id), f), { dotfiles: 'allow' });   // 同角色卡：在 ~/.openshorts 下
+  } catch (e) { cardErr(res, e); }
+});
+kaipian.post('/scenes/:id/render', async (req, res) => {
+  try {
+    const { configuredChat, localGen } = await import('../src/characters/runtime.mjs');
+    const chat = await configuredChat().catch(() => null);
+    res.json(sceneView(await scenes.renderScene(req.params.id, { gen: await localGen(), chat, ratio: String(req.body?.ratio || '16:9') })));
+  } catch (e) { cardErr(res, e); }
+});
+kaipian.post('/scenes/:id/upload', express.raw({ type: ['image/png', 'image/jpeg', 'image/webp', 'application/octet-stream'], limit: '15mb' }), (req, res) => {
+  try {
+    if (!Buffer.isBuffer(req.body) || !req.body.length) return res.status(400).json({ error: tt(reqLang(req))('没收到图片', 'No image received') });
+    res.json(sceneView(scenes.setUploadedScene(req.params.id, req.body)));
+  } catch (e) { cardErr(res, e); }
+});
 
 kaipian.get('/drama/providers', async (_req, res, next) => { try { res.json(await aoProviders()); } catch (e) { next(e); } });
 // doctor 结果缓存 60s：界面的 refresh() 有十来个调用点（挂载/存 key/每次跑完），
@@ -499,6 +542,7 @@ kaipian.post('/drama/preflight', async (req, res) => {
   if (!inputs.story) return res.status(400).json({ error: tt(reqLang(req))('请输入故事', 'Enter a story') });
   let card = null;
   if (req.body?.character) { try { card = cards.readCard(String(req.body.character)); inputs.story = cards.storyWithCard(inputs.story, card, reqLang(req)); } catch (e) { return res.status(e.status ?? 400).json({ error: tt(reqLang(req))(`找不到角色卡：${req.body.character}`, `No such character: ${req.body.character}`) }); } }
+  if (req.body?.scene) { try { inputs.story = scenes.storyWithScene(inputs.story, scenes.readScene(String(req.body.scene)), reqLang(req)); } catch (e) { return res.status(e.status ?? 400).json({ error: tt(reqLang(req))(`找不到场景卡：${req.body.scene}`, `No such scene: ${req.body.scene}`) }); } }
   // 卡里有定妆图：出图那步不会跑（种子目录里已完成）。plan 不认识这一点，给它占位的必填项，再把那行"出图 1 张"换成实话
   if (card?.portrait) { inputs.image_provider ||= 'character-card'; inputs.image_model ||= 'character-card'; }
   const { cli, wf } = aoCli();
@@ -586,6 +630,9 @@ kaipian.get('/drama/run', (req, res) => {
   let card = null;
   if (q.character) { try { card = cards.readCard(String(q.character)); } catch (e) { return res.status(e.status ?? 400).json({ error: tt(reqLang(req))(`找不到角色卡：${q.character}`, `No such character: ${q.character}`) }); } }
   if (card) inputs.story = cards.storyWithCard(inputs.story, card, reqLang(req));
+  let scene = null;
+  if (q.scene) { try { scene = scenes.readScene(String(q.scene)); } catch (e) { return res.status(e.status ?? 400).json({ error: tt(reqLang(req))(`找不到场景卡：${q.scene}`, `No such scene: ${q.scene}`) }); } }
+  if (scene) inputs.story = scenes.storyWithScene(inputs.story, scene, reqLang(req));
   const usesCardPortrait = !!card?.portrait;
   // 工作流里 image_model 是必填无默认（定妆图用）：这里不拦的话 AO 会在 spawn 后立刻退出码 1
   if (!inputs.image_model && !usesCardPortrait) return res.status(400).json({ error: tt(reqLang(req))('请选择定妆图的图片模型（image_model）——界面在「画面来源」里选，API 传 image_provider / image_model', 'Pick an image model for the character sheet (image_model) — in the UI it is under "Visual sources"; over the API pass image_provider / image_model') });
@@ -599,11 +646,11 @@ kaipian.get('/drama/run', (req, res) => {
   const vp = flagVal(q.verify_provider); if (vp) args.push('--verify-provider', vp, '--verify-model', flagVal(q.verify_model) ?? '');
   // 文本供应商要记进项目：redo 不带它的话会回落到工作流默认的 deepseek——
   // 用户用 agnes 跑通的项目，一点"重出这镜"就报"deepseek 没配 key"（真机撞过）
-  streamAoRun({ req, res, args, runsDir, meta: { kind: 'run' }, onDone: (runDir) => finishDramaRun({ runDir, inputs, tier: q.tier || 'cloud', llm: pv ? { provider: pv, model: md || '' } : null, character: card }) });
+  streamAoRun({ req, res, args, runsDir, meta: { kind: 'run' }, onDone: (runDir) => finishDramaRun({ runDir, inputs, tier: q.tier || 'cloud', llm: pv ? { provider: pv, model: md || '' } : null, character: card, scene }) });
 });
 
 /** AO 运行目录 → 项目（新建或覆盖同 id）：回填 shots/验收、按输入标来源、拷贝 assets、记住 aoRun 供 resume。 */
-function finishDramaRun({ runDir, inputs, tier, existingId, shotSources, llm = null, character = null }) {
+function finishDramaRun({ runDir, inputs, tier, existingId, shotSources, llm = null, character = null, scene = null }) {
   // runDir 由调用方确定（stdout 刮到的，或 spawn 后新出现的目录）。确定不了就报错，
   // 绝不猜"最新的那个"——resume 时最新的就是上一次自己，旧产物会被当成新成片报成功
   if (!runDir) throw new Error('没有从引擎输出里识别出本次运行目录（可能引擎输出格式变了），项目未改动');
@@ -615,6 +662,7 @@ function finishDramaRun({ runDir, inputs, tier, existingId, shotSources, llm = n
   project.line = 'drama'; project.title = inputs.story.slice(0, 30); project.topic = inputs.story; project.inputs = inputs; project.tier = tier; project.shotSources = shotSources ?? {};
   if (llm) project.llm = llm;
   // 用了哪张角色卡、哪张定妆图：重出单镜 / 回头查"这张脸哪来的"都要它（provenance 规矩）
+  if (scene) project.scene = { id: scene.id, name: scene.name, image: scene.image ? { file: scene.image.file, source: scene.image.source } : null };
   if (character) project.character = { id: character.id, name: character.name, portrait: character.portrait ? { file: character.portrait.file, source: character.portrait.source, model: character.portrait.model ?? null, seed: character.portrait.seed ?? null } : null };
   // 每镜的提示词与全片的氛围锁定块回填进项目：界面能看、能复制去别的模型抽卡——
   // 这是 ai-shortfilm-prompts 五段式进短剧线的可见面；老运行目录没有这些文件就是 null
