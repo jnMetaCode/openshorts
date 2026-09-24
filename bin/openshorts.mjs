@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * `npx openshorts [cmd]`（架构文档 §12）。已实现：open（默认）/ sources / new / run / batch /
- * export / estimate / drama / install-ffmpeg / install-image / doctor / version。
+ * export / estimate / drama / character / install-ffmpeg / install-image / doctor / version。
  * 没有独立的 render 命令：合成是 run 的一部分（改了什么就重做什么，没改的镜头复用）。
  */
 import path from 'node:path';
@@ -137,6 +137,28 @@ switch (cmd) {
     const cfgd = rcd();
     const llmArgs = rest.includes('--provider') || !cfgd.text?.provider ? []
       : ['--provider', cfgd.text.provider, ...(cfgd.text.model ? ['--model', cfgd.text.model] : [])];
+    // --character <id>：角色卡的外形拼进故事；卡里有定妆图就让引擎从种子目录续跑，跳过出图直接用这张
+    const seedArgs = [];
+    const ci = rest.indexOf('--character');
+    if (ci >= 0) {
+      const cid = rest[ci + 1];
+      rest.splice(ci, cid && !cid.startsWith('-') ? 2 : 1);
+      const cards = await import('../src/characters/cards.mjs');
+      let card;
+      try { card = cards.readCard(cid ?? ''); } catch { console.error(T(`⛔ 找不到角色卡：${cid ?? '（没写 id）'}——openshorts character list 看有哪些`, `⛔ No such character: ${cid ?? '(no id given)'} — see openshorts character list`)); process.exit(1); }
+      const si = rest.findIndex((a, i) => rest[i - 1] === '-i' && a.startsWith('story='));
+      if (si < 0) { console.error(T('⛔ --character 要配 -i story="…" 一起用', '⛔ --character needs -i story="…"')); process.exit(1); }
+      rest[si] = `story=${cards.storyWithCard(rest[si].slice(6), card, cliLang)}`;
+      if (card.portrait) {
+        if (rest.includes('--resume')) { console.error(T('⛔ --character 带定妆图时会自己续跑种子目录，不能再加 --resume', '⛔ --character with a portrait resumes from its own seed run; drop --resume')); process.exit(1); }
+        const inputs = {}; rest.forEach((a, i) => { if (rest[i - 1] === '-i') { const k = a.split('=')[0]; inputs[k] = a.slice(k.length + 1); } });
+        seedArgs.push('--resume', cards.writeSeedRun(card, { inputs }));
+        const vr = inputs.video_ratio || '16:9';
+        if (cards.ratioMismatch(card, vr)) console.error(T(`⚠️ 定妆图是竖的、片子是 ${vr}：首帧会从中间裁，人可能只剩半身——openshorts character render ${card.id} --ratio ${vr} --keep-seed 出一张同画幅的`, `⚠️ The portrait's shape does not match the ${vr} video: the first frame is centre-cropped and may cut off the head — render a matching one: openshorts character render ${card.id} --ratio ${vr} --keep-seed`));
+        if (cards.portraitStale(card)) console.error(T(`⚠️ 角色「${card.name}」改过但定妆图还是旧的——openshorts character render ${card.id} --keep-seed 重出`, `⚠️ "${card.name}" was edited after its portrait — re-render: openshorts character render ${card.id} --keep-seed`));
+        console.error(T(`🧍 角色「${card.name}」：外形锁进剧本，定妆图用卡里这张（${card.portrait.file}），跳过出图`, `🧍 Character "${card.name}": look locked into the script, using the card's portrait (${card.portrait.file}), image step skipped`));
+      } else console.error(T(`🧍 角色「${card.name}」：外形锁进剧本；卡里还没有定妆图，这次照常由引擎出一张`, `🧍 Character "${card.name}": look locked into the script; no portrait on the card yet, the engine renders one as usual`));
+    }
     // 本机出片没给分辨率/时长时补草稿档，跟界面的本地档一致（否则落到工作流默认 720p / 8 秒）
     const { localDramaDefaults } = await import('../src/pipeline/drama-local.mjs');
     const localArgs = localDramaDefaults(rest);
@@ -144,7 +166,42 @@ switch (cmd) {
     const passthru = [...rest.filter((a) => a !== '--validate' && a !== '--plan'), ...localArgs, ...llmArgs];
     if (rest.includes('--validate')) runAO(['validate', wf, ...passthru]);
     if (rest.includes('--plan')) runAO(['plan', wf, ...passthru]);
-    runAO(['run', wf, ...rest, ...localArgs, ...llmArgs]);
+    runAO(['run', wf, ...rest, ...localArgs, ...seedArgs, ...llmArgs]);
+    break;
+  }
+  case 'character': {
+    // 角色卡：openshorts character list | new --name … [--basics …] [--face …] [--marks "痣；疤"] [--outfit …] [--background …]
+    //        | show <id> | edit <id> --outfit … | render <id> [--keep-seed] [--ratio 16:9|9:16|2:3] | upload <id> <图片> | restore <id> <文件> | rm <id>
+    const cards = await import('../src/characters/cards.mjs');
+    const [sub = 'list', ...args] = rest;
+    const pos = args.filter((a, i) => !a.startsWith('--') && !(args[i - 1] ?? '').startsWith('--'));
+    const o = parseOpts(args);
+    const show = (c) => {
+      console.log(`${c.id}  ${c.name}${c.portrait ? `  🖼 ${c.portrait.file}（${c.portrait.source}${c.portrait.seed ? ` · seed ${c.portrait.seed}` : ''}）` : T('  （还没有定妆图）', '  (no portrait yet)')}${cards.portraitStale(c) ? T('  ⚠️ 卡片改过，图是旧的', '  ⚠️ edited since the portrait') : ''}`);
+    };
+    try {
+      if (sub === 'list') { const all = cards.listCards(); if (!all.length) console.log(T('还没有角色卡。openshorts character new --name 林七 --basics "23 岁东方女性，清冷" --marks "眉心朱砂痣；左脸一道刀疤" --outfit "赤色暗纹束腰武侠袍"', 'No characters yet. openshorts character new --name Mara --basics "30s woman, calm" --marks "mole above left brow; thin scar on right cheek" --outfit "worn olive field jacket"')); all.forEach(show); break; }
+      if (sub === 'new' || sub === 'edit') {
+        const prev = sub === 'edit' ? cards.readCard(pos[0] ?? '') : {};
+        const fields = { name: o.name ?? prev.name, lang: o.lang ?? prev.lang ?? cliLang, basics: o.basics ?? prev.basics, face: o.face ?? prev.face, marks: o.marks ?? prev.marks, outfit: o.outfit ?? prev.outfit, background: o.background ?? prev.background, extra: o.extra ?? prev.extra };
+        const c = cards.saveCard(fields, sub === 'edit' ? { id: prev.id } : {});
+        show(c);
+        if (!c.portrait) console.log(T(`下一步：openshorts character render ${c.id}（本机出定妆图，不花钱）或 openshorts character upload ${c.id} <你的面容图>`, `Next: openshorts character render ${c.id} (free, on this machine) or openshorts character upload ${c.id} <your photo>`));
+        break;
+      }
+      if (sub === 'show') { const c = cards.readCard(pos[0] ?? ''); console.log(JSON.stringify(c, null, 2)); console.log(T('\n拼进剧本的外形段：\n', '\nLook block added to the story:\n') + cards.lockText(c, cliLang)); break; }
+      if (sub === 'render') {
+        const { configuredChat, localGen } = await import('../src/characters/runtime.mjs');
+        const chat = await configuredChat({ provider: o.provider, model: o.model }).catch(() => null);
+        const c = await cards.renderPortrait(pos[0] ?? '', { gen: await localGen(), chat, keepSeed: o['keep-seed'] === 'true', seed: o.seed ? Number(o.seed) : undefined, ratio: o.ratio, onLog: (m) => console.error(`  ${m}`) });
+        show(c); if (!c.portrait.translated) console.error(T('  ⚠️ 没配文本模型，提示词没翻成英文，出图会差一些（设置里选一个文本模型，或加 --provider ollama --model …）', '  ⚠️ No text model configured, so the prompt was not translated; results are weaker (pick a text model in settings, or pass --provider ollama --model …)'));
+        console.log(cards.portraitPath(c)); break;
+      }
+      if (sub === 'upload') { const c = cards.setUploadedPortrait(pos[0] ?? '', fs.readFileSync(pos[1] ?? ''), { note: o.note }); show(c); break; }
+      if (sub === 'restore') { show(cards.restorePortrait(pos[0] ?? '', pos[1] ?? '')); break; }
+      if (sub === 'rm') { cards.deleteCard(pos[0] ?? ''); console.log(T(`已删除 ${pos[0]}`, `Deleted ${pos[0]}`)); break; }
+      console.error(T(`⛔ 不认识的子命令：${sub}（list / new / edit / show / render / upload / restore / rm）`, `⛔ Unknown subcommand: ${sub} (list / new / edit / show / render / upload / restore / rm)`)); process.exit(1);
+    } catch (e) { console.error(`⛔ ${e.message}`); process.exit(1); }
     break;
   }
   case 'new': {
@@ -398,11 +455,13 @@ switch (cmd) {
 }
 
 function printHelp(out) {
-  out(cliLang === 'en' ? `Usage: openshorts [open|sources|new|run|batch|export|estimate|rm|drama|install-ffmpeg|install-image|doctor|mcp|version]
+  out(cliLang === 'en' ? `Usage: openshorts [open|sources|new|run|batch|export|estimate|rm|drama|character|install-ffmpeg|install-image|doctor|mcp|version]
   open      start the local server and open the browser (default)
   sources   what this machine can use for visuals (stock / AI images / local gen / cloud video)
   drama     AI mini-drama: runs the engine's drama workflow (args pass through to \`ao run\`;
             --validate / --plan check or price it without rendering, -i inputs still apply)
+  character reusable lead characters: look, signature marks, outfit, portrait (list / new / edit / render / upload / restore / rm);
+            drama --character <id> locks the look into the script and shoots with the card's portrait
   doctor    environment health check (delegates to \`ao doctor\`)
   mcp       MCP server over stdio, so AI agents can make videos: claude mcp add openshorts -- npx openshorts mcp
   install-ffmpeg  install an ffmpeg **with libass** into ~/.openshorts/bin — Homebrew's no longer
@@ -424,10 +483,12 @@ function printHelp(out) {
   batch     versions: openshorts batch <project.json> --voices a,b [--captions douyin,clean] [--rates 1,1.1]
   rm        delete a project (the whole folder, irreversible): openshorts rm <project.json> --yes
 
-  This CLI speaks your system locale. Force it with OPENSHORTS_LANG=zh|en.` : `用法：openshorts [open|sources|new|run|batch|export|estimate|rm|drama|install-ffmpeg|install-image|doctor|mcp|version]
+  This CLI speaks your system locale. Force it with OPENSHORTS_LANG=zh|en.` : `用法：openshorts [open|sources|new|run|batch|export|estimate|rm|drama|character|install-ffmpeg|install-image|doctor|mcp|version]
   open      起本地服务并打开浏览器（默认）
   sources   看这台机器能用哪些画面来源（素材库 / AI 配图 / 本地生成 / 云端出片）
   drama     AI 短剧：跑 AO 短剧流水线（参数透传给 ao run；--validate / --plan 只检查不出片，-i 输入照常带上）
+  character 角色卡：外形、标志特征、服装、定妆图，跨片复用（list / new / edit / render / upload / restore / rm）；
+            drama --character <id> 把外形锁进剧本、直接用卡里的定妆图出片
   doctor    环境体检（转 ao doctor）
   mcp       MCP server（stdio），让 AI agent 直接出片：claude mcp add openshorts -- npx openshorts mcp
   install-ffmpeg  装一份带 libass 的 ffmpeg 到 ~/.openshorts/bin（Homebrew 的不带，字幕会烧不进画面）[--force 重装]

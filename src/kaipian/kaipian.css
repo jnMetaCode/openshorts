@@ -154,3 +154,19 @@ body:has(.kp){overflow:auto}
 .kp-prompt{margin:.4rem 0;font-size:.85em}.kp-prompt summary{cursor:pointer;color:var(--ink2,#555)}.kp-prompt pre{white-space:pre-wrap;word-break:break-word;background:var(--code,#f4f1ea);padding:.5rem .6rem;border-radius:6px;max-height:16rem;overflow:auto;margin:.3rem 0}.kp-prompt button{font-size:.85em}
 
 .kp-danger{font-size:.8em;color:#b91c1c;border-color:#b91c1c66;background:transparent}.kp-danger:hover{background:#b91c1c14}
+/* 角色卡面板（短剧第 1 步） */
+.kp-chars{margin:12px 0;padding:12px;border:1px solid #3a3029;border-radius:10px;background:#1a1613}
+.kp-chars h4{margin:0 0 8px}
+.kp-chips{display:flex;flex-wrap:wrap;gap:6px}
+.kp-chips button{display:inline-flex;align-items:center;gap:6px;max-width:100%;border:1px solid #4a3c30;border-radius:7px;padding:6px 10px;color:#d8cabc;background:#241e19;cursor:pointer;font-size:12px}
+.kp-chips button.active{background:#3a2a22;border-color:#e6b493;color:#fff}
+.kp-chars label.kp-btn{flex:none;display:inline-block;cursor:pointer}
+.kp-thumb{width:28px;height:40px;object-fit:cover;border-radius:4px;cursor:pointer}
+.kp-charcard{display:grid;grid-template-columns:160px 1fr;gap:12px;margin-top:10px}
+.kp-charcard p{margin:0 0 4px;font-size:13px;line-height:1.5}
+.kp-portrait{width:160px;max-height:240px;object-fit:contain;border-radius:8px;background:#0f0d0b}
+.kp-empty{display:flex;align-items:center;justify-content:center;height:200px;color:#877d72;font-size:12px}
+.kp-history{margin-top:8px;display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:12px;color:#a29282}
+.kp-charform{margin-top:10px}
+.kp-charform label{display:block;margin-bottom:8px}
+@media (max-width:560px){.kp-charcard{grid-template-columns:1fr}.kp-portrait{width:100%}}
