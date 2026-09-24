@@ -65,3 +65,28 @@ test('drama 默认用设置里选的文本模型：口播线早就这么做了�
 
   fs.rmSync(home, { recursive: true, force: true }); fs.rmSync(ao, { recursive: true, force: true });
 });
+
+test('drama 走本机出片时补草稿档分辨率/时长：以前照 --help 抄参数会落到 720p / 8 秒硬跑', async () => {
+  const fs = await import('node:fs'); const os = await import('node:os');
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'os-dramalocal-'));
+  const ao = fs.mkdtempSync(path.join(os.tmpdir(), 'os-aostub-'));
+  fs.mkdirSync(path.join(ao, 'dist'), { recursive: true }); fs.mkdirSync(path.join(ao, 'workflows'), { recursive: true });
+  fs.writeFileSync(path.join(ao, 'package.json'), '{"name":"stub","version":"0.0.0"}');
+  fs.writeFileSync(path.join(ao, 'dist', 'cli.js'), 'console.log("ARGS " + JSON.stringify(process.argv.slice(2)));');
+  const env = { ...process.env, OPENSHORTS_LANG: 'zh', OPENSHORTS_HOME: home, OPENSHORTS_AO_DIR: ao };
+  const inputs = (...extra) => {
+    const out = spawnSync(process.execPath, [bin, 'drama', '-i', 'story=x', ...extra], { encoding: 'utf-8', timeout: 60000, env }).stdout;
+    const a = JSON.parse(out.match(/ARGS (\[.*\])/)[1]);
+    return a.flatMap((x, i) => (a[i - 1] === '-i' ? [x] : []));
+  };
+  const local = ['-i', 'video_provider=local-sdcpp', '-i', 'video_model=minimax-h3-q2'];
+  const d = inputs(...local);
+  assert.ok(d.includes('video_resolution=640x384') && d.includes('video_duration=2'), JSON.stringify(d));
+  // 竖屏按比例换，用户显式给的不动、也不叠第二个
+  const v = inputs(...local, '-i', 'video_ratio=9:16', '-i', 'video_duration=3');
+  assert.ok(v.includes('video_resolution=384x640'), JSON.stringify(v));
+  assert.deepEqual(v.filter((x) => x.startsWith('video_duration=')), ['video_duration=3']);
+  // 云端出片一个都不补
+  assert.equal(inputs('-i', 'video_provider=apimart').filter((x) => /^video_(resolution|duration)=/.test(x)).length, 0);
+  fs.rmSync(home, { recursive: true, force: true }); fs.rmSync(ao, { recursive: true, force: true });
+});
