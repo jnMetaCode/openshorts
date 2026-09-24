@@ -140,3 +140,12 @@ test('画幅：出图按片子画幅给尺寸；上传的图从文件头读宽�
   assert.deepEqual([calls.at(-1).width, calls.at(-1).height], [768, 1152]);
   assert.equal(c.ratioMismatch(d, '16:9'), true);
 });
+
+test('种子目录会自动清理：旧的删、新的留', () => {
+  const card = c.readCard('林七');
+  const old = c.writeSeedRun(card, { inputs: {} });
+  const past = new Date(Date.now() - 4 * 24 * 3600e3); fs.utimesSync(old, past, past);
+  const fresh = c.writeSeedRun(card, { inputs: {} });   // 写新的时顺手清掉旧的
+  assert.equal(fs.existsSync(old), false);
+  assert.equal(fs.existsSync(fresh), true);
+});

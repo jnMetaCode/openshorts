@@ -223,12 +223,23 @@ export function storyWithCard(story, card, lang) {
  * 格式照真实运行目录（metadata.json + steps/<n>-<id>.md + assets/character.png）。
  * inputs 要带全：resume 时引擎用它补齐没在命令行给的必填项（image_model 等）。
  */
+/** 种子目录每跑一次（连 --plan）就留一个、各带一份定妆图副本：超过 3 天的删掉（续跑用的是引擎自己的运行目录，不靠它） */
+export function pruneSeeds(seedsDir = SEEDS_DIR, maxAgeMs = 3 * 24 * 3600e3, now = Date.now()) {
+  if (!fs.existsSync(seedsDir)) return 0;
+  let n = 0;
+  for (const d of fs.readdirSync(seedsDir)) {
+    const p = path.join(seedsDir, d);
+    try { if (now - fs.statSync(p).mtimeMs > maxAgeMs) { fs.rmSync(p, { recursive: true, force: true }); n++; } } catch { /* 并发删了 */ }
+  }
+  return n;
+}
 export const SEEDS_DIR = path.join(OPENSHORTS_HOME, 'cache', 'character-seeds');
 // 不放进引擎的 .ao-runs：服务端靠"跑完后新出现的目录"认本次运行，种子目录混进去会被当成成片目录
 export function writeSeedRun(card, { inputs, seedsDir = SEEDS_DIR }) {
   const src = portraitPath(card);
   const T = tt(card.lang);
   if (!src || !fs.existsSync(src)) throw new Error(T(`角色「${card.name}」还没有定妆图`, `Character "${card.name}" has no portrait yet`));
+  pruneSeeds(seedsDir);
   const dir = path.join(seedsDir, `${safeCardId(card.id)}-${Date.now().toString(36)}`);
   fs.mkdirSync(path.join(dir, 'steps'), { recursive: true }); fs.mkdirSync(path.join(dir, 'assets'), { recursive: true });
   // 引擎按扩展名认媒体；上传的 jpg 也按 character.png 放会让下游按 png 解——这里统一转成对的扩展名不值当，
