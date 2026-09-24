@@ -1,6 +1,7 @@
 import React, {useEffect, useRef, useState} from 'react';
 import './kaipian.css';
 import {getLang, setLang, makeT, type Lang} from './i18n';
+import {Characters, type Card} from './Characters';
 
 type Src = {ok: boolean; reason: string; tier?: string};
 type Sources = {stock: Src; image: Src; local: Src; cloud: Src; layered: Src; tools: {ffmpeg: boolean; whisper: boolean; magick: boolean}};
@@ -25,6 +26,9 @@ export const Kaipian = () => {
   const [step, setStep] = useState(1);
   const [line, setLine] = useState<'koubo' | 'drama'>('koubo');
   const [story, setStory] = useState('');
+  const [character, setCharacter] = useState('');
+  const [card, setCard] = useState<Card | null>(null);
+  const cardPortrait = !!card?.portrait;   // 卡里有定妆图：引擎跳过出图，不必再选出图供应商
   const [genre, setGenre] = useState('剧情短剧');
   const [style, setStyle] = useState('美式复古好莱坞');
   const [ratio, setRatio] = useState('16:9');
@@ -190,7 +194,7 @@ export const Kaipian = () => {
     if (project && runningEs.current) { try { await api(`/api/kaipian/projects/${encodeURIComponent(project.id)}/cancel?lang=${lang}`, {method: 'POST'}); } catch { /* 已经停了 */ } runningEs.current.close(); runningEs.current = null; }
     setBusy(''); setLog((l) => [...l, t('已取消（进度已存盘，再点出片会接着来）')]);
   };
-  const dramaBody = () => ({story, genre, style, tier, video_ratio: ratio, ...(tier === 'cloud' ? cloud : {image_provider: cloud.image_provider, image_model: cloud.image_model})});
+  const dramaBody = () => ({story, genre, style, tier, video_ratio: ratio, ...(character ? {character} : {}), ...(tier === 'cloud' ? cloud : {image_provider: cloud.image_provider, image_model: cloud.image_model})});
   const dramaPreflight = async () => { setError(''); setBusy(t('估算花费…')); try { const r = await api<{lines: string[]; ok: boolean; raw?: string}>('/api/kaipian/drama/preflight', {method: 'POST', body: JSON.stringify(dramaBody())}); setPreflight(r.ok ? r.lines : [r.raw || t('预览失败')]); setStep(2); } catch (e: any) { setError(e.message); } finally { setBusy(''); } };
   const dramaRun = () => {
     setLog([]); setBusy(tier === 'local' ? t('本地出片中（每镜约 3–4 分钟，共 3 镜 + 定妆图）…') : t('云端出片中（通常 3–8 分钟）…')); setError(''); setStep(3);
@@ -429,6 +433,7 @@ export const Kaipian = () => {
         <div className="kp-actions"><button className="primary" disabled={!topic.trim() || !!busy} onClick={() => setStep(2)}>{t('下一步：选来源')}</button></div>
       </> : <>
         <label>{t('一段故事（一两句话即可，AI 编剧会拆成 3 镜）')}<textarea value={story} onChange={(e) => setStory(e.target.value)} rows={5} placeholder={t('例如：深夜便利店，值夜班的女孩把最后一份关东煮留给每天来但从不说话的流浪老人；今晚老人没来……')}/></label>
+        <Characters lang={lang} t={t} selected={character} onSelect={setCharacter} onCard={setCard} ratio={ratio}/>
         <div className="kp-row">
           <label>{t('题材')}<select value={genre} onChange={(e) => setGenre(e.target.value)}>{['剧情短剧', '产品广告片', '治愈日常', '悬疑惊悚', '搞笑段子', '科幻', '古风武侠', '纪实 Vlog'].map((d) => <option key={d} value={d}>{t(d)}</option>)}</select></label>
           <label>{t('视觉风格')}<input value={style} onChange={(e) => setStyle(e.target.value)} placeholder={t('美式复古好莱坞 / 霓虹赛博电影 / 日系清新…')}/></label>
@@ -469,16 +474,16 @@ export const Kaipian = () => {
           <label>{t('每镜秒数')}{vm && vm.durations.length ? <select value={cloud.video_duration} onChange={(e) => pick({video_duration: e.target.value})}>{vm.durations.map((d) => <option key={d} value={String(d)}>{d}</option>)}</select> : <input value={cloud.video_duration} onChange={(e) => pick({video_duration: e.target.value})}/>}</label>
         </div>;
       })()}
-      {(() => {
+      {cardPortrait ? <div className="kp-hint">{t('定妆图：用角色卡')}「{card!.name}」{t('里的那张，这一步不出图')}</div> : (() => {
         const ips = providers?.image ?? []; const ip = ips.find((p) => p.id === cloud.image_provider);
         return <div className="kp-row">
           <label>{t('定妆图供应商（出图，按张计费）')}<select value={cloud.image_provider} onChange={(e) => { const p = ips.find((x) => x.id === e.target.value); setCloud({...cloud, image_provider: e.target.value, image_model: p?.models[0] ?? ''}); }}><option value="">{t('跟随文本供应商')}</option>{ips.map((p) => <option key={p.id} value={p.id}>{p.id} ✓</option>)}</select></label>
           <label>{t('定妆图模型')}{ip && ip.models.length ? <select value={cloud.image_model} onChange={(e) => setCloud({...cloud, image_model: e.target.value})}>{ip.models.map((m) => <option key={m}>{m}</option>)}<option value="">{t('（手填其他）')}</option></select> : <input value={cloud.image_model} onChange={(e) => setCloud({...cloud, image_model: e.target.value})} placeholder={t('该供应商未核实图片模型，手填')}/>}</label>
         </div>;
       })()}
-      <div className="kp-warn">{t('下拉只列 AO 供应商表里真机核实过的模型与档位（各家 id 不通用，不猜）；没列出的可手填。本地草稿档的定妆图仍走云端出图。')}</div>
+      {!cardPortrait && <div className="kp-warn">{t('下拉只列 AO 供应商表里真机核实过的模型与档位（各家 id 不通用，不猜）；没列出的可手填。本地草稿档的定妆图仍走云端出图。')}</div>}
       {preflight.length > 0 && <div className="kp-cost"><b>{t('本次花费预览')}</b>{preflight.map((l, i) => <small key={i} style={{display: 'block'}}>{l}</small>)}</div>}
-      <div className="kp-actions"><button onClick={() => setStep(1)}>{t('上一步')}</button><button onClick={dramaPreflight} disabled={!!busy || !cloud.image_model}>{t('看花费')}</button><button className="primary" disabled={!!busy || !cloud.image_model || preflight.length === 0 || (tier === 'local' && !localSt?.ok)} onClick={dramaRun}>{t('确认花费，出片 →')}</button></div>
+      <div className="kp-actions"><button onClick={() => setStep(1)}>{t('上一步')}</button><button onClick={dramaPreflight} disabled={!!busy || (!cloud.image_model && !cardPortrait)}>{t('看花费')}</button><button className="primary" disabled={!!busy || (!cloud.image_model && !cardPortrait) || preflight.length === 0 || (tier === 'local' && !localSt?.ok)} onClick={dramaRun}>{t('确认花费，出片 →')}</button></div>
     </section>}
 
     {step === 2 && line === 'koubo' && <section className="kp-card">

@@ -25,6 +25,7 @@ import { spawnTree, killTree } from './lib/proc.mjs';
 import { readStepOutput } from './lib/ao-run-dir.mjs';
 import { writeJsonAtomic } from '../src/core/fs-atomic.mjs';
 import { JobHub } from './lib/job-hub.mjs';
+import * as cards from '../src/characters/cards.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const kaipian = express.Router();
@@ -445,6 +446,39 @@ async function aoProviders() {
   const image = (api.API_PROVIDERS ?? []).filter((p) => hasKey(p)).map((p) => ({ id: p.id, hasKey: true, models: KNOWN_IMAGE[p.id] ?? [] }));
   return { video, image, localStatus };
 }
+// ── 角色卡（src/characters/cards.mjs）：人设 + 标志特征 + 定妆图，跨片复用 ──
+const cardView = (c) => ({ ...c, stale: cards.portraitStale(c), portraitUrl: c.portrait ? `/api/kaipian/characters/${encodeURIComponent(c.id)}/portrait?f=${encodeURIComponent(c.portrait.file)}` : null });
+const cardErr = (res, e) => res.status(e.status ?? 500).json({ error: e.message });
+kaipian.get('/characters', (_req, res) => res.json(cards.listCards().map(cardView)));
+kaipian.post('/characters', (req, res) => { try { res.json(cardView(cards.saveCard({ lang: reqLang(req), ...(req.body ?? {}) }))); } catch (e) { cardErr(res, e); } });
+kaipian.put('/characters/:id', (req, res) => { try { res.json(cardView(cards.saveCard({ lang: reqLang(req), ...(req.body ?? {}) }, { id: req.params.id }))); } catch (e) { cardErr(res, e); } });
+kaipian.delete('/characters/:id', (req, res) => { try { cards.deleteCard(req.params.id); res.json({ ok: true }); } catch (e) { cardErr(res, e); } });
+kaipian.get('/characters/:id/portrait', (req, res) => {
+  try {
+    const c = cards.readCard(req.params.id);
+    const f = String(req.query.f || c.portrait?.file || '');
+    // 只发这张卡自己记着的图（当前 + 历史），不按请求拼任意路径
+    if (!f || ![c.portrait, ...(c.history ?? [])].some((p) => p?.file === f)) return res.status(404).end();
+    // 卡片在 ~/.openshorts 下：send 默认拒发点开头目录里的文件，不开这个每个真实用户都看不到图（上面已按白名单限定文件名）
+    res.sendFile(path.join(cards.CHARACTERS_DIR, cards.safeCardId(c.id), f), { dotfiles: 'allow' });
+  } catch (e) { cardErr(res, e); }
+});
+kaipian.post('/characters/:id/render', async (req, res) => {
+  // 本机出图一两分钟、同一时间只跑一张（sd-image 里排队）；请求就开着等，失败原因原样回给界面
+  try {
+    const { configuredChat, localGen } = await import('../src/characters/runtime.mjs');
+    const chat = await configuredChat().catch(() => null);
+    res.json(cardView(await cards.renderPortrait(req.params.id, { gen: await localGen(), chat, keepSeed: !!req.body?.keepSeed, ratio: String(req.body?.ratio || '2:3') })));
+  } catch (e) { cardErr(res, e); }
+});
+kaipian.post('/characters/:id/upload', express.raw({ type: ['image/png', 'image/jpeg', 'image/webp', 'application/octet-stream'], limit: '15mb' }), (req, res) => {
+  try {
+    if (!Buffer.isBuffer(req.body) || !req.body.length) return res.status(400).json({ error: tt(reqLang(req))('没收到图片', 'No image received') });
+    res.json(cardView(cards.setUploadedPortrait(req.params.id, req.body, { note: String(req.query.note ?? '') })));
+  } catch (e) { cardErr(res, e); }
+});
+kaipian.post('/characters/:id/restore', (req, res) => { try { res.json(cardView(cards.restorePortrait(req.params.id, String(req.body?.file ?? '')))); } catch (e) { cardErr(res, e); } });
+
 kaipian.get('/drama/providers', async (_req, res, next) => { try { res.json(await aoProviders()); } catch (e) { next(e); } });
 // doctor 结果缓存 60s：界面的 refresh() 有十来个调用点（挂载/存 key/每次跑完），
 // 每次都 spawn 一个 Node 跑 ao doctor——出片进行中还在跟渲染抢 CPU，而这个状态
@@ -463,9 +497,15 @@ kaipian.get('/drama/options', async (_req, res) => {
 kaipian.post('/drama/preflight', async (req, res) => {
   const inputs = dramaInputs(req.body ?? {});
   if (!inputs.story) return res.status(400).json({ error: tt(reqLang(req))('请输入故事', 'Enter a story') });
+  let card = null;
+  if (req.body?.character) { try { card = cards.readCard(String(req.body.character)); inputs.story = cards.storyWithCard(inputs.story, card, reqLang(req)); } catch (e) { return res.status(e.status ?? 400).json({ error: tt(reqLang(req))(`找不到角色卡：${req.body.character}`, `No such character: ${req.body.character}`) }); } }
+  // 卡里有定妆图：出图那步不会跑（种子目录里已完成）。plan 不认识这一点，给它占位的必填项，再把那行"出图 1 张"换成实话
+  if (card?.portrait) { inputs.image_provider ||= 'character-card'; inputs.image_model ||= 'character-card'; }
   const { cli, wf } = aoCli();
   const { status, out } = await runAoCapture([cli, 'plan', wf, ...inputArgs(inputs)]);
-  const lines = out.split('\n').map((l) => l.trim()).filter((l) => /^(🎬|🎨|🎙|🎞|·|合计)/.test(l));
+  const T = tt(reqLang(req));
+  const lines = out.split('\n').map((l) => l.trim()).filter((l) => /^(🎬|🎨|🎙|🎞|·|合计)/.test(l))
+    .map((l) => (card?.portrait && l.startsWith('🎨') ? T(`🎨 定妆图：用角色卡「${card.name}」里的，不出图（0 元）`, `🎨 Portrait: taken from character "${card.name}", no image generated ($0)`) : l));
   res.json({ inputs, lines, ok: status === 0, raw: status !== 0 ? out.slice(-400) : undefined });
 });
 // 短剧按秒真花钱，且两个 AO 进程会写同一个 project.json / assets/——全局同时只允许一条在跑。
@@ -542,22 +582,28 @@ kaipian.post('/drama/cancel', (req, res) => {
 kaipian.get('/drama/run', (req, res) => {
   const q = req.query; const inputs = dramaInputs(q);
   if (!inputs.story) return res.status(400).json({ error: tt(reqLang(req))('请输入故事', 'Enter a story') });
+  // 角色卡：外形拼进故事；卡里有定妆图就从种子目录续跑，引擎跳过出图（此时不需要选图片模型）
+  let card = null;
+  if (q.character) { try { card = cards.readCard(String(q.character)); } catch (e) { return res.status(e.status ?? 400).json({ error: tt(reqLang(req))(`找不到角色卡：${q.character}`, `No such character: ${q.character}`) }); } }
+  if (card) inputs.story = cards.storyWithCard(inputs.story, card, reqLang(req));
+  const usesCardPortrait = !!card?.portrait;
   // 工作流里 image_model 是必填无默认（定妆图用）：这里不拦的话 AO 会在 spawn 后立刻退出码 1
-  if (!inputs.image_model) return res.status(400).json({ error: tt(reqLang(req))('请选择定妆图的图片模型（image_model）——界面在「画面来源」里选，API 传 image_provider / image_model', 'Pick an image model for the character sheet (image_model) — in the UI it is under "Visual sources"; over the API pass image_provider / image_model') });
+  if (!inputs.image_model && !usesCardPortrait) return res.status(400).json({ error: tt(reqLang(req))('请选择定妆图的图片模型（image_model）——界面在「画面来源」里选，API 传 image_provider / image_model', 'Pick an image model for the character sheet (image_model) — in the UI it is under "Visual sources"; over the API pass image_provider / image_model') });
   if (hub.isRunning('drama')) { if (req.headers['last-event-id']) return hub.attach(hub.get('drama'), req, res); return res.status(409).json({ error: tt(reqLang(req))('已有一条短剧在跑（按秒计费，不允许并行）——等它跑完，或先取消', 'A mini-drama is already running (billed per second, no parallel runs) — wait for it, or cancel it first') }); }
   const { cli, wf } = aoCli(); const cfg = readConfig();
   const runsDir = path.join(cfg.outputDir, '.ao-runs'); fs.mkdirSync(runsDir, { recursive: true });
   const args = [cli, 'run', wf, '--output', runsDir, ...inputArgs(inputs)];
+  if (usesCardPortrait) args.push('--resume', cards.writeSeedRun(card, { inputs }));
   const pv = flagVal(q.provider); if (pv) args.push('--provider', pv);
   const md = flagVal(q.model); if (md) args.push('--model', md);
   const vp = flagVal(q.verify_provider); if (vp) args.push('--verify-provider', vp, '--verify-model', flagVal(q.verify_model) ?? '');
   // 文本供应商要记进项目：redo 不带它的话会回落到工作流默认的 deepseek——
   // 用户用 agnes 跑通的项目，一点"重出这镜"就报"deepseek 没配 key"（真机撞过）
-  streamAoRun({ req, res, args, runsDir, meta: { kind: 'run' }, onDone: (runDir) => finishDramaRun({ runDir, inputs, tier: q.tier || 'cloud', llm: pv ? { provider: pv, model: md || '' } : null }) });
+  streamAoRun({ req, res, args, runsDir, meta: { kind: 'run' }, onDone: (runDir) => finishDramaRun({ runDir, inputs, tier: q.tier || 'cloud', llm: pv ? { provider: pv, model: md || '' } : null, character: card }) });
 });
 
 /** AO 运行目录 → 项目（新建或覆盖同 id）：回填 shots/验收、按输入标来源、拷贝 assets、记住 aoRun 供 resume。 */
-function finishDramaRun({ runDir, inputs, tier, existingId, shotSources, llm = null }) {
+function finishDramaRun({ runDir, inputs, tier, existingId, shotSources, llm = null, character = null }) {
   // runDir 由调用方确定（stdout 刮到的，或 spawn 后新出现的目录）。确定不了就报错，
   // 绝不猜"最新的那个"——resume 时最新的就是上一次自己，旧产物会被当成新成片报成功
   if (!runDir) throw new Error('没有从引擎输出里识别出本次运行目录（可能引擎输出格式变了），项目未改动');
@@ -568,6 +614,8 @@ function finishDramaRun({ runDir, inputs, tier, existingId, shotSources, llm = n
   const project = aoResultToProject(meta, tpl, { id, assetsBase: 'assets' });
   project.line = 'drama'; project.title = inputs.story.slice(0, 30); project.topic = inputs.story; project.inputs = inputs; project.tier = tier; project.shotSources = shotSources ?? {};
   if (llm) project.llm = llm;
+  // 用了哪张角色卡、哪张定妆图：重出单镜 / 回头查"这张脸哪来的"都要它（provenance 规矩）
+  if (character) project.character = { id: character.id, name: character.name, portrait: character.portrait ? { file: character.portrait.file, source: character.portrait.source, model: character.portrait.model ?? null, seed: character.portrait.seed ?? null } : null };
   // 每镜的提示词与全片的氛围锁定块回填进项目：界面能看、能复制去别的模型抽卡——
   // 这是 ai-shortfilm-prompts 五段式进短剧线的可见面；老运行目录没有这些文件就是 null
   const atmosphere = readStepOutput(runDir, 'atmosphere_lock'); if (atmosphere) project.atmosphere = atmosphere;

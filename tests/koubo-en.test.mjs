@@ -265,6 +265,7 @@ test('出片链路上的中文都包在 T() 里（界面把日志/报错原样�
     'src/doctor.mjs': ["'fc-list 命中'", "'你好'"],      // 内部标记 / 试合成用的最短文本，都不显示给用户
     'src/compose/koubo.mjs': ["'AI 生成'"],          // 角标缺省值，调用方按语言传
     'src/sources/stock.mjs': [],
+    'src/characters/cards.mjs': [],
   };
 
   // 模板串里的中文常常整段嵌在 `${T('中', 'en')}` 或 `${cond ? T('中','en') : ''}` 里。
