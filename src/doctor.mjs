@@ -74,7 +74,7 @@ export async function doctor({ lang = 'zh' } = {}) {
   try { const { cacheStats } = await import('./sources/stock.mjs'); const cs = cacheStats();
     if (cs.files) add('ok', T(`素材缓存 ${cs.files} 个文件 · ${(cs.bytes / 1048576).toFixed(0)} MB（${cs.dir}，出片时自动清理 30 天未用的，上限 2 GB）`,
       `Footage cache: ${cs.files} files · ${(cs.bytes / 1048576).toFixed(0)} MB (${cs.dir}; entries unused for 30 days are pruned on each render, 2 GB cap)`)); } catch { /* 无缓存 */ }
-  const src = sourcesAvailability({ lang: L });
+  const src = await sourcesAvailability({ lang: L });
   add(src.stock.ok ? 'ok' : 'warn', `${T('素材库', 'Footage libraries')}${C}${src.stock.reason}`);
   // 本机出图（口播线找不到素材时顶上）以前在体检里完全没有——用户不知道有这么个选项
   try {

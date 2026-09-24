@@ -41,7 +41,7 @@ const projLang = (id, req) => {
   catch { return reqLang(req); }
 };
 
-kaipian.get('/sources', (req, res) => res.json(sourcesAvailability({ lang: req.query.lang === 'en' ? 'en' : 'zh' })));
+kaipian.get('/sources', async (req, res) => res.json(await sourcesAvailability({ lang: req.query.lang === 'en' ? 'en' : 'zh' })));
 kaipian.get('/doctor', async (req, res, next) => { try { const { doctor } = await import('../src/doctor.mjs'); res.json(await doctor({ lang: reqLang(req) })); } catch (e) { next(e); } });
 kaipian.get('/config', (_req, res) => { const c = readConfig(); res.json({ ...c, stock: { pexelsKey: mask(c.stock?.pexelsKey), pixabayKey: mask(c.stock?.pixabayKey), hasPexels: !!c.stock?.pexelsKey, hasPixabay: !!c.stock?.pixabayKey }, aoHome: aoHome() }); });
 kaipian.put('/config', (req, res) => {
