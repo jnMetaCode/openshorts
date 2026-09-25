@@ -149,3 +149,21 @@ test('种子目录会自动清理：旧的删、新的留', () => {
   assert.equal(fs.existsSync(old), false);
   assert.equal(fs.existsSync(fresh), true);
 });
+
+test('drama --scene：场景段拼进故事、--scene 不漏给引擎；跟 --character 一起用两段都在', async () => {
+  const sc = await import('../src/scenes/scenes.mjs');
+  const s = sc.saveScene({ name: '破庙', place: '荒山破庙，残破神像，供桌积灰', time: '深夜，暴雨' });
+  const ao = fs.mkdtempSync(path.join(os.tmpdir(), 'os-aostub-'));
+  fs.mkdirSync(path.join(ao, 'dist'), { recursive: true }); fs.mkdirSync(path.join(ao, 'workflows'), { recursive: true });
+  fs.writeFileSync(path.join(ao, 'package.json'), '{"name":"stub","version":"0.0.0"}');
+  fs.writeFileSync(path.join(ao, 'dist', 'cli.js'), 'console.log("ARGS " + JSON.stringify(process.argv.slice(2)));');
+  const env = { ...process.env, OPENSHORTS_LANG: 'zh', OPENSHORTS_HOME: HOME, OPENSHORTS_AO_DIR: ao };
+  const run = (...a) => spawnSync(process.execPath, [bin, 'drama', ...a], { encoding: 'utf-8', timeout: 60000, env });
+  const args = JSON.parse(run('--scene', s.id, '-i', 'story=拾玉', '--character', '林七').stdout.match(/ARGS (\[.*\])/)[1]);
+  const story = args.find((a) => a.startsWith('story='));
+  assert.ok(story.includes('【场景已定') && story.includes('供桌积灰'), story);
+  assert.ok(story.includes('【主角外形已定'), '角色段也要在');
+  assert.ok(!args.includes('--scene') && !args.includes('--character'));
+  assert.equal(run('-i', 'story=x', '--scene', '没有').status, 1);
+  fs.rmSync(ao, { recursive: true, force: true });
+});

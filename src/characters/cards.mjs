@@ -69,7 +69,11 @@ export function saveCard(input = {}, { id } = {}) {
   const now = new Date().toISOString();
   if (prevCard) {
     const prev = prevCard;
-    const next = { ...n, id: prev.id, portrait: prev.portrait ?? null, history: prev.history ?? [], createdAt: prev.createdAt, updatedAt: now };
+    let portrait = prev.portrait ?? null;
+    // 图按自由描述改过（drift）时用户来改设定，就是在照图改文字：这次保存即"文字已对齐图"，
+    // 否则刚照提示改完，又冒出"卡片改过，图是旧的"——图明明是新的
+    if (portraitDrift(prev)) { const { freeform, ...rest } = portrait; portrait = { ...rest, fields: pickFields(n) }; }
+    const next = { ...n, id: prev.id, portrait, history: prev.history ?? [], createdAt: prev.createdAt, updatedAt: now };
     writeJsonAtomic(path.join(cardDir(prev.id), 'card.json'), next);
     return next;
   }
@@ -211,6 +215,9 @@ export function portraitStale(card) {
   return FIELDS.some((k) => JSON.stringify(card.portrait.fields[k] ?? '') !== JSON.stringify(card[k] ?? ''));
 }
 
+/** 定妆图按自由描述改过、卡片文字还没跟上（改了设定之后 portraitStale 接手，这里就不再报） */
+export const portraitDrift = (card) => !!card?.portrait?.freeform && !portraitStale(card);
+
 /** 把卡片的外形段拼进故事（已经拼过就不重复拼） */
 export function storyWithCard(story, card, lang) {
   const lock = lockText(card, lang);
@@ -257,4 +264,57 @@ export function writeSeedRun(card, { inputs, seedsDir = SEEDS_DIR }) {
     ],
   });
   return dir;
+}
+
+/**
+ * 保脸改图的要求。没写就按"定妆图出完之后卡片改了哪些字段"自动拼：
+ * 改了服装就只换服装、改了背景就只换背景——其余一律保持，尤其是脸。
+ */
+export function editInstruction(card, { instruction = '', withScene = false } = {}) {
+  const T = tt(card.lang);
+  // 要保住的东西逐项点名（卡里的面容 + 标志特征）。9-24 真机：只写"保持同一个人"时，Agnes 把眼镜和胡子都改没了；
+  // 把"黑框眼镜，胡茬"点出来，中文英文都能保住——角色卡的价值就在这里
+  const must = [card.face, ...(card.marks ?? [])].filter(Boolean).join(T('；', '; '));
+  const keep = must ? T(`保持同一个人，这些一样都不能变：${must}；脸型、五官、发型、体型、年龄感也不变。`, `Keep exactly the same person. These must not change: ${must}; nor the face shape, features, hairstyle, build or apparent age.`)
+    : T('保持同一个人：脸型、五官、发型、体型、年龄感完全不变。', 'Keep exactly the same person: face, features, hairstyle, build and apparent age unchanged.');
+  const own = clean(instruction, 600);
+  if (withScene) return `${keep}${T('把第一张图里的这个人自然地放进第二张图的场景里，光线、透视、色调与场景一致；只有这一个人。', ' Place the person from the first image naturally into the scene of the second image, matching its light, perspective and colour; only this one person.')}${own ? ` ${own}` : ''}`;
+  const was = card.portrait?.fields ?? {};
+  const label = { face: T('面容', 'face'), marks: T('标志特征', 'signature marks'), outfit: T('服装', 'outfit'), background: T('背景', 'background'), extra: T('其它细节', 'other details') };
+  const changes = ['outfit', 'background', 'marks', 'extra', 'face'].filter((k) => JSON.stringify(was[k] ?? '') !== JSON.stringify(card[k] ?? '') && (Array.isArray(card[k]) ? card[k].length : card[k]))
+    .map((k) => `${label[k]}${T('改成', ' → ')}${Array.isArray(card[k]) ? card[k].join(T('；', '; ')) : card[k]}`);
+  if (!own && !changes.length) throw Object.assign(new Error(T('卡片自上次出图后没改过，写一句要改什么（比如"换成白衬衫"）', 'The card has not changed since the last portrait — say what to change (e.g. "a white shirt instead")')), { status: 400 });
+  return `${keep}${T('只改：', ' Change only: ')}${[...changes, own].filter(Boolean).join(T('；', '; '))}${T('。其它保持原样。', '. Leave everything else as it is.')}`;
+}
+
+/**
+ * 云端保脸改图：以当前定妆图为参考出新图（可再带一张场景图，把人放进去）。
+ * 旧图进历史，来源记成 cloud-edit，记下供应商 / 模型 / 基于哪张 / 要求——按张计费的东西必须能追溯。
+ */
+export async function editPortraitCloud(id, { edit, provider, model, instruction = '', sceneImage = null, sceneRef = null } = {}) {
+  if (!edit) throw new Error('editPortraitCloud needs an editor');
+  const card = readCard(id);
+  const T = tt(card.lang);
+  const src = portraitPath(card);
+  if (!src || !fs.existsSync(src)) throw Object.assign(new Error(T('先出或上传一张定妆图，才能在它上面改', 'Render or upload a portrait first — edits start from it')), { status: 400 });
+  const prompt = editInstruction(card, { instruction, withScene: !!sceneImage });
+  // 尺寸跟原定妆图的画幅走：不给的话 Agnes 回 1024×1024 方图，横版片又要被裁（9-24 真机）
+  const r0 = card.portrait.ratio ?? ratioOf(card.portrait.width, card.portrait.height);
+  const size = r0 === '16:9' ? '1344x768' : r0 === '9:16' ? '768x1344' : r0 === '2:3' ? '832x1248' : undefined;
+  const bytes = await edit({ provider, model, images: [fs.readFileSync(src), ...(sceneImage ? [sceneImage] : [])], prompt, size, lang: card.lang });
+  const ext = bytes[0] === 0xff && bytes[1] === 0xd8 ? 'jpg' : bytes.length > 11 && bytes.toString('ascii', 8, 12) === 'WEBP' ? 'webp' : 'png';
+  const file = `portrait-${Date.now().toString(36)}.${ext}`;
+  const next = readCard(card.id);
+  fs.writeFileSync(path.join(cardDir(card.id), file), bytes);
+  const [w, h] = imageSize(bytes);
+  const at = new Date().toISOString();
+  next.history = [...(next.history ?? []), ...(next.portrait ? [next.portrait] : [])].slice(-12);
+  // 按自由描述改 / 放进场景之后，图和卡片文字（服装、背景）就不一致了——剧本照卡片写，第一帧照图出，会对不上。
+  // 记下来让界面提醒用户把设定改过来（不替用户改字段：哪句话落到哪个字段只有用户知道）
+  const freeform = clean(instruction, 200) || (sceneRef ? T(`放进场景「${sceneRef.id}」`, `placed into scene "${sceneRef.id}"`) : '');
+  next.portrait = { file, source: 'cloud-edit', provider, model, basedOn: card.portrait.file, ...(sceneRef ? { scene: sceneRef } : {}), ...(freeform ? { freeform } : {}), seed: null, prompt,
+    width: w, height: h, ratio: ratioOf(w, h), cost: { kind: 'paid', note: T('按供应商单张计费', 'billed per image by the provider') }, at, fields: pickFields(next) };
+  next.updatedAt = at;
+  writeJsonAtomic(path.join(cardDir(card.id), 'card.json'), next);
+  return next;
 }

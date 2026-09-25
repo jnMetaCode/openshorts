@@ -2,6 +2,7 @@ import React, {useEffect, useRef, useState} from 'react';
 import './kaipian.css';
 import {getLang, setLang, makeT, type Lang} from './i18n';
 import {Characters, type Card} from './Characters';
+import {Scenes, type Scene} from './Scenes';
 
 type Src = {ok: boolean; reason: string; tier?: string};
 type Sources = {stock: Src; image: Src; local: Src; cloud: Src; layered: Src; tools: {ffmpeg: boolean; whisper: boolean; magick: boolean}};
@@ -28,6 +29,8 @@ export const Kaipian = () => {
   const [story, setStory] = useState('');
   const [character, setCharacter] = useState('');
   const [card, setCard] = useState<Card | null>(null);
+  const [sceneId, setSceneId] = useState('');
+  const [scene, setScene] = useState<Scene | null>(null);
   const cardPortrait = !!card?.portrait;   // 卡里有定妆图：引擎跳过出图，不必再选出图供应商
   const [genre, setGenre] = useState('剧情短剧');
   const [style, setStyle] = useState('美式复古好莱坞');
@@ -194,7 +197,7 @@ export const Kaipian = () => {
     if (project && runningEs.current) { try { await api(`/api/kaipian/projects/${encodeURIComponent(project.id)}/cancel?lang=${lang}`, {method: 'POST'}); } catch { /* 已经停了 */ } runningEs.current.close(); runningEs.current = null; }
     setBusy(''); setLog((l) => [...l, t('已取消（进度已存盘，再点出片会接着来）')]);
   };
-  const dramaBody = () => ({story, genre, style, tier, video_ratio: ratio, ...(character ? {character} : {}), ...(tier === 'cloud' ? cloud : {image_provider: cloud.image_provider, image_model: cloud.image_model})});
+  const dramaBody = () => ({story, genre, style, tier, video_ratio: ratio, ...(character ? {character} : {}), ...(sceneId ? {scene: sceneId} : {}), ...(tier === 'cloud' ? cloud : {image_provider: cloud.image_provider, image_model: cloud.image_model})});
   const dramaPreflight = async () => { setError(''); setBusy(t('估算花费…')); try { const r = await api<{lines: string[]; ok: boolean; raw?: string}>('/api/kaipian/drama/preflight', {method: 'POST', body: JSON.stringify(dramaBody())}); setPreflight(r.ok ? r.lines : [r.raw || t('预览失败')]); setStep(2); } catch (e: any) { setError(e.message); } finally { setBusy(''); } };
   const dramaRun = () => {
     setLog([]); setBusy(tier === 'local' ? t('本地出片中（每镜约 3–4 分钟，共 3 镜 + 定妆图）…') : t('云端出片中（通常 3–8 分钟）…')); setError(''); setStep(3);
@@ -433,7 +436,8 @@ export const Kaipian = () => {
         <div className="kp-actions"><button className="primary" disabled={!topic.trim() || !!busy} onClick={() => setStep(2)}>{t('下一步：选来源')}</button></div>
       </> : <>
         <label>{t('一段故事（一两句话即可，AI 编剧会拆成 3 镜）')}<textarea value={story} onChange={(e) => setStory(e.target.value)} rows={5} placeholder={t('例如：深夜便利店，值夜班的女孩把最后一份关东煮留给每天来但从不说话的流浪老人；今晚老人没来……')}/></label>
-        <Characters lang={lang} t={t} selected={character} onSelect={setCharacter} onCard={setCard} ratio={ratio}/>
+        <Characters lang={lang} t={t} selected={character} onSelect={setCharacter} onCard={setCard} ratio={ratio} scene={scene}/>
+        <Scenes lang={lang} t={t} selected={sceneId} onSelect={setSceneId} onScene={setScene} ratio={ratio}/>
         <div className="kp-row">
           <label>{t('题材')}<select value={genre} onChange={(e) => setGenre(e.target.value)}>{['剧情短剧', '产品广告片', '治愈日常', '悬疑惊悚', '搞笑段子', '科幻', '古风武侠', '纪实 Vlog'].map((d) => <option key={d} value={d}>{t(d)}</option>)}</select></label>
           <label>{t('视觉风格')}<input value={style} onChange={(e) => setStyle(e.target.value)} placeholder={t('美式复古好莱坞 / 霓虹赛博电影 / 日系清新…')}/></label>
