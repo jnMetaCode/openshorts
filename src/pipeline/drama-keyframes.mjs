@@ -74,6 +74,8 @@ export function deriveKeyframeWorkflow(src, { resolveAgents, outDir = path.join(
     output: ${id}_keyframe
     depends_on: [character, ${id}_prompt]`).join('\n');
   fs.mkdirSync(outDir, { recursive: true });
+  // 每次首跑 / 重出都派生一份（重出时现场重派，不靠旧文件还在），超过 3 天的清掉
+  for (const f of fs.readdirSync(outDir)) { const p = path.join(outDir, f); try { if (f.startsWith('drama-keyframes-') && Date.now() - fs.statSync(p).mtimeMs > 3 * 24 * 3600e3) fs.rmSync(p); } catch { /* 并发删了 */ } }
   const out = path.join(outDir, `drama-keyframes-${Date.now().toString(36)}.yaml`);
   fs.writeFileSync(out, `${lines.join('\n').replace(/\s*$/, '')}\n${extra}\n`);
   return out;

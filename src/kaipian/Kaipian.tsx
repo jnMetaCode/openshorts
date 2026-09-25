@@ -604,6 +604,7 @@ export const Kaipian = () => {
       <div className="kp-drama-shots">{(project.shots as unknown as DramaShot[]).map((s) => <div key={s.id} className="kp-drama-shot">
         {s.kind === 'image' ? <img src={fileUrl(project, s.visual.file)} alt={s.stepName}/> : <video controls muted src={fileUrl(project, s.visual.file)}/>}
         <b>{s.stepName}</b>
+        {(s.visual as any).keyframe && <details className="kp-prompt"><summary>{t('这一镜的首帧（逐镜合成）')}</summary><img src={fileUrl(project, (s.visual as any).keyframe)} alt="" style={{width: '100%'}}/></details>}
         {s.verification ? <em className={s.verification.pass ? 'ok' : 'warn'}>{s.verification.pass ? `✅ ${t('验收通过')}` : `⚠️ ${t('验收')} ${s.verification.failed.length} ${t('条未过')}`}{s.verification.reworked ? t('（已重出 1 次）') : ''}</em> : <em>{t('未验收')}</em>}
         {s.verification && !s.verification.pass && <ul className="kp-prov">{s.verification.failed.map((f, i) => <li key={i}>{f}</li>)}</ul>}
         <small>{s.visual.source === 'local' ? t('本地 · 不花钱') : `${s.visual.provider ?? ''} ${s.visual.model ?? ''}`}{s.durationSec ? ` · ${s.durationSec}s` : ''}</small>

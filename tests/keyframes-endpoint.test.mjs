@@ -64,3 +64,36 @@ test('逐镜首帧：没卡 / 没供应商先 400；两段引擎 + 三次合成�
   assert.match(sse, /逐镜首帧 ①/); assert.match(sse, /shot2 首帧/); assert.match(sse, /逐镜首帧 ②/);
   assert.match(sse, /event: error[\s\S]*测试桩：出片失败/, '第二段的失败原因要到界面，不能只剩"退出码 1"');
 });
+
+test('逐镜首帧项目重出单镜：用派生工作流（连着两次都是）；回填后首帧挂在镜头上、卡和逐镜记录不丢', async () => {
+  const out = path.join(home, 'OpenShorts'); const id = '短剧-逐镜测试';
+  const prevRun = path.join(home, 'prevRun'); fs.mkdirSync(prevRun, { recursive: true }); fs.writeFileSync(path.join(prevRun, 'metadata.json'), '{"steps":[]}');
+  fs.mkdirSync(path.join(out, id), { recursive: true });
+  fs.writeFileSync(path.join(out, id, 'project.json'), JSON.stringify({ id, line: 'drama', title: 'x', inputs: { story: 'x', video_provider: 'local-sdcpp', video_model: 'minimax-h3-q2', video_ratio: '16:9' }, tier: 'local',
+    keyframes: [{ shot: 'shot1', provider: 'agnes' }], character: { id: '阿杰', name: '阿杰' }, final: { aoRun: prevRun }, shots: [] }));
+  // 桩引擎换成"重出"版：在 --output 下造一个真像样的运行目录（镜头、首帧、成片都有），并打出"详细输出"
+  const redoCalls = path.join(home, 'redo.jsonl');
+  fs.writeFileSync(path.join(ao, 'dist', 'cli.js'), `const fs=require('fs'),p=require('path');const a=process.argv.slice(2);fs.appendFileSync(${JSON.stringify(redoCalls)},JSON.stringify(a)+'\\n');
+const d=p.join(a[a.indexOf('--output')+1],'redo-'+Date.now());fs.mkdirSync(p.join(d,'assets'),{recursive:true});
+for(const f of ['shot1.mp4','shot2.mp4','shot3.mp4','film.mp4','shot1_keyframe.png','shot2_keyframe.png','shot3_keyframe.png','character.png'])fs.writeFileSync(p.join(d,'assets',f),'x');
+const st=[{id:'character',status:'completed',imageAsset:{filename:'character.png'}}];
+for(const n of [1,2,3]){st.push({id:'shot'+n,status:'completed',videoAsset:{filename:'shot'+n+'.mp4',seconds:2.33}});st.push({id:'shot'+n+'_keyframe',status:'completed',imageAsset:{filename:'shot'+n+'_keyframe.png'}});}
+st.push({id:'film',status:'completed',videoAsset:{filename:'film.mp4'}});
+fs.writeFileSync(p.join(d,'metadata.json'),JSON.stringify({steps:st}));console.log('  详细输出: '+d);`);
+  for (let i = 0; i < 2; i++) {
+    const r = await fetch(`${base}/projects/${encodeURIComponent(id)}/drama/redo?shot=shot2`);
+    const sse = await r.text(); assert.match(sse, /event: done/, sse.slice(-300));
+  }
+  const runs = fs.readFileSync(redoCalls, 'utf-8').trim().split('\n').map((l) => JSON.parse(l));
+  assert.equal(runs.length, 2);
+  for (const a of runs) assert.match(a[1], /drama-keyframes-.*\.yaml$/, '逐镜首帧项目重出要用派生工作流，否则这一镜退回共用定妆图');
+  const proj = JSON.parse(fs.readFileSync(path.join(out, id, 'project.json'), 'utf-8'));
+  assert.deepEqual(proj.keyframes, [{ shot: 'shot1', provider: 'agnes' }]); assert.equal(proj.character.id, '阿杰');
+  assert.deepEqual(proj.shots.map((s) => s.id).sort(), ['character', 'shot1', 'shot2', 'shot3'], '首帧不单独占格');
+  assert.match(proj.shots.find((s) => s.id === 'shot2').visual.keyframe, /assets[\\/]shot2_keyframe\.png$/);
+  // 不是逐镜首帧的项目照旧用原工作流
+  const plain = '短剧-普通'; fs.mkdirSync(path.join(out, plain), { recursive: true });
+  fs.writeFileSync(path.join(out, plain, 'project.json'), JSON.stringify({ id: plain, line: 'drama', title: 'y', inputs: { story: 'y' }, tier: 'local', final: { aoRun: prevRun }, shots: [] }));
+  await (await fetch(`${base}/projects/${encodeURIComponent(plain)}/drama/redo?shot=shot1`)).text();
+  assert.ok(JSON.parse(fs.readFileSync(redoCalls, 'utf-8').trim().split('\n').at(-1))[1].endsWith('短剧流水线.yaml'));
+});

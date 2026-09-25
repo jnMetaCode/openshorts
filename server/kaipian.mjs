@@ -727,21 +727,29 @@ function finishDramaRun({ runDir, inputs, tier, existingId, shotSources, llm = n
     s.visual.provider = s.kind === 'video' ? vp : inputs.image_provider || null; s.visual.model = s.kind === 'video' ? vm : inputs.image_model || null;
     s.visual.source = s.kind === 'video' && vp === 'local-sdcpp' ? 'local' : 'cloud';
   }
+  // 逐镜首帧的三张图是"镜头的首帧"，不是另外三个镜头：挂到对应镜头的 visual.keyframe 上，不单独占格
+  // （不挂的话界面按 id 末尾数字排序，七格穿插排成"定妆图、镜 1、镜 1 首帧、镜 2…"，看着像六个镜头）
+  const kfShots = project.shots.filter((s) => /^shot\d_keyframe$/.test(s.id));
+  for (const k of kfShots) { const owner = project.shots.find((s) => s.id === k.id.replace('_keyframe', '')); if (owner) owner.visual.keyframe = k.visual.file; }
+  project.shots = project.shots.filter((s) => !kfShots.includes(s));
   const dir = projDir(id); fs.mkdirSync(path.join(dir, 'assets'), { recursive: true });
   // AO 在 script 步就失败时不会有 assets/——别在这儿甩 ENOENT
   const srcAssets = path.join(runDir, 'assets');
   if (fs.existsSync(srcAssets)) for (const f of fs.readdirSync(srcAssets)) fs.copyFileSync(path.join(srcAssets, f), path.join(dir, 'assets', f));
   project.final = project.final ? { file: path.join(dir, project.final.file), aoRun: runDir, notes: [] } : { file: null, aoRun: runDir, notes: ['本次运行没有成片'] };
-  project.shots.forEach((s) => { s.visual.file = path.join(dir, s.visual.file); });
+  project.shots.forEach((s) => { s.visual.file = path.join(dir, s.visual.file); if (s.visual.keyframe) s.visual.keyframe = path.join(dir, s.visual.keyframe); });
   // 保留上次的镜头级来源记录（未重出的镜头沿用）
-  if (existingId) { try { const prev = JSON.parse(fs.readFileSync(path.join(dir, 'project.json'), 'utf-8')); project.redoHistory = [...(prev.redoHistory ?? []), { at: new Date().toISOString(), aoRun: runDir }]; } catch { /* first */ } }
+  if (existingId) { try { const prev = JSON.parse(fs.readFileSync(path.join(dir, 'project.json'), 'utf-8')); project.redoHistory = [...(prev.redoHistory ?? []), { at: new Date().toISOString(), aoRun: runDir }];
+    // 重出单镜不改变"这条片用的哪张卡 / 哪个景 / 是不是逐镜首帧"：不沿用的话，第二次重出就退回原工作流、首帧退回共用定妆图，来源记录也丢了
+    for (const k of ['character', 'scene', 'keyframes']) if (project[k] == null && prev[k] != null) project[k] = prev[k];
+  } catch { /* first */ } }
   writeJsonAtomic(path.join(dir, 'project.json'), project);
   return id;
 }
 
 // 单镜重出：AO --resume <上次运行> --from <镜头> [--feedback 意见] [-i video_provider=…]（换来源）。
 // 下游（合成）会自动跟着重跑；上游（剧本/定妆图/其他镜头）原样复用，不再花钱。
-kaipian.get('/projects/:id/drama/redo', (req, res) => {
+kaipian.get('/projects/:id/drama/redo', async (req, res) => {
   const f = path.join(projDir(req.params.id), 'project.json'); if (!fs.existsSync(f)) return res.status(404).json({ error: tt(reqLang(req))('项目不存在', 'No such project') });
   const prev = JSON.parse(fs.readFileSync(f, 'utf-8')); const q = req.query;
   const shot = String(q.shot || ''); if (!/^(shot[123]|character)$/.test(shot)) return res.status(400).json({ error: tt(reqLang(req))('只能重出 character / shot1 / shot2 / shot3', 'Only character / shot1 / shot2 / shot3 can be redone') });
@@ -754,7 +762,14 @@ kaipian.get('/projects/:id/drama/redo', (req, res) => {
   if (q.tier === 'local') { Object.assign(inputs, { video_provider: TIERS.local.video_provider, video_model: TIERS.local.video_model, video_resolution: localResolution(inputs.video_ratio), video_duration: TIERS.local.video_duration }); }
   else if (q.tier === 'cloud') { for (const k of ['video_provider', 'video_model', 'video_resolution', 'video_duration']) { const v = flagVal(q[k]); if (v) inputs[k] = v; } }
   shotSources[shot] = { video_provider: inputs.video_provider, video_model: inputs.video_model };
-  const args = [cli, 'run', wf, '--output', runsDir, '--resume', prev.final.aoRun, '--from', shot, ...inputArgs(inputs)];
+  // 逐镜首帧的项目：上次的运行目录里有 shotN_keyframe，只有派生工作流认得。用原工作流重出的话，
+  // 这一镜会悄悄退回共用的定妆图当首帧——合成过的首帧白做，也没有任何提示。派生是确定的，现场重派一份
+  let runWf = wf;
+  if (prev.keyframes) {
+    const { findAgentsDir } = await import('agency-orchestrator');
+    runWf = keyframes.deriveKeyframeWorkflow(wf, { resolveAgents: (n) => findAgentsDir(n, wf) });
+  }
+  const args = [cli, 'run', runWf, '--output', runsDir, '--resume', prev.final.aoRun, '--from', shot, ...inputArgs(inputs)];
   // 文本供应商沿用首跑存的（q 可覆盖）：不带的话 AO 回落到工作流默认的 deepseek，
   // 用 agnes 跑通的项目一点重出就报"deepseek 没配 key"（真机撞过）
   const pv = flagVal(q.provider) ?? prev.llm?.provider; if (pv) args.push('--provider', pv);

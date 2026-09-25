@@ -48,6 +48,11 @@ test('派生工作流（拿引擎真的那份）：三镜首帧各读各的、�
   const changed = path.join(HOME, 'changed.yaml');
   fs.writeFileSync(changed, fs.readFileSync(REAL_WF, 'utf-8').replaceAll('image: "{{character_img}}"', 'image: "{{portrait}}"'));
   assert.throws(() => kf.deriveKeyframeWorkflow(changed), /expected 3 shot image lines, found 0/);
+  // 旧的派生文件会被清掉，新的留着
+  const old = path.join(path.dirname(out), 'drama-keyframes-old.yaml'); fs.writeFileSync(old, 'x');
+  const past = new Date(Date.now() - 4 * 24 * 3600e3); fs.utimesSync(old, past, past);
+  const again = kf.deriveKeyframeWorkflow(REAL_WF);
+  assert.equal(fs.existsSync(old), false); assert.equal(fs.existsSync(again), true); assert.equal(fs.existsSync(out), true);
 });
 
 test('两段种子：第一段把出片 / 合成 / 交付页标成已完成；第二段去掉它们、加三张首帧和来源', () => {

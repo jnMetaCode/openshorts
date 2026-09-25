@@ -212,6 +212,7 @@ const EN: Record<string, string> = {
   '本机出场景图（不花钱）': 'Render scene on this machine (free)',
   '上传场景图': 'Upload scene image',
   '保存场景': 'Save scene',
+  '这一镜的首帧（逐镜合成）': 'This shot\'s opening frame (composed per shot)',
   '逐镜首帧：三镜各合成一张「人在景里、正做这一镜的事」的首帧（云端改图，多 3 张图的钱）': 'Per-shot keyframes: compose one opening frame per shot, with the character in the scene doing that shot\'s action (cloud image edit, 3 extra images to pay for)',
   '想要三镜各不相同：先在角色卡里用一次「保脸改图（云端）」配好改图供应商，这里就能开逐镜首帧。': 'Want the three shots to differ? Use "Keep face, edit (cloud)" on the card once to set up an image-edit provider, then per-shot keyframes become available here.',
   '定妆图按这句改过：': 'The portrait was edited with: ',
