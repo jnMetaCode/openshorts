@@ -30,6 +30,9 @@ export const Kaipian = () => {
   const [character, setCharacter] = useState('');
   const [card, setCard] = useState<Card | null>(null);
   const [sceneId, setSceneId] = useState('');
+  // 逐镜首帧：三镜各合成一张首帧（云端改图，每镜一张图）。只有选了带定妆图的角色卡才有意义
+  const [kf, setKf] = useState<{on: boolean; provider: string; model: string}>({on: false, provider: '', model: ''});
+  useEffect(() => { fetch('/api/kaipian/image-edit/options').then((r) => r.json()).then((o) => setKf((k) => ({...k, provider: k.provider || o.saved?.provider || o.providers?.[0]?.id || '', model: k.model || o.saved?.model || o.providers?.[0]?.models?.[0] || ''}))).catch(() => { /* 没有改图供应商就不给这个选项 */ }); }, []);
   const [scene, setScene] = useState<Scene | null>(null);
   const cardPortrait = !!card?.portrait;   // 卡里有定妆图：引擎跳过出图，不必再选出图供应商
   const [genre, setGenre] = useState('剧情短剧');
@@ -197,7 +200,7 @@ export const Kaipian = () => {
     if (project && runningEs.current) { try { await api(`/api/kaipian/projects/${encodeURIComponent(project.id)}/cancel?lang=${lang}`, {method: 'POST'}); } catch { /* 已经停了 */ } runningEs.current.close(); runningEs.current = null; }
     setBusy(''); setLog((l) => [...l, t('已取消（进度已存盘，再点出片会接着来）')]);
   };
-  const dramaBody = () => ({story, genre, style, tier, video_ratio: ratio, ...(character ? {character} : {}), ...(sceneId ? {scene: sceneId} : {}), ...(tier === 'cloud' ? cloud : {image_provider: cloud.image_provider, image_model: cloud.image_model})});
+  const dramaBody = () => ({story, genre, style, tier, video_ratio: ratio, ...(character ? {character} : {}), ...(sceneId ? {scene: sceneId} : {}), ...(kf.on && cardPortrait ? {keyframes: '1', edit_provider: kf.provider, edit_model: kf.model} : {}), ...(tier === 'cloud' ? cloud : {image_provider: cloud.image_provider, image_model: cloud.image_model})});
   const dramaPreflight = async () => { setError(''); setBusy(t('估算花费…')); try { const r = await api<{lines: string[]; ok: boolean; raw?: string}>('/api/kaipian/drama/preflight', {method: 'POST', body: JSON.stringify(dramaBody())}); setPreflight(r.ok ? r.lines : [r.raw || t('预览失败')]); setStep(2); } catch (e: any) { setError(e.message); } finally { setBusy(''); } };
   const dramaRun = () => {
     setLog([]); setBusy(tier === 'local' ? t('本地出片中（每镜约 3–4 分钟，共 3 镜 + 定妆图）…') : t('云端出片中（通常 3–8 分钟）…')); setError(''); setStep(3);
@@ -478,7 +481,13 @@ export const Kaipian = () => {
           <label>{t('每镜秒数')}{vm && vm.durations.length ? <select value={cloud.video_duration} onChange={(e) => pick({video_duration: e.target.value})}>{vm.durations.map((d) => <option key={d} value={String(d)}>{d}</option>)}</select> : <input value={cloud.video_duration} onChange={(e) => pick({video_duration: e.target.value})}/>}</label>
         </div>;
       })()}
-      {cardPortrait ? <div className="kp-hint">{t('定妆图：用角色卡')}「{card!.name}」{t('里的那张，这一步不出图')}</div> : (() => {
+      {cardPortrait && <div className="kp-hint">{t('定妆图：用角色卡')}「{card!.name}」{t('里的那张，这一步不出图')}</div>}
+      {cardPortrait && <div className="kp-row">
+        <label className="kp-check"><input type="checkbox" checked={kf.on} disabled={!kf.provider} onChange={(e) => { setKf({...kf, on: e.target.checked}); setPreflight([]); }}/>{t('逐镜首帧：三镜各合成一张「人在景里、正做这一镜的事」的首帧（云端改图，多 3 张图的钱）')}</label>
+        {kf.on && <><label>{t('改图供应商')}<input value={kf.provider} onChange={(e) => { setKf({...kf, provider: e.target.value}); setPreflight([]); }}/></label><label>{t('模型（要支持改图）')}<input value={kf.model} onChange={(e) => { setKf({...kf, model: e.target.value}); setPreflight([]); }}/></label></>}
+      </div>}
+      {cardPortrait && !kf.provider && <div className="kp-hint">{t('想要三镜各不相同：先在角色卡里用一次「保脸改图（云端）」配好改图供应商，这里就能开逐镜首帧。')}</div>}
+      {cardPortrait ? null : (() => {
         const ips = providers?.image ?? []; const ip = ips.find((p) => p.id === cloud.image_provider);
         return <div className="kp-row">
           <label>{t('定妆图供应商（出图，按张计费）')}<select value={cloud.image_provider} onChange={(e) => { const p = ips.find((x) => x.id === e.target.value); setCloud({...cloud, image_provider: e.target.value, image_model: p?.models[0] ?? ''}); }}><option value="">{t('跟随文本供应商')}</option>{ips.map((p) => <option key={p.id} value={p.id}>{p.id} ✓</option>)}</select></label>
@@ -595,6 +604,7 @@ export const Kaipian = () => {
       <div className="kp-drama-shots">{(project.shots as unknown as DramaShot[]).map((s) => <div key={s.id} className="kp-drama-shot">
         {s.kind === 'image' ? <img src={fileUrl(project, s.visual.file)} alt={s.stepName}/> : <video controls muted src={fileUrl(project, s.visual.file)}/>}
         <b>{s.stepName}</b>
+        {(s.visual as any).keyframe && <details className="kp-prompt"><summary>{t('这一镜的首帧（逐镜合成）')}</summary><img src={fileUrl(project, (s.visual as any).keyframe)} alt="" style={{width: '100%'}}/></details>}
         {s.verification ? <em className={s.verification.pass ? 'ok' : 'warn'}>{s.verification.pass ? `✅ ${t('验收通过')}` : `⚠️ ${t('验收')} ${s.verification.failed.length} ${t('条未过')}`}{s.verification.reworked ? t('（已重出 1 次）') : ''}</em> : <em>{t('未验收')}</em>}
         {s.verification && !s.verification.pass && <ul className="kp-prov">{s.verification.failed.map((f, i) => <li key={i}>{f}</li>)}</ul>}
         <small>{s.visual.source === 'local' ? t('本地 · 不花钱') : `${s.visual.provider ?? ''} ${s.visual.model ?? ''}`}{s.durationSec ? ` · ${s.durationSec}s` : ''}</small>

@@ -59,6 +59,19 @@ function runAO(args, opts = {}) {
   process.exit(r.status ?? 1);
 }
 
+/** 跑引擎、输出照常打到终端，同时收集下来（逐镜首帧的第一段要从里面认出运行目录） */
+async function runAOTee(args) {
+  const { cli } = aoBin();
+  const { spawn } = await import('node:child_process');
+  return new Promise((resolve) => {
+    const child = spawn(process.execPath, [cli, ...args], { stdio: ['inherit', 'pipe', 'pipe'], env: { ...process.env, AO_NO_MODEL_HINT: '1' } });
+    let out = '';
+    child.stdout.on('data', (d) => { out += d; process.stdout.write(d); });
+    child.stderr.on('data', (d) => { out += d; process.stderr.write(d); });
+    child.on('close', (code) => resolve({ status: code ?? 1, out }));
+  });
+}
+
 function parseOpts(a) { const o = {}; for (let i = 0; i < a.length; i++) if (a[i].startsWith('--')) { const k = a[i].slice(2); const v = a[i + 1] && !a[i + 1].startsWith('--') ? a[++i] : 'true'; o[k] = v; } return o; }
 
 /** 四个命令都吃 project.json——路径打错不该甩 ENOENT 堆栈，粘错文件不该甩 TypeError */
@@ -139,6 +152,11 @@ switch (cmd) {
       : ['--provider', cfgd.text.provider, ...(cfgd.text.model ? ['--model', cfgd.text.model] : [])];
     // --character <id>：角色卡的外形拼进故事；卡里有定妆图就让引擎从种子目录续跑，跳过出图直接用这张
     const seedArgs = [];
+    // --keyframes：三镜各合成一张首帧（云端改图，按张计费），见 src/pipeline/drama-keyframes.mjs
+    const takeFlag = (name, hasValue) => { const i = rest.indexOf(name); if (i < 0) return undefined; const v = hasValue ? rest[i + 1] : 'true'; rest.splice(i, hasValue ? 2 : 1); return v; };
+    const keyframes = takeFlag('--keyframes', false) === 'true';
+    const editProvider = takeFlag('--edit-provider', true), editModel = takeFlag('--edit-model', true);
+    let kfCard = null, kfScene = null;
     const ci = rest.indexOf('--character');
     if (ci >= 0) {
       const cid = rest[ci + 1];
@@ -149,6 +167,7 @@ switch (cmd) {
       const si = rest.findIndex((a, i) => rest[i - 1] === '-i' && a.startsWith('story='));
       if (si < 0) { console.error(T('⛔ --character 要配 -i story="…" 一起用', '⛔ --character needs -i story="…"')); process.exit(1); }
       rest[si] = `story=${cards.storyWithCard(rest[si].slice(6), card, cliLang)}`;
+      kfCard = card;
       if (card.portrait) {
         if (rest.includes('--resume')) { console.error(T('⛔ --character 带定妆图时会自己续跑种子目录，不能再加 --resume', '⛔ --character with a portrait resumes from its own seed run; drop --resume')); process.exit(1); }
         const inputs = {}; rest.forEach((a, i) => { if (rest[i - 1] === '-i') { const k = a.split('=')[0]; inputs[k] = a.slice(k.length + 1); } });
@@ -170,6 +189,7 @@ switch (cmd) {
       const si = rest.findIndex((a, i) => rest[i - 1] === '-i' && a.startsWith('story='));
       if (si < 0) { console.error(T('⛔ --scene 要配 -i story="…" 一起用', '⛔ --scene needs -i story="…"')); process.exit(1); }
       rest[si] = `story=${scenes.storyWithScene(rest[si].slice(6), sc, cliLang)}`;
+      kfScene = sc;
       console.error(T(`🏠 场景「${sc.name}」：锁进剧本`, `🏠 Scene "${sc.name}": locked into the script`));
     }
     // 本机出片没给分辨率/时长时补草稿档，跟界面的本地档一致（否则落到工作流默认 720p / 8 秒）
@@ -179,6 +199,38 @@ switch (cmd) {
     const passthru = [...rest.filter((a) => a !== '--validate' && a !== '--plan'), ...localArgs, ...llmArgs];
     if (rest.includes('--validate')) runAO(['validate', wf, ...passthru]);
     if (rest.includes('--plan')) runAO(['plan', wf, ...passthru]);
+    if (keyframes) {
+      const cards = await import('../src/characters/cards.mjs');
+      const kf = await import('../src/pipeline/drama-keyframes.mjs');
+      const { readConfig: rk } = await import('../src/config.mjs');
+      const saved = rk().imageEdit ?? {};
+      const provider = editProvider ?? saved.provider, model = editModel ?? saved.model;
+      if (!kfCard?.portrait) { console.error(T('⛔ --keyframes 要配一张有定妆图的角色卡（--character <id>）', '⛔ --keyframes needs a character card with a portrait (--character <id>)')); process.exit(1); }
+      if (!provider || !model) { console.error(T('⛔ 逐镜首帧要云端改图：加 --edit-provider agnes --edit-model agnes-image-2.5-flash（每镜一张，按张计费）', '⛔ Per-shot keyframes use cloud image editing: add --edit-provider agnes --edit-model agnes-image-2.5-flash (one image per shot, billed per image)')); process.exit(1); }
+      const inputs = {}; rest.forEach((a, i) => { if (rest[i - 1] === '-i') { const k = a.split('=')[0]; inputs[k] = a.slice(k.length + 1); } });
+      for (let i = 0; i < localArgs.length; i += 2) { const [k, ...v] = localArgs[i + 1].split('='); inputs[k] = v.join('='); }
+      // ① 只跑文字（剧本 + 三镜提示词）
+      console.error(T('\n── 逐镜首帧 ① 先写剧本和三镜提示词（出片、合成都先跳过）──', '\n── Per-shot keyframes ① script and shot prompts first (rendering skipped for now) ──'));
+      const seedA = kf.textsOnlySeed(seedArgs[1]);
+      const a = await runAOTee(['run', wf, ...rest, ...localArgs, '--resume', seedA, ...llmArgs]);
+      const runA = a.out.replace(/\x1b\[[0-9;]*m/g, '').match(/详细输出:\s*(\S+)/)?.[1];
+      if (a.status !== 0 || !runA) { console.error(T(`⛔ 第一段（写剧本和提示词）没跑完（退出码 ${a.status}），逐镜首帧停在这里`, `⛔ Stage one (script and prompts) did not finish (exit ${a.status}); stopping before keyframes`)); process.exit(1); }
+      // ② 三镜各合成一张首帧
+      const { editImage } = await import('../src/characters/cloud-edit.mjs');
+      const scenes = kfScene ? await import('../src/scenes/scenes.mjs') : null;
+      const sceneFile = kfScene ? scenes.sceneImagePath(kfScene) : null;
+      let composed;
+      try {
+        composed = await kf.composeKeyframes({ card: kfCard, portrait: fs.readFileSync(cards.portraitPath(kfCard)), sceneImage: sceneFile ? fs.readFileSync(sceneFile) : null,
+          script: kf.readScript(path.resolve(runA)), edit: editImage, provider, model, ratio: inputs.video_ratio || '16:9', lang: cliLang, onLog: (m) => console.error(m) });
+      } catch (e) { console.error(`⛔ ${e.message}`); console.error(T(`   剧本和提示词已在 ${runA}，修好后可重跑`, `   The script and prompts are in ${runA}; fix and re-run`)); process.exit(1); }
+      // ③ 派生工作流 + 第二段种子，只跑出片、合成、交付页
+      const { findAgentsDir } = await import('agency-orchestrator');
+      const derived = kf.deriveKeyframeWorkflow(wf, { resolveAgents: (name) => findAgentsDir(name, wf) });
+      const seedB = kf.keyframesSeed(path.resolve(runA), composed.frames, { meta: composed.meta });
+      console.error(T(`\n── 逐镜首帧 ② 三张首帧已合成（${seedB}/assets），开始出片 ──`, `\n── Per-shot keyframes ② three keyframes composed (${seedB}/assets); rendering ──`));
+      runAO(['run', derived, ...rest, ...localArgs, '--resume', seedB, ...llmArgs]);
+    }
     runAO(['run', wf, ...rest, ...localArgs, ...seedArgs, ...llmArgs]);
     break;
   }
@@ -519,6 +571,7 @@ function printHelp(out) {
             retouch <id> --provider … --model … [--instruction …] [--scene <id>]: cloud edit that keeps the face (billed per image)
   scene     reusable settings: place, time/weather/light, details, look, image (list / new / edit / render / upload / rm);
             drama --scene <id> locks the setting into the script
+            drama --character <id> [--scene <id>] --keyframes --edit-provider … --edit-model …: one composed opening frame per shot (3 cloud images)
   doctor    environment health check (delegates to \`ao doctor\`)
   mcp       MCP server over stdio, so AI agents can make videos: claude mcp add openshorts -- npx openshorts mcp
   install-ffmpeg  install an ffmpeg **with libass** into ~/.openshorts/bin — Homebrew's no longer
@@ -549,6 +602,7 @@ function printHelp(out) {
             retouch <id> --provider … --model … [--instruction …] [--scene <id>]：云端保脸改图（按张计费）
   scene     场景卡：地点、时间天气光线、细节、画面风格、场景图，跨片复用（list / new / edit / render / upload / rm）；
             drama --scene <id> 把场景锁进剧本
+            drama --character <id> [--scene <id>] --keyframes --edit-provider … --edit-model …：逐镜首帧（三镜各合成一张，云端 3 张图）
   doctor    环境体检（转 ao doctor）
   mcp       MCP server（stdio），让 AI agent 直接出片：claude mcp add openshorts -- npx openshorts mcp
   install-ffmpeg  装一份带 libass 的 ffmpeg 到 ~/.openshorts/bin（Homebrew 的不带，字幕会烧不进画面）[--force 重装]

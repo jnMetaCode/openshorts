@@ -27,6 +27,7 @@ import { writeJsonAtomic } from '../src/core/fs-atomic.mjs';
 import { JobHub } from './lib/job-hub.mjs';
 import * as cards from '../src/characters/cards.mjs';
 import * as scenes from '../src/scenes/scenes.mjs';
+import * as keyframes from '../src/pipeline/drama-keyframes.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const kaipian = express.Router();
@@ -550,6 +551,11 @@ kaipian.post('/drama/preflight', async (req, res) => {
   const T = tt(reqLang(req));
   const lines = out.split('\n').map((l) => l.trim()).filter((l) => /^(🎬|🎨|🎙|🎞|·|合计)/.test(l))
     .map((l) => (card?.portrait && l.startsWith('🎨') ? T(`🎨 定妆图：用角色卡「${card.name}」里的，不出图（0 元）`, `🎨 Portrait: taken from character "${card.name}", no image generated ($0)`) : l));
+  // 逐镜首帧多出三张云端图：plan 不知道这一步，这里补一行，花钱的东西运行前要看得见
+  if (card?.portrait && (req.body?.keyframes === '1' || req.body?.keyframes === true)) {
+    const sv = readConfig().imageEdit ?? {}; const ep = req.body.edit_provider || sv.provider, em = req.body.edit_model || sv.model;
+    lines.push(T(`🖼 逐镜首帧 3 张 · ${ep ?? '?'} / ${em ?? '?'}（云端改图，按张计费）`, `🖼 Per-shot keyframes: 3 images · ${ep ?? '?'} / ${em ?? '?'} (cloud image edit, billed per image)`));
+  }
   res.json({ inputs, lines, ok: status === 0, raw: status !== 0 ? out.slice(-400) : undefined });
 });
 // 短剧按秒真花钱，且两个 AO 进程会写同一个 project.json / assets/——全局同时只允许一条在跑。
@@ -578,39 +584,57 @@ export function kaipianShutdown() {
  * 以子进程跑 AO 并把输出转 SSE。run 和 redo 以前各复制一份这段逻辑，
  * 运行目录判定、并发锁、断连即杀改哪边都只修了一半——统一到这里。
  */
-function streamAoRun({ req, res, args, runsDir, onDone, meta = {} }) {
-  const before = new Set(listDramaRuns(runsDir));   // spawn 前快照，跑完取"新出现的那个"当运行目录
-  // spawnTree：AO 下面还有 sd-cli / ffmpeg 孙进程，取消或服务退出时要整组杀（见 lib/proc.mjs）
-  const child = spawnTree(process.execPath, args, { env: { ...process.env, AO_NO_MODEL_HINT: '1', AO_NO_RESUME_HINT: '1', FORCE_COLOR: '0' } });
-  dramaChild = child;
-  // 任务挂在 hub 上而不是这条连接上：短剧一跑 25 分钟还按秒计费，页面刷新不能把它杀了。取消只认 POST /drama/cancel
-  const job = hub.start('drama', { cancel: () => killTree(child), meta });
-  let buf = ''; let runDir = ''; const tail = [];   // 最近的原始行：失败时要拿它说清原因
-  const onLine = (line) => {
-    const clean = line.replace(/\x1b\[[0-9;]*m/g, '').replace(/\r/g, '').trim(); if (!clean) return;
-    tail.push(clean); if (tail.length > 12) tail.shift();
-    const m = clean.match(/详细输出:\s*(.+)$/); if (m) runDir = m[1].trim();
-    if (/^(──|🎬|🎨|🎞|⚠️|⟳|✅|❌|完成|失败|部分失败|🖥|💰|·|🎙|✎)/.test(clean) || /验收|重出|素材|镜头|恢复自|跳过已完成/.test(clean)) hub.emit(job, 'log', { m: clean.slice(0, 300) });
-  };
-  for (const st of [child.stdout, child.stderr]) st.on('data', (d) => { buf += d.toString(); const parts = buf.split('\n'); buf = parts.pop(); parts.forEach(onLine); });
-  // spawn 本身失败（EMFILE/EAGAIN 等）只发 'error' 不发 'close'：不接的话任务永远"在跑"，
-  // 之后每次出短剧都 409，直到重启服务
-  child.on('error', (e) => { dramaChild = null; hub.finish(job, 'error', { m: `引擎进程起不来：${e.message}` }); });
-  child.on('close', (code) => {
-    dramaChild = null;
-    if (buf) onLine(buf);
-    // 非 0 退出（中断/失败）不回填：否则会拿半截的运行目录覆盖项目。
-    // 但原因必须带出来——AO 报"缺少必填输入 image_model"这种一句话能解决的事，
-    // 以前用户只看得到"退出码 1"
-    if (code !== 0) {
-      const why = tail.filter((l) => /错误|Error|缺少|失败|❌/.test(l)).slice(-2).join('；') || tail.slice(-2).join('；');
-      return hub.finish(job, 'error', { m: `引擎退出码 ${code}，项目未改动${why ? `：${why.slice(0, 400)}` : ''}` });
-    }
-    if (!runDir) runDir = pickFreshRunDir(before, runsDir);
-    try { const id = onDone(runDir); hub.finish(job, 'done', { id, code }); }
-    catch (e) { hub.finish(job, 'error', { m: `${e.message}（退出码 ${code}）` }); }
+/**
+ * 跑一段引擎，挂在已有的 job 上：行过滤推给界面、认出运行目录、留最近几行报错用。
+ * 逐镜首帧要在同一个任务里先后跑两段，所以从 streamAoRun 里拆出来；单段运行的行为不变。
+ */
+function runStage(job, args, runsDir, ctl) {
+  return new Promise((resolve) => {
+    const before = new Set(listDramaRuns(runsDir));   // spawn 前快照，跑完取"新出现的那个"当运行目录
+    // spawnTree：AO 下面还有 sd-cli / ffmpeg 孙进程，取消或服务退出时要整组杀（见 lib/proc.mjs）
+    const child = spawnTree(process.execPath, args, { env: { ...process.env, AO_NO_MODEL_HINT: '1', AO_NO_RESUME_HINT: '1', FORCE_COLOR: '0' } });
+    dramaChild = child; ctl.child = child;
+    let buf = ''; let runDir = ''; const tail = [];   // 最近的原始行：失败时要拿它说清原因
+    const onLine = (line) => {
+      const clean = line.replace(/\x1b\[[0-9;]*m/g, '').replace(/\r/g, '').trim(); if (!clean) return;
+      tail.push(clean); if (tail.length > 12) tail.shift();
+      const m = clean.match(/详细输出:\s*(.+)$/); if (m) runDir = m[1].trim();
+      if (/^(──|🎬|🎨|🎞|⚠️|⟳|✅|❌|完成|失败|部分失败|🖥|💰|·|🎙|✎)/.test(clean) || /验收|重出|素材|镜头|恢复自|跳过已完成/.test(clean)) hub.emit(job, 'log', { m: clean.slice(0, 300) });
+    };
+    for (const st of [child.stdout, child.stderr]) st.on('data', (d) => { buf += d.toString(); const parts = buf.split('\n'); buf = parts.pop(); parts.forEach(onLine); });
+    // spawn 本身失败（EMFILE/EAGAIN 等）只发 'error' 不发 'close'：不接的话任务永远"在跑"，
+    // 之后每次出短剧都 409，直到重启服务
+    child.on('error', (e) => { dramaChild = null; ctl.child = null; resolve({ spawnError: e }); });
+    child.on('close', (code) => {
+      dramaChild = null; ctl.child = null;
+      if (buf) onLine(buf);
+      resolve({ code, runDir: runDir || (code === 0 ? pickFreshRunDir(before, runsDir) : ''), tail });
+    });
   });
+}
+// 非 0 退出（中断/失败）不回填：否则会拿半截的运行目录覆盖项目。
+// 但原因必须带出来——AO 报"缺少必填输入 image_model"这种一句话能解决的事，以前用户只看得到"退出码 1"
+const stageError = (r) => (r.spawnError ? `引擎进程起不来：${r.spawnError.message}`
+  : `引擎退出码 ${r.code}，项目未改动${(() => { const why = r.tail.filter((l) => /错误|Error|缺少|失败|❌/.test(l)).slice(-2).join('；') || r.tail.slice(-2).join('；'); return why ? `：${why.slice(0, 400)}` : ''; })()}`);
+
+function streamAoRun({ req, res, args, runsDir, onDone, meta = {}, before: beforeStage = null }) {
+  const ctl = { child: null, cancelled: false };
+  // 任务挂在 hub 上而不是这条连接上：短剧一跑 25 分钟还按秒计费，页面刷新不能把它杀了。取消只认 POST /drama/cancel
+  const job = hub.start('drama', { cancel: () => { ctl.cancelled = true; if (ctl.child) killTree(ctl.child); }, meta });
   hub.attach(job, req, res);
+  (async () => {
+    // beforeStage：逐镜首帧的前两段（只写文字 → 合成首帧），返回第二段真正要跑的参数
+    let runArgs = args;
+    if (beforeStage) {
+      try { runArgs = await beforeStage({ job, ctl, log: (m) => hub.emit(job, 'log', { m }) }); }
+      catch (e) { return hub.finish(job, 'error', { m: e.message }); }
+      if (ctl.cancelled) return hub.finish(job, 'error', { m: '已取消' });
+    }
+    const r = await runStage(job, runArgs, runsDir, ctl);
+    if (r.spawnError || r.code !== 0) return hub.finish(job, 'error', { m: stageError(r) });
+    try { const id = onDone(r.runDir); hub.finish(job, 'done', { id, code: r.code }); }
+    catch (e) { hub.finish(job, 'error', { m: `${e.message}（退出码 ${r.code}）` }); }
+  })();
 }
 // 短剧全局只有一条：接着看 / 状态 / 取消
 kaipian.get('/drama/events', (req, res) => {
@@ -636,21 +660,49 @@ kaipian.get('/drama/run', (req, res) => {
   const usesCardPortrait = !!card?.portrait;
   // 工作流里 image_model 是必填无默认（定妆图用）：这里不拦的话 AO 会在 spawn 后立刻退出码 1
   if (!inputs.image_model && !usesCardPortrait) return res.status(400).json({ error: tt(reqLang(req))('请选择定妆图的图片模型（image_model）——界面在「画面来源」里选，API 传 image_provider / image_model', 'Pick an image model for the character sheet (image_model) — in the UI it is under "Visual sources"; over the API pass image_provider / image_model') });
+  // 逐镜首帧：三镜各合成一张"人在景里、正在做这一镜的事"的首帧（云端，每镜一张图）。要一张有定妆图的卡和一家改图供应商
+  const T = tt(reqLang(req));
+  const wantKeyframes = q.keyframes === '1' || q.keyframes === 'true';
+  const saved = readConfig().imageEdit ?? {};
+  const editProvider = flagVal(q.edit_provider) ?? saved.provider, editModel = flagVal(q.edit_model) ?? saved.model;
+  if (wantKeyframes && !usesCardPortrait) return res.status(400).json({ error: T('逐镜首帧要选一张有定妆图的角色卡', 'Per-shot keyframes need a character card with a portrait') });
+  if (wantKeyframes && (!editProvider || !editModel)) return res.status(400).json({ error: T('逐镜首帧要一家云端改图供应商：先在角色卡里用一次「保脸改图」，或传 edit_provider / edit_model', 'Per-shot keyframes need a cloud image-edit provider: use "Keep face, edit" on the card once, or pass edit_provider / edit_model') });
   if (hub.isRunning('drama')) { if (req.headers['last-event-id']) return hub.attach(hub.get('drama'), req, res); return res.status(409).json({ error: tt(reqLang(req))('已有一条短剧在跑（按秒计费，不允许并行）——等它跑完，或先取消', 'A mini-drama is already running (billed per second, no parallel runs) — wait for it, or cancel it first') }); }
   const { cli, wf } = aoCli(); const cfg = readConfig();
   const runsDir = path.join(cfg.outputDir, '.ao-runs'); fs.mkdirSync(runsDir, { recursive: true });
   const args = [cli, 'run', wf, '--output', runsDir, ...inputArgs(inputs)];
-  if (usesCardPortrait) args.push('--resume', cards.writeSeedRun(card, { inputs }));
-  const pv = flagVal(q.provider); if (pv) args.push('--provider', pv);
-  const md = flagVal(q.model); if (md) args.push('--model', md);
-  const vp = flagVal(q.verify_provider); if (vp) args.push('--verify-provider', vp, '--verify-model', flagVal(q.verify_model) ?? '');
+  const seed = usesCardPortrait ? cards.writeSeedRun(card, { inputs }) : null;
+  const llmArgs = [];
+  const pv = flagVal(q.provider); if (pv) llmArgs.push('--provider', pv);
+  const md = flagVal(q.model); if (md) llmArgs.push('--model', md);
+  const vp = flagVal(q.verify_provider); if (vp) llmArgs.push('--verify-provider', vp, '--verify-model', flagVal(q.verify_model) ?? '');
+  if (seed && !wantKeyframes) args.push('--resume', seed);
+  args.push(...llmArgs);
+  let kfMeta = null;
+  // 逐镜首帧的前两段：① 只写剧本和提示词 ② 三镜各合成一张首帧；返回第二段（出片）的参数
+  const before = !wantKeyframes ? null : async ({ job, ctl, log }) => {
+    log(T('── 逐镜首帧 ① 先写剧本和三镜提示词（出片、合成都先跳过）──', '── Per-shot keyframes ① script and shot prompts first (rendering skipped) ──'));
+    const a = await runStage(job, [cli, 'run', wf, '--output', runsDir, ...inputArgs(inputs), '--resume', keyframes.textsOnlySeed(seed), ...llmArgs], runsDir, ctl);
+    if (ctl.cancelled) throw new Error(T('已取消', 'Cancelled'));
+    if (a.spawnError || a.code !== 0 || !a.runDir) throw new Error(T(`第一段（写剧本和提示词）没跑完：${stageError(a)}`, `Stage one (script and prompts) did not finish: ${stageError(a)}`));
+    const { editImage } = await import('../src/characters/cloud-edit.mjs');
+    const sceneFile = scene ? scenes.sceneImagePath(scene) : null;
+    const composed = await keyframes.composeKeyframes({ card, portrait: fs.readFileSync(cards.portraitPath(card)), sceneImage: sceneFile ? fs.readFileSync(sceneFile) : null,
+      script: keyframes.readScript(a.runDir), edit: editImage, provider: editProvider, model: editModel, ratio: inputs.video_ratio, lang: reqLang(req), onLog: log });
+    if (ctl.cancelled) throw new Error(T('已取消', 'Cancelled'));
+    kfMeta = composed.meta;
+    const { findAgentsDir } = await import('agency-orchestrator');
+    const derived = keyframes.deriveKeyframeWorkflow(wf, { resolveAgents: (n) => findAgentsDir(n, wf) });
+    log(T('── 逐镜首帧 ② 三张首帧已合成，开始出片 ──', '── Per-shot keyframes ② three keyframes composed; rendering ──'));
+    return [cli, 'run', derived, '--output', runsDir, ...inputArgs(inputs), '--resume', keyframes.keyframesSeed(a.runDir, composed.frames, { meta: composed.meta }), ...llmArgs];
+  };
   // 文本供应商要记进项目：redo 不带它的话会回落到工作流默认的 deepseek——
   // 用户用 agnes 跑通的项目，一点"重出这镜"就报"deepseek 没配 key"（真机撞过）
-  streamAoRun({ req, res, args, runsDir, meta: { kind: 'run' }, onDone: (runDir) => finishDramaRun({ runDir, inputs, tier: q.tier || 'cloud', llm: pv ? { provider: pv, model: md || '' } : null, character: card, scene }) });
+  streamAoRun({ req, res, args, runsDir, before, meta: { kind: 'run', keyframes: wantKeyframes }, onDone: (runDir) => finishDramaRun({ runDir, inputs, tier: q.tier || 'cloud', llm: pv ? { provider: pv, model: md || '' } : null, character: card, scene, keyframes: kfMeta }) });
 });
 
 /** AO 运行目录 → 项目（新建或覆盖同 id）：回填 shots/验收、按输入标来源、拷贝 assets、记住 aoRun 供 resume。 */
-function finishDramaRun({ runDir, inputs, tier, existingId, shotSources, llm = null, character = null, scene = null }) {
+function finishDramaRun({ runDir, inputs, tier, existingId, shotSources, llm = null, character = null, scene = null, keyframes: kf = null }) {
   // runDir 由调用方确定（stdout 刮到的，或 spawn 后新出现的目录）。确定不了就报错，
   // 绝不猜"最新的那个"——resume 时最新的就是上一次自己，旧产物会被当成新成片报成功
   if (!runDir) throw new Error('没有从引擎输出里识别出本次运行目录（可能引擎输出格式变了），项目未改动');
@@ -662,6 +714,7 @@ function finishDramaRun({ runDir, inputs, tier, existingId, shotSources, llm = n
   project.line = 'drama'; project.title = inputs.story.slice(0, 30); project.topic = inputs.story; project.inputs = inputs; project.tier = tier; project.shotSources = shotSources ?? {};
   if (llm) project.llm = llm;
   // 用了哪张角色卡、哪张定妆图：重出单镜 / 回头查"这张脸哪来的"都要它（provenance 规矩）
+  if (kf) project.keyframes = kf;   // 每镜首帧的供应商 / 模型 / 要求：按张计费，要能追溯
   if (scene) project.scene = { id: scene.id, name: scene.name, image: scene.image ? { file: scene.image.file, source: scene.image.source } : null };
   if (character) project.character = { id: character.id, name: character.name, portrait: character.portrait ? { file: character.portrait.file, source: character.portrait.source, model: character.portrait.model ?? null, seed: character.portrait.seed ?? null } : null };
   // 每镜的提示词与全片的氛围锁定块回填进项目：界面能看、能复制去别的模型抽卡——
@@ -674,21 +727,29 @@ function finishDramaRun({ runDir, inputs, tier, existingId, shotSources, llm = n
     s.visual.provider = s.kind === 'video' ? vp : inputs.image_provider || null; s.visual.model = s.kind === 'video' ? vm : inputs.image_model || null;
     s.visual.source = s.kind === 'video' && vp === 'local-sdcpp' ? 'local' : 'cloud';
   }
+  // 逐镜首帧的三张图是"镜头的首帧"，不是另外三个镜头：挂到对应镜头的 visual.keyframe 上，不单独占格
+  // （不挂的话界面按 id 末尾数字排序，七格穿插排成"定妆图、镜 1、镜 1 首帧、镜 2…"，看着像六个镜头）
+  const kfShots = project.shots.filter((s) => /^shot\d_keyframe$/.test(s.id));
+  for (const k of kfShots) { const owner = project.shots.find((s) => s.id === k.id.replace('_keyframe', '')); if (owner) owner.visual.keyframe = k.visual.file; }
+  project.shots = project.shots.filter((s) => !kfShots.includes(s));
   const dir = projDir(id); fs.mkdirSync(path.join(dir, 'assets'), { recursive: true });
   // AO 在 script 步就失败时不会有 assets/——别在这儿甩 ENOENT
   const srcAssets = path.join(runDir, 'assets');
   if (fs.existsSync(srcAssets)) for (const f of fs.readdirSync(srcAssets)) fs.copyFileSync(path.join(srcAssets, f), path.join(dir, 'assets', f));
   project.final = project.final ? { file: path.join(dir, project.final.file), aoRun: runDir, notes: [] } : { file: null, aoRun: runDir, notes: ['本次运行没有成片'] };
-  project.shots.forEach((s) => { s.visual.file = path.join(dir, s.visual.file); });
+  project.shots.forEach((s) => { s.visual.file = path.join(dir, s.visual.file); if (s.visual.keyframe) s.visual.keyframe = path.join(dir, s.visual.keyframe); });
   // 保留上次的镜头级来源记录（未重出的镜头沿用）
-  if (existingId) { try { const prev = JSON.parse(fs.readFileSync(path.join(dir, 'project.json'), 'utf-8')); project.redoHistory = [...(prev.redoHistory ?? []), { at: new Date().toISOString(), aoRun: runDir }]; } catch { /* first */ } }
+  if (existingId) { try { const prev = JSON.parse(fs.readFileSync(path.join(dir, 'project.json'), 'utf-8')); project.redoHistory = [...(prev.redoHistory ?? []), { at: new Date().toISOString(), aoRun: runDir }];
+    // 重出单镜不改变"这条片用的哪张卡 / 哪个景 / 是不是逐镜首帧"：不沿用的话，第二次重出就退回原工作流、首帧退回共用定妆图，来源记录也丢了
+    for (const k of ['character', 'scene', 'keyframes']) if (project[k] == null && prev[k] != null) project[k] = prev[k];
+  } catch { /* first */ } }
   writeJsonAtomic(path.join(dir, 'project.json'), project);
   return id;
 }
 
 // 单镜重出：AO --resume <上次运行> --from <镜头> [--feedback 意见] [-i video_provider=…]（换来源）。
 // 下游（合成）会自动跟着重跑；上游（剧本/定妆图/其他镜头）原样复用，不再花钱。
-kaipian.get('/projects/:id/drama/redo', (req, res) => {
+kaipian.get('/projects/:id/drama/redo', async (req, res) => {
   const f = path.join(projDir(req.params.id), 'project.json'); if (!fs.existsSync(f)) return res.status(404).json({ error: tt(reqLang(req))('项目不存在', 'No such project') });
   const prev = JSON.parse(fs.readFileSync(f, 'utf-8')); const q = req.query;
   const shot = String(q.shot || ''); if (!/^(shot[123]|character)$/.test(shot)) return res.status(400).json({ error: tt(reqLang(req))('只能重出 character / shot1 / shot2 / shot3', 'Only character / shot1 / shot2 / shot3 can be redone') });
@@ -701,7 +762,14 @@ kaipian.get('/projects/:id/drama/redo', (req, res) => {
   if (q.tier === 'local') { Object.assign(inputs, { video_provider: TIERS.local.video_provider, video_model: TIERS.local.video_model, video_resolution: localResolution(inputs.video_ratio), video_duration: TIERS.local.video_duration }); }
   else if (q.tier === 'cloud') { for (const k of ['video_provider', 'video_model', 'video_resolution', 'video_duration']) { const v = flagVal(q[k]); if (v) inputs[k] = v; } }
   shotSources[shot] = { video_provider: inputs.video_provider, video_model: inputs.video_model };
-  const args = [cli, 'run', wf, '--output', runsDir, '--resume', prev.final.aoRun, '--from', shot, ...inputArgs(inputs)];
+  // 逐镜首帧的项目：上次的运行目录里有 shotN_keyframe，只有派生工作流认得。用原工作流重出的话，
+  // 这一镜会悄悄退回共用的定妆图当首帧——合成过的首帧白做，也没有任何提示。派生是确定的，现场重派一份
+  let runWf = wf;
+  if (prev.keyframes) {
+    const { findAgentsDir } = await import('agency-orchestrator');
+    runWf = keyframes.deriveKeyframeWorkflow(wf, { resolveAgents: (n) => findAgentsDir(n, wf) });
+  }
+  const args = [cli, 'run', runWf, '--output', runsDir, '--resume', prev.final.aoRun, '--from', shot, ...inputArgs(inputs)];
   // 文本供应商沿用首跑存的（q 可覆盖）：不带的话 AO 回落到工作流默认的 deepseek，
   // 用 agnes 跑通的项目一点重出就报"deepseek 没配 key"（真机撞过）
   const pv = flagVal(q.provider) ?? prev.llm?.provider; if (pv) args.push('--provider', pv);
