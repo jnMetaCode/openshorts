@@ -81,9 +81,9 @@
     "prepack": "npm run build"
   },
   "dependencies": {
-    "@remotion/bundler": "4.0.523",
-    "@remotion/player": "4.0.523",
-    "@remotion/renderer": "4.0.523",
+    "@remotion/bundler": "4.0.529",
+    "@remotion/player": "4.0.529",
+    "@remotion/renderer": "4.0.529",
     "agency-orchestrator": "^0.19.2",
     "cors": "2.8.6",
     "express": "5.2.1",
@@ -91,11 +91,11 @@
     "multer": "2.4.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
-    "remotion": "4.0.523",
+    "remotion": "4.0.529",
     "zod": "4.6.5"
   },
   "devDependencies": {
-    "@remotion/cli": "4.0.523",
+    "@remotion/cli": "4.0.529",
     "@types/express": "5.0.6",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
