@@ -11,8 +11,8 @@
     "dist:win": "electron-builder --win --config electron-builder.config.cjs"
   },
   "devDependencies": {
-    "electron": "^44.3.0",
-    "electron-builder": "^26.15.3"
+    "electron": "^45.1.0",
+    "electron-builder": "^26.18.0"
   },
   "build": {
     "appId": "com.jnmetacode.openshorts",
